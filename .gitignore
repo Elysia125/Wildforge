@@ -4,6 +4,9 @@ Intermediate
 Saved
 .vscode
 .vs
+backup-repo.git
+.claude
+.vsconfig
 *.VC.db
 *.opensdf
 *.opendb
