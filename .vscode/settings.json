@@ -1,0 +1,14 @@
+{
+    "C_Cpp.intelliSenseEngine": "disabled",
+    // 指定 compile_commands.json 的路径（默认在根目录）
+    "clangd.arguments": [
+        "--compile-commands-dir=${workspaceFolder}",
+        "--background-index",              // 启用后台索引，加速后续检索
+        "-j=16",                           // 索引使用的线程数，建议设为 CPU 核心数
+        "--completion-style=detailed",     // 补全显示详细信息
+        "--header-insertion=never",        // 关键：禁用自动引入头文件（UE的代码风格由模块管理，自动include很容易乱）
+        "--function-arg-placeholders=true",
+        "--fallback-style=llvm",
+        "--pch-storage=memory"             // 加快速度，放内存
+    ]
+}

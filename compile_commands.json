@@ -1,0 +1,42 @@
+[
+	{
+		"file": "E:\\UE_Projects\\Wildforge\\Source\\Wildforge\\Private\\UCharacterAttributes.cpp",
+		"arguments": [
+			"D:\\C++\\VC\\Tools\\MSVC\\14.38.33130\\bin\\Hostx64\\x64\\cl.exe",
+			"@E:\\UE_Projects\\Wildforge\\.vscode\\compileCommands_Wildforge\\Wildforge.1.rsp"
+		],
+		"directory": "D:\\UE\\UE_5.7\\Engine\\Source"
+	},
+	{
+		"file": "E:\\UE_Projects\\Wildforge\\Source\\Wildforge\\Public\\UCharacterAttributes.h",
+		"arguments": [
+			"D:\\C++\\VC\\Tools\\MSVC\\14.38.33130\\bin\\Hostx64\\x64\\cl.exe",
+			"@E:\\UE_Projects\\Wildforge\\.vscode\\compileCommands_Wildforge\\Wildforge.1.rsp"
+		],
+		"directory": "D:\\UE\\UE_5.7\\Engine\\Source"
+	},
+	{
+		"file": "E:\\UE_Projects\\Wildforge\\Source\\Wildforge\\Wildforge.Build.cs",
+		"arguments": [
+			"D:\\C++\\VC\\Tools\\MSVC\\14.38.33130\\bin\\Hostx64\\x64\\cl.exe",
+			"@E:\\UE_Projects\\Wildforge\\.vscode\\compileCommands_Wildforge\\Wildforge.1.rsp"
+		],
+		"directory": "D:\\UE\\UE_5.7\\Engine\\Source"
+	},
+	{
+		"file": "E:\\UE_Projects\\Wildforge\\Source\\Wildforge\\Wildforge.cpp",
+		"arguments": [
+			"D:\\C++\\VC\\Tools\\MSVC\\14.38.33130\\bin\\Hostx64\\x64\\cl.exe",
+			"@E:\\UE_Projects\\Wildforge\\.vscode\\compileCommands_Wildforge\\Wildforge.1.rsp"
+		],
+		"directory": "D:\\UE\\UE_5.7\\Engine\\Source"
+	},
+	{
+		"file": "E:\\UE_Projects\\Wildforge\\Source\\Wildforge\\Wildforge.h",
+		"arguments": [
+			"D:\\C++\\VC\\Tools\\MSVC\\14.38.33130\\bin\\Hostx64\\x64\\cl.exe",
+			"@E:\\UE_Projects\\Wildforge\\.vscode\\compileCommands_Wildforge\\Wildforge.1.rsp"
+		],
+		"directory": "D:\\UE\\UE_5.7\\Engine\\Source"
+	}
+]

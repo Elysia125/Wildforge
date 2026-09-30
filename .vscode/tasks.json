@@ -1,0 +1,33 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build Wildforge Editor (Development)",
+            "type": "shell",
+            "command": "D:/UE/UE_5.7/Engine/Build/BatchFiles/Build.bat",
+            "args": [
+                "WildforgeEditor",
+                "Win64",
+                "Development",
+                "-Project=E:/UE_Projects/Wildforge/Wildforge.uproject",
+                "-WaitMutex"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "Generate compile_commands.json",
+            "type": "shell",
+            "command": "D:/UE/UE_5.7/Engine/Build/BatchFiles/Build.bat",
+            "args": [
+                "-Mode=GenerateClangDatabase",
+                "-Project=${workspaceFolder}/Wildforge.uproject",
+                "-Target=WildforgeEditor Win64 Development"
+            ],
+            "problemMatcher": []
+        }
+    ]
+}

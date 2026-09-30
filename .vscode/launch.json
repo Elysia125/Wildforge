@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch Unreal Editor",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "D:/UE/UE_5.7/Engine/Binaries/Win64/UnrealEditor.exe",
+            "args": [
+                "E:/UE_Projects/Wildforge/Wildforge.uproject"
+            ],
+            "stopAtEntry": false,
+            "cwd": "D:/UE/UE_5.7/Engine/Binaries/Win64",
+            "environment": [],
+            "externalConsole": false
+        }
+    ]
+}

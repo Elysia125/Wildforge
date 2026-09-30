@@ -10,6 +10,6 @@ public class WildforgeEditorTarget : TargetRules
 		Type = TargetType.Editor;
 		DefaultBuildSettings = BuildSettingsVersion.V6;
 
-		ExtraModuleNames.AddRange( new string[] { "Wildforge" } );
+		ExtraModuleNames.AddRange(new string[] { "Wildforge" });
 	}
 }
