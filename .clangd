@@ -1,19 +1,10 @@
+# UBT 的 -Mode=GenerateClangDatabase 以 clang-cl（CL 驱动）生成 compile_commands.json：
+#   - 命令形如  clang-cl.exe @"...\Xxx.cpp.obj.rsp"
+#   - clangd 会依据可执行名 clang-cl 自动切换 --driver-mode=cl，无需手动指定
+#   - 参数（/std:c++20、/TP、-I、MSVC/WindowsSDK 系统头路径）都已写进 .rsp，无需再 Add
+# 因此这里只做必要的删减。
 CompileFlags:
-  Add:
-    - "--driver-mode=cl"
-    # UE5 源码要求 C++20（PCH 名里的 Cpp20 即由此而来）。
-    # 注意：cl 驱动模式下必须写成 /std:c++20；"-std=c++20" 会被静默忽略，
-    # 缺少该选项会引发 char8_t/concept/if constexpr 等成片报错。
-    - "/std:c++20"
-    # cl 驱动模式按 MSVC 规则把 .h 当成 C 头文件处理，导致 UCLASS 等宏解析失败，
-    # 必须显式强制按 C++ 解析。
-    - "-xc++"
-    - "-fms-extensions"
-    - "-fms-compatibility"
-    - "-fdelayed-template-parsing"
   Remove:
-    - "/Yu*"
-    - "/Fp*"
-    - "/analyze*"
-    - "/W4"
-    - "/WX"
+    # 构建时用 -Werror 把警告升级为错误；编辑器里应保留为警告，否则满屏红。
+    - "-Werror"
+    - "/WX*"

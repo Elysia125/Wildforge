@@ -9,7 +9,7 @@
 /**
  * 
  */
-UCLASS()
+UCLASS(ClassGroup = (Custom),BlueprintType, Blueprintable)
 class WILDFORGE_API APlayerCharacter : public ABaseCharacter
 {
 	GENERATED_BODY()

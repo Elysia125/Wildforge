@@ -16,6 +16,9 @@
                 "kind": "build",
                 "isDefault": true
             },
+            "dependsOn": [
+                "Generate compile_commands.json"
+            ],
             "problemMatcher": "$msCompile"
         },
         {
@@ -25,8 +28,14 @@
             "args": [
                 "-Mode=GenerateClangDatabase",
                 "-Project=${workspaceFolder}/Wildforge.uproject",
-                "-Target=WildforgeEditor Win64 Development"
+                "-Target=WildforgeEditor Win64 Development",
+                "-OutputDir=${workspaceFolder}"
             ],
+            "options": {
+                "env": {
+                    "LLVM_PATH": "E:/LLVM"
+                }
+            },
             "problemMatcher": []
         }
     ]

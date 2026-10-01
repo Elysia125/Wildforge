@@ -1,0 +1,19 @@
+CompileFlags:
+  Add:
+    - "--driver-mode=cl"
+    # UE5 源码要求 C++20（PCH 名里的 Cpp20 即由此而来）。
+    # 注意：cl 驱动模式下必须写成 /std:c++20；"-std=c++20" 会被静默忽略，
+    # 缺少该选项会引发 char8_t/concept/if constexpr 等成片报错。
+    - "/std:c++20"
+    # cl 驱动模式按 MSVC 规则把 .h 当成 C 头文件处理，导致 UCLASS 等宏解析失败，
+    # 必须显式强制按 C++ 解析。
+    - "-xc++"
+    - "-fms-extensions"
+    - "-fms-compatibility"
+    - "-fdelayed-template-parsing"
+  Remove:
+    - "/Yu*"
+    - "/Fp*"
+    - "/analyze*"
+    - "/W4"
+    - "/WX"
