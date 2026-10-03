@@ -8,7 +8,7 @@
 
 USTRUCT(BlueprintType)
 struct FItemInformation : public FTableRowBase {
-  GENERATED_BODY()
+  GENERATED_USTRUCT_BODY()
   FItemInformation() = default;
   UPROPERTY(EditAnywhere, BlueprintReadWrite)
   int32 ItemID;
@@ -57,7 +57,7 @@ struct FItemInformation : public FTableRowBase {
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite)
   int32 Ammo = 0;
-  
+
   UPROPERTY(EditAnywhere, BlueprintReadWrite)
   int32 AmmoMax = 0;
 };
