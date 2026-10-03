@@ -12,22 +12,28 @@
 		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/PerModuleInline.gen.cpp.obj"
 	},
 	{
-		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/BaseCharacter.cpp",
+		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/BaseCharacter.cpp",
 		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/BaseCharacter.cpp.obj.rsp\" ",
 		"directory": "D:/UE/UE_5.7/Engine/Source",
 		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/BaseCharacter.cpp.obj"
 	},
 	{
-		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/CharacterAttributes.cpp",
+		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/CharacterAttributes.cpp",
 		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/CharacterAttributes.cpp.obj.rsp\" ",
 		"directory": "D:/UE/UE_5.7/Engine/Source",
 		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/CharacterAttributes.cpp.obj"
 	},
 	{
-		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/PlayerCharacter.cpp",
+		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
 		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/PlayerCharacter.cpp.obj.rsp\" ",
 		"directory": "D:/UE/UE_5.7/Engine/Source",
 		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/PlayerCharacter.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/Actors/ItemMaster.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/ItemMaster.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/ItemMaster.cpp.obj"
 	},
 	{
 		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Wildforge.cpp",
