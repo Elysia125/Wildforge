@@ -1,0 +1,18 @@
+# 基于 Unreal Engine 风格的配置
+BasedOnStyle: LLVM
+# 重新分组 include，以便根据规则排序
+IncludeBlocks: Regroup
+
+IncludeCategories:
+  # 规则1：将所有 .generated.h 文件归为最高优先级（数值越大越靠后）
+  - Regex: '.*\.generated\.h'
+    Priority: 100
+  # 规则2：将所有 PCH 文件归为最低优先级（负值使其排在最前）
+  - Regex: '.*(PCH).*'
+    Priority: -1
+  # 规则3：将CoreMinimal.h归为最低优先级（负值使其排在最前）
+  - Regex: 'CoreMinimal.h'
+    Priority: -1
+  # 规则4：其他所有头文件的默认优先级
+  - Regex: '.*'
+    Priority: 1

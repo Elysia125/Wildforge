@@ -10,5 +10,9 @@
         "--function-arg-placeholders=true",
         "--fallback-style=llvm",
         "--pch-storage=memory"             // 加快速度，放内存
-    ]
+    ],
+    "[cpp]": {
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+    "editor.formatOnSave": true
+  }
 }

@@ -7,6 +7,10 @@ ABaseCharacter::ABaseCharacter()
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+
+	// 角色参与网络复制，挂在上面的组件（背包等）才能复制
+	bReplicates = true;
+
 	CharacterAttributes = CreateDefaultSubobject<UCharacterAttributes>(TEXT("CharacterAttributes"));
 }
 

@@ -30,10 +30,40 @@
 		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/PlayerCharacter.cpp.obj"
 	},
 	{
+		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Core/WildforgeGameMode.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/WildforgeGameMode.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/WildforgeGameMode.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Core/WildforgePlayerController.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/WildforgePlayerController.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/WildforgePlayerController.cpp.obj"
+	},
+	{
 		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/Actors/ItemMaster.cpp",
 		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/ItemMaster.cpp.obj.rsp\" ",
 		"directory": "D:/UE/UE_5.7/Engine/Source",
 		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/ItemMaster.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/Components/ItemContainer.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/ItemContainer.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/ItemContainer.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/Components/PlayerInventory.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/PlayerInventory.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/PlayerInventory.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/UI/MainUserWidget.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/MainUserWidget.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/MainUserWidget.cpp.obj"
 	},
 	{
 		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Wildforge.cpp",
