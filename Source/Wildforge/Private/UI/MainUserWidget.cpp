@@ -3,3 +3,11 @@
 
 #include "UI/MainUserWidget.h"
 
+
+void UMainUserWidget::ShowInventory_Implementation() {
+  if (InventoryWidget) {
+    bIsInventoryOpen = !bIsInventoryOpen;
+    InventoryWidget->SetVisibility(bIsInventoryOpen ? ESlateVisibility::Visible
+                                                    : ESlateVisibility::Hidden);
+  }
+}
