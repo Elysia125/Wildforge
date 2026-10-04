@@ -4,7 +4,7 @@
 
 APlayerCharacter::APlayerCharacter() : ABaseCharacter() {
   Inventory = CreateDefaultSubobject<UPlayerInventory>(TEXT("Inventory"));
-  Inventory->InitializeContainer(10);
+  Inventory->InitializeContainer(30);
 }
 
 // ===== 客户端 -> 服务器：背包操作请求 =====

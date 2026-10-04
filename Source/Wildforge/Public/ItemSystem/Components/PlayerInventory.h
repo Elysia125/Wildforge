@@ -3,15 +3,18 @@
 #pragma once
 
 #include "CoreMinimal.h"
+
 #include "ItemSystem/Components/ItemContainer.h"
+
 #include "PlayerInventory.generated.h"
 
+
 /**
- * 
+ *
  */
 UCLASS()
-class WILDFORGE_API UPlayerInventory : public UItemContainer
-{
-	GENERATED_BODY()
-	
+class WILDFORGE_API UPlayerInventory : public UItemContainer {
+  GENERATED_BODY()
+public:
+  UPlayerInventory();
 };

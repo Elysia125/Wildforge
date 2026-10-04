@@ -5,9 +5,14 @@
 #include "CoreMinimal.h"
 
 #include "Components/ActorComponent.h"
+#include "ItemSystem/Enums/ContainerType.h"
 #include "ItemSystem/Structs/ItemInfo.h"
 
 #include "ItemContainer.generated.h"
+
+
+// 容器内容发生任何变化时广播（服务端修改后、客户端 OnRep_Slots 后），供 UI 刷新
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnContainerChanged);
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent),
        BlueprintType, Blueprintable)
@@ -32,13 +37,27 @@ private:
 
   int32 UsedCount = 0;
 
+  // 容器类型
+  UPROPERTY(BlueprintGetter = GetContainerType, Category = "ItemContainer")
+  EContainerType ContainerType = EContainerType::PlayerStorage;
+
   // 由 Slots + SlotOccupied 重算 FreeSlots / ItemIDToSlot / UsedCount
   void RebuildDerivedState();
 
   UFUNCTION()
   void OnRep_Slots();
 
+  // 广播 OnContainerChanged，通知订阅者（UI）刷新
+  void NotifyContainerChanged();
+
+  // 移除槽位但不广播（供 RemoveAllItem 批量调用后统一广播）
+  bool RemoveItemAtSlotInternal(int32 SlotIndex);
+
 public:
+  // 容器内容变化时广播；Blueprint 也可绑定
+  UPROPERTY(BlueprintAssignable, Category = "ItemContainer")
+  FOnContainerChanged OnContainerChanged;
+
   // Sets default values for this component's properties
   UItemContainer();
 
@@ -55,7 +74,8 @@ protected:
   virtual void BeginPlay() override;
 
   int32 FindEmptySlot() const;
-
+  
+  void setContainerType(EContainerType InContainerType) { ContainerType = InContainerType; }
 public:
   // Called every frame
   virtual void
@@ -76,6 +96,13 @@ public:
   UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly,
             Category = "ItemContainer")
   bool RemoveAllItem(int32 ItemID);
+
+  // 整理容器：丢弃无效项(ItemID == -1)，合并同 ItemID 的堆叠
+  // （是否可堆叠/最大堆叠数量决定每堆大小，满堆在前），
+  // 按 ItemName 升序排序并紧凑排在前面，空槽集中到末尾
+  UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly,
+            Category = "ItemContainer")
+  void OrganizeContainer();
 
   // 按槽位索引删除（O(1)）
   UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly,
@@ -121,4 +148,7 @@ public:
   UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly,
             Category = "ItemContainer")
   bool ResizeContainer(int32 NewCapacity);
+
+  UFUNCTION(BlueprintPure, Category = "ItemContainer")
+  EContainerType GetContainerType() const { return ContainerType; }
 };
