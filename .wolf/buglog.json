@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "bugs": [
+    {
+      "id": "bug-001",
+      "timestamp": "2026-10-05T21:04:00",
+      "error_message": "AddItem 执行了但背包格子看不到物品（UI 控件全部折叠），日志显示 ItemID=0、ItemName 为空、无图标、数量=0",
+      "file": "Source/Wildforge/Private/ItemSystem/Components/ItemContainer.cpp",
+      "root_cause": "蓝图向 AddItem 传入了空的 FItemInformation（ItemID=0、空 ItemName、无 ItemIcon、ItemQuality=0）。变更通知链路本身正常，是物品数据为空导致 UI 按空数据处理、所有控件折叠。",
+      "fix": "新增 UItemContainer::AddItemStack(定义, 数量)：服务端按 ItemID 从库里取完整定义，并优先堆叠到已有的同 ItemID 未满堆、溢出再放空槽。定义查询改由 UItemDatabaseSubsystem 提供。",
+      "tags": ["itemsystem", "inventory", "datatable", "ui", "rpc", "stacking"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-05T21:04:00"
+    },
+    {
+      "id": "bug-002",
+      "timestamp": "2026-10-05T21:26:00",
+      "error_message": "UHT: Property has a Category set but is not exposed to the editor or Blueprints with EditAnywhere, BlueprintReadWrite, VisibleAnywhere, BlueprintReadOnly, BlueprintAssignable, BlueprintCallable keywords. (ItemDatabaseSubsystem.h:50)",
+      "file": "Source/Wildforge/Public/ItemSystem/Database/ItemDatabaseSubsystem.h",
+      "root_cause": "给只用于配置的 UPROPERTY(Config) 写了 Category，但没有 EditAnywhere/BlueprintReadWrite 等暴露关键字。UHT 以 -WarningsAsErrors 运行，警告被当成错误。",
+      "fix": "去掉该 UPROPERTY(Config) 上的 Category（Config 属性本来就只从 ini 读取，不需要 Category）。",
+      "tags": ["uht", "uproperty", "config", "build", "warnings-as-errors"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-05T21:26:00"
+    }
+  ]
+}

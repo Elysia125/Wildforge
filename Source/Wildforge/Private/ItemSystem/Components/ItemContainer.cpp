@@ -2,38 +2,8 @@
 
 #include "ItemSystem/Components/ItemContainer.h"
 
-#include "GameFramework/Actor.h"
+#include "ItemSystem/Database/ItemDatabaseSubsystem.h"
 #include "Net/UnrealNetwork.h"
-
-DEFINE_LOG_CATEGORY_STATIC(LogItemContainer, Log, All);
-
-namespace {
-const TCHAR *NetModeStr(ENetMode Mode) {
-  switch (Mode) {
-  case NM_Standalone:
-    return TEXT("Standalone");
-  case NM_DedicatedServer:
-    return TEXT("DedicatedServer");
-  case NM_ListenServer:
-    return TEXT("ListenServer");
-  case NM_Client:
-    return TEXT("Client");
-  default:
-    return TEXT("Unknown");
-  }
-}
-
-// 打印容器所属 Actor 的网络上下文，方便判断"是不是权威端"
-FString NetCtx(const UActorComponent *Comp) {
-  if (!Comp || !Comp->GetOwner()) {
-    return TEXT("Owner=None");
-  }
-  const AActor *Owner = Comp->GetOwner();
-  return FString::Printf(TEXT("Owner=%s Auth=%d NetMode=%s"),
-                         *GetNameSafe(Owner), Owner->HasAuthority() ? 1 : 0,
-                         NetModeStr(Owner->GetNetMode()));
-}
-} // namespace
 
 // Sets default values for this component's properties
 UItemContainer::UItemContainer() {
@@ -58,19 +28,10 @@ void UItemContainer::GetLifetimeReplicatedProps(
 
 void UItemContainer::OnRep_Slots() {
   RebuildDerivedState();
-  UE_LOG(LogItemContainer, Log,
-         TEXT("[ItemContainer] OnRep_Slots(客户端收到复制数据): %s Capacity=%d "
-              "Used=%d -> 广播变更"),
-         *NetCtx(this), Slots.Num(), UsedCount);
   NotifyContainerChanged();
 }
 
 void UItemContainer::NotifyContainerChanged() {
-  const bool bBound = OnContainerChanged.IsBound();
-  UE_LOG(LogItemContainer, Log,
-         TEXT("[ItemContainer] 广播 OnContainerChanged: %s Capacity=%d Used=%d "
-              "已绑定监听者=%d"),
-         *NetCtx(this), Slots.Num(), UsedCount, bBound ? 1 : 0);
   OnContainerChanged.Broadcast();
 }
 
@@ -137,30 +98,18 @@ void UItemContainer::InitializeContainer(int32 InCapacity) {
 }
 
 bool UItemContainer::AddItem(const FItemInformation &Item, int32 Index) {
-  UE_LOG(LogItemContainer, Log,
-         TEXT("[ItemContainer] AddItem 调用: ItemID=%d '%s' Index=%d %s"),
-         Item.ItemID, *Item.ItemName.ToString(), Index, *NetCtx(this));
-
   int32 TargetSlot = INDEX_NONE;
 
   if (Index == INDEX_NONE) {
     if (FreeSlots.Num() == 0) {
-      UE_LOG(LogItemContainer, Warning,
-             TEXT("[ItemContainer] AddItem 失败: 容器已满 Capacity=%d"),
-             Slots.Num());
       return false; // 满了
     }
     TargetSlot = FreeSlots.Pop(EAllowShrinking::No);
   } else {
     if (!Slots.IsValidIndex(Index)) {
-      UE_LOG(LogItemContainer, Warning,
-             TEXT("[ItemContainer] AddItem 失败: 槽位越界 %d (Capacity=%d)"),
-             Index, Slots.Num());
       return false;
     }
     if (SlotOccupied[Index]) {
-      UE_LOG(LogItemContainer, Warning,
-             TEXT("[ItemContainer] AddItem 失败: 槽位 %d 已被占用"), Index);
       return false;
     }
     TargetSlot = Index;
@@ -177,14 +126,72 @@ bool UItemContainer::AddItem(const FItemInformation &Item, int32 Index) {
   }
   ++UsedCount;
 
-  UE_LOG(LogItemContainer, Log,
-         TEXT("[ItemContainer] AddItem 成功: ItemID=%d '%s' -> 槽位 %d "
-              "(Used=%d/%d)"),
-         Item.ItemID, *Item.ItemName.ToString(), TargetSlot, UsedCount,
-         Slots.Num());
-
   NotifyContainerChanged();
   return true;
+}
+
+int32 UItemContainer::AddItemStack(const FItemInformation &Item,
+                                   int32 Quantity) {
+  if (Quantity <= 0) {
+    return 0;
+  }
+
+  // 非可堆叠物品每格只放 1 个；可堆叠物品受 MaxStackSize 限制
+  const int32 StackSize =
+      Item.IsStackable ? FMath::Max(1, Item.MaxStackSize) : 1;
+
+  int32 Remaining = Quantity;
+  bool bChanged = false;
+
+  // 1) 优先补进已有的同 ItemID 未满堆
+  if (Item.IsStackable) {
+    if (const TArray<int32> *Existing = ItemIDToSlot.Find(Item.ItemID)) {
+      for (int32 SlotIndex : *Existing) {
+        if (Remaining <= 0) {
+          break;
+        }
+        if (!Slots.IsValidIndex(SlotIndex) || !SlotOccupied[SlotIndex]) {
+          continue;
+        }
+        // 已占用槽位至少含 1 个，避免未初始化/异常的数量
+        const int32 Current = FMath::Max(1, Slots[SlotIndex].ItemQuality);
+        if (Current >= StackSize) {
+          continue;
+        }
+        const int32 Add = FMath::Min(StackSize - Current, Remaining);
+        Slots[SlotIndex].ItemQuality = Current + Add;
+        Remaining -= Add;
+        bChanged = true;
+      }
+    }
+  }
+
+  // 2) 溢出部分放入空槽，每次放入一整堆
+  while (Remaining > 0) {
+    if (FreeSlots.Num() == 0) {
+      break; // 背包已满，丢弃剩余
+    }
+
+    const int32 TargetSlot = FreeSlots.Pop(EAllowShrinking::No);
+    const int32 ThisCount = FMath::Min(StackSize, Remaining);
+
+    FItemInformation NewItem = Item;
+    NewItem.ItemQuality = ThisCount; // 数量沿用 ItemQuality
+
+    Slots[TargetSlot] = NewItem;
+    SlotOccupied[TargetSlot] = true;
+    ItemIDToSlot.FindOrAdd(Item.ItemID).Add(TargetSlot);
+    ++UsedCount;
+
+    Remaining -= ThisCount;
+    bChanged = true;
+  }
+
+  if (bChanged) {
+    NotifyContainerChanged();
+  }
+
+  return Quantity - Remaining;
 }
 
 bool UItemContainer::RemoveItem(int32 ItemID) {
@@ -471,4 +478,69 @@ void UItemContainer::OrganizeContainer() {
 
   RebuildDerivedState();
   NotifyContainerChanged();
+}
+
+// ===== 客户端 -> 服务器：背包操作请求 (RPC) =====
+// 声明在容器组件上，所有拥有容器的类自动继承。_Implementation 里直接调用本类
+// 的权威方法（服务器/单机宿主上 Server RPC 会就地执行）。
+
+bool UItemContainer::Server_AddItem_Validate(int32 ItemID, int32 Quantity) {
+  // 只做廉价检查：ID 非负、数量为正，并设上限防止滥用
+  return ItemID >= 0 && Quantity > 0 && Quantity <= 10000;
+}
+
+void UItemContainer::Server_AddItem_Implementation(int32 ItemID,
+                                                   int32 Quantity) {
+  const UItemDatabaseSubsystem *Database = UItemDatabaseSubsystem::Get(this);
+  if (!Database) {
+    return;
+  }
+  if (const FItemInformation *Definition =
+          Database->GetItemDefinition(ItemID)) {
+    AddItemStack(*Definition, Quantity);
+  }
+}
+
+bool UItemContainer::Server_RemoveItemAtSlot_Validate(int32 SlotIndex) {
+  return SlotIndex >= 0;
+}
+
+void UItemContainer::Server_RemoveItemAtSlot_Implementation(int32 SlotIndex) {
+  RemoveItemAtSlot(SlotIndex);
+}
+
+bool UItemContainer::Server_RemoveItem_Validate(int32 ItemID) {
+  return ItemID >= 0;
+}
+
+void UItemContainer::Server_RemoveItem_Implementation(int32 ItemID) {
+  RemoveItem(ItemID);
+}
+
+bool UItemContainer::Server_RemoveAllItem_Validate(int32 ItemID) {
+  return ItemID >= 0;
+}
+
+void UItemContainer::Server_RemoveAllItem_Implementation(int32 ItemID) {
+  RemoveAllItem(ItemID);
+}
+
+bool UItemContainer::Server_SwapSlots_Validate(int32 SlotA, int32 SlotB) {
+  return SlotA >= 0 && SlotB >= 0;
+}
+
+void UItemContainer::Server_SwapSlots_Implementation(int32 SlotA, int32 SlotB) {
+  SwapSlots(SlotA, SlotB);
+}
+
+bool UItemContainer::Server_OrganizeContainer_Validate() { return true; }
+
+void UItemContainer::Server_OrganizeContainer_Implementation() {
+  OrganizeContainer();
+}
+
+bool UItemContainer::Server_ClearContainer_Validate() { return true; }
+
+void UItemContainer::Server_ClearContainer_Implementation() {
+  ClearContainer();
 }

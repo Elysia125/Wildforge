@@ -15,7 +15,8 @@ public class Wildforge : ModuleRules
 			"InputCore", 
 			"UMG",
 			"Slate",      // 添加 Slate 依赖
-    		"SlateCore" 
+    		"SlateCore",
+			"DeveloperSettings"  // UDeveloperSettings（项目设置集成）
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

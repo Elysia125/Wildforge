@@ -7,8 +7,6 @@
 #include "Engine/Texture2D.h"
 #include "Styling/SlateBrush.h"
 
-DEFINE_LOG_CATEGORY_STATIC(LogInventorySlot, Log, All);
-
 
 void UInventorySlotWidget::NativeConstruct() {
   Super::NativeConstruct();
@@ -38,21 +36,6 @@ void UInventorySlotWidget::SetItemData(const FItemInformation &Item,
   // 耐久 -> ItemHP（最大耐久 > 0 时才显示）
   SetItemHP(static_cast<float>(Item.ItemCurHP),
             static_cast<float>(Item.ItemMaxHP));
-
-  const FString NameStr =
-      TopText ? TopText->GetText().ToString() : FString(TEXT("<null>"));
-  const FString AmmoStr =
-      Item.UseAmmo ? FString::Printf(TEXT("%d/%d"), Item.Ammo, Item.AmmoMax)
-                   : FString(TEXT("<隐藏>"));
-  const FString QtyStr = Quantity > 1
-                             ? FString::Printf(TEXT("x%d"), Quantity)
-                             : FString(TEXT("<隐藏>"));
-  UE_LOG(LogInventorySlot, Log,
-         TEXT("[Slot] SetItemData: '%s' 数量=%d 图标=%s 名称=%s 弹药(Bottom)=%s "
-              "数量= %s 耐久=%s"),
-         *Item.ItemName.ToString(), Quantity,
-         Item.ItemIcon ? TEXT("有") : TEXT("无"), *NameStr, *AmmoStr, *QtyStr,
-         Item.ItemMaxHP > 0 ? TEXT("显示") : TEXT("<隐藏>"));
 
   // 给蓝图一个机会做额外表现，比如动画、稀有度边框等
   OnItemDataSet(Item, Quantity);
@@ -143,9 +126,6 @@ void UInventorySlotWidget::SetSelected(bool bSelected) {
 }
 
 void UInventorySlotWidget::ClearSlot() {
-  UE_LOG(LogInventorySlot, Verbose,
-         TEXT("[Slot] ClearSlot: 控件全部折叠 -> %s"), *GetName());
-
   // 各 setter 会根据“空/无”自动折叠对应控件，形成默认不可见状态
   SetTopText(FText::GetEmpty());
   SetBottomText(FText::GetEmpty());

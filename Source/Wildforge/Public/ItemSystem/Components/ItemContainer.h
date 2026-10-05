@@ -10,7 +10,6 @@
 
 #include "ItemContainer.generated.h"
 
-
 // 容器内容发生任何变化时广播（服务端修改后、客户端 OnRep_Slots 后），供 UI 刷新
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnContainerChanged);
 
@@ -87,6 +86,15 @@ public:
             Category = "ItemContainer")
   bool AddItem(const FItemInformation &Item, int32 Index = -1);
 
+  // 按物品定义 + 数量添加：优先堆叠进已有的同 ItemID 未满堆
+  // （受 IsStackable / MaxStackSize 限制），溢出部分再放入空槽。
+  // 返回实际加入的数量（背包满时可能小于 Quantity）。
+  // 定义由调用方（如 Server_AddItem）从 ItemDatabaseSubsystem 取好后传入，
+  // 容器本身不依赖数据表，保持纯存储职责。
+  UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly,
+            Category = "ItemContainer")
+  int32 AddItemStack(const FItemInformation &Item, int32 Quantity);
+
   // 按 ItemID 删除最后一个槽位（O(1)），如果同一 ItemID
   // 允许存在多个槽位，改成删除最后一个槽位
   UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly,
@@ -148,6 +156,45 @@ public:
   UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly,
             Category = "ItemContainer")
   bool ResizeContainer(int32 NewCapacity);
+
+  // ===== 客户端 -> 服务器：背包操作请求 =====
+  // 声明在容器组件上，所有拥有容器的类（玩家、箱子…）自动继承，无需重复声明。
+  // 约束：客户端只能对自己*拥有*的容器调用；共享容器（箱子等）需另行走
+  // 玩家身上的交互 RPC + 服务器校验。
+  // _Validate 只做廉价参数检查；真正的边界/占用检查在容器函数内部完成。
+
+  // 添加物品：客户端只传 ItemID + 数量，服务器按 ItemID 查库取定义后堆叠
+  UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable,
+            Category = "ItemContainer|RPC")
+  void Server_AddItem(int32 ItemID, int32 Quantity);
+
+  UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable,
+            Category = "ItemContainer|RPC")
+  void Server_RemoveItemAtSlot(int32 SlotIndex);
+
+  UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable,
+            Category = "ItemContainer|RPC")
+  void Server_RemoveItem(int32 ItemID);
+
+  UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable,
+            Category = "ItemContainer|RPC")
+  void Server_RemoveAllItem(int32 ItemID);
+
+  UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable,
+            Category = "ItemContainer|RPC")
+  void Server_SwapSlots(int32 SlotA, int32 SlotB);
+
+  UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable,
+            Category = "ItemContainer|RPC")
+  void Server_OrganizeContainer();
+
+  // 清空背包（客户端可用，如“丢弃全部”）
+  UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable,
+            Category = "ItemContainer|RPC")
+  void Server_ClearContainer();
+
+  // 注意：InitializeContainer / ResizeContainer 不收客户端 RPC，
+  // 它们只保留为 BlueprintAuthorityOnly，由服务器/游戏流程调用。
 
   UFUNCTION(BlueprintPure, Category = "ItemContainer")
   EContainerType GetContainerType() const { return ContainerType; }
