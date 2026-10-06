@@ -144,4 +144,6 @@ void UItemContainerGrid::UpdateSlot(int32 SlotIndex,
   } else {
     SlotWidget->ClearSlot();
   }
+  SlotWidget->SetOwningContainer(Container);
+  SlotWidget->SetSlotIndex(SlotIndex);
 }

@@ -24,6 +24,66 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-05T21:26:00"
+    },
+    {
+      "id": "bug-003",
+      "timestamp": "2026-10-05T21:58:00",
+      "error_message": "UHT: Error: C++ Default parameter not parsed: Context 'FString()' (WildforgeLog.h:36,40,44)，构建 Failed (OtherCompilationError)",
+      "file": "Source/Wildforge/Public/Core/Logging/WildforgeLog.h",
+      "root_cause": "UFUNCTION(BlueprintCallable) 的默认参数写成 FString()（构造函数调用），UHT 无法把该表达式解析为默认值。",
+      "fix": "把 UFUNCTION 的默认参数改成 const FString& Context = TEXT(\"\")（UHT 可解析的字符串字面量）。非 UFUNCTION 的普通静态函数仍可用 FString()。",
+      "tags": ["uht", "ufunction", "default-parameter", "build", "warnings-as-errors"],
+      "related_bugs": ["bug-002"],
+      "occurrences": 1,
+      "last_seen": "2026-10-05T21:58:00"
+    },
+    {
+      "id": "bug-004",
+      "timestamp": "2026-10-05T22:18:00",
+      "error_message": "WildforgeLog.cpp(126): error C2676/C2667: operator != 无匹配 (const FName, FLogCategoryLogWildforge)，大量模板 operator== 候选（TLazyObjectPtr/TWeakFieldPtr 等）全部推导失败",
+      "file": "Source/Wildforge/Private/Core/Logging/WildforgeLog.cpp",
+      "root_cause": "FOutputDevice::Serialize 的 Category 是 FName，而 DECLARE_LOG_CATEGORY_EXTERN 生成的 LogWildforge 是 FLogCategory 对象（非 FName），直接 `Category != LogWildforge` 会因隐式转换与一堆模板 operator== 产生歧义而无法匹配。",
+      "fix": "改用一个静态 FName 常量比较：`static const FName WildforgeCategoryName(TEXT(\"LogWildforge\")); if (Category != WildforgeCategoryName) return;`。",
+      "tags": ["compile-error", "fname", "log-category", "foutputdevice", "logging"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-05T22:18:00"
+    },
+    {
+      "id": "bug-005",
+      "timestamp": "2026-10-05T22:18:00",
+      "error_message": "Wildforge.cpp(12,18): error C2653: 'Super': 不是类或命名空间名称",
+      "file": "Source/Wildforge/Wildforge.cpp",
+      "root_cause": "自定义模块类 FWildforgeModule : public FDefaultGameModuleImpl 里用了 `Super::`，但 FDefaultGameModuleImpl 不是反射类、没有 GENERATED_BODY/`Super` typedef。",
+      "fix": "显式写基类名：`FDefaultGameModuleImpl::StartupModule()` / `::ShutdownModule()`。",
+      "tags": ["compile-error", "module", "Super", "FDefaultGameModuleImpl"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-05T22:18:00"
+    },
+    {
+      "id": "bug-006",
+      "timestamp": "2026-10-06T10:38:00",
+      "error_message": "InventorySlotWidget.cpp(27,9): error C2039: \"ItemInfo\": 不是 \"UInventorySlotWidget\" 的成员；InventorySlotWidget.cpp(255,14): error C2065: \"UItemDragDropOperation\": 未声明的标识符（构建 Result: Failed / OtherCompilationError）",
+      "file": "Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+      "root_cause": "新增的拖拽 UI 代码里：(1) 给 UInventorySlotWidget 赋值了并不存在的成员 ItemInfo——头文件只存 OwningContainer/SlotIndex，物品数据是按需 GetItemAtSlot 读取的；(2) 类型名写错，实际类为 UInventorySlotDragDropOperation，却写成 UItemDragDropOperation。",
+      "fix": "删除未使用的 `this->ItemInfo = Item;`；把 `Cast<UItemDragDropOperation>` 更正为 `Cast<UInventorySlotDragDropOperation>`（其头文件第 8 行已 include）。",
+      "tags": ["compile-error", "ui", "umg", "dragdrop", "typo", "member-not-found"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T10:38:00"
+    },
+    {
+      "id": "bug-007",
+      "timestamp": "2026-10-06T11:30:00",
+      "error_message": "InventorySlotWidget::NativeOnDrop 里 `OwningContainer->SwapSlots(FromSlot, ToSlot)` 在联机客户端上不生效（拖拽放下后格子不变），且源格子在 NativeOnDrop 后仍保持拖拽时的半透明（\"通知源控件恢复正常显示\" 是个空 if 分支）",
+      "file": "Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+      "root_cause": "两个问题：(1) UItemContainer 的所有修改函数都是 BlueprintAuthorityOnly，UI 代码跑在客户端/HUD 上，非权威端调用被静默拒绝，只有单机（客户端即服务器）才碰巧有效；(2) 源控件的 SetRenderOpacity(0.5f) 没有对应的复位路径——NativeOnDrop 成功时不会走 NativeOnDragCancelled。",
+      "fix": "合并/交换规则下沉到 UItemContainer::MoveOrMergeItem + 新 RPC Server_MoveOrMerge，UI 只发请求；NativeOnDrop 开头先 ItemOp->RestoreSourceWidget()（源控件 WeakRef 兜底），NativeDestruct 也兜底复位；SourceWidget 用 TWeakObjectPtr 避免源控件被网格刷新销毁后裸指针悬空。",
+      "tags": ["itemsystem", "ui", "umg", "dragdrop", "rpc", "blueprintauthorityonly", "dangling-pointer", "render-opacity"],
+      "related_bugs": ["bug-006"],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T11:30:00"
     }
   ]
 }

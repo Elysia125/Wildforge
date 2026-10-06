@@ -49,8 +49,16 @@ private:
   // 广播 OnContainerChanged，通知订阅者（UI）刷新
   void NotifyContainerChanged();
 
-  // 移除槽位但不广播（供 RemoveAllItem 批量调用后统一广播）
+  // 移除槽位但不广播（供批量扣除在结尾统一广播）
   bool RemoveItemAtSlotInternal(int32 SlotIndex);
+
+  // 从单个槽位扣除 Quantity 个（数量沿用 ItemQuality）。
+  // Quantity < 0 表示清空整个槽位。返回实际扣除的数量；不广播。
+  int32 RemoveSlotQuantityInternal(int32 SlotIndex, int32 Quantity);
+
+  // 从某 ItemID 的所有槽位扣除 Quantity 个（跨槽，从最后一个槽位往前）。
+  // Quantity < 0 表示全部扣除。返回实际扣除的数量；不广播。
+  int32 RemoveByItemIDInternal(int32 ItemID, int32 Quantity);
 
 public:
   // 容器内容变化时广播；Blueprint 也可绑定
@@ -80,30 +88,34 @@ public:
   virtual void
   TickComponent(float DeltaTime, ELevelTick TickType,
                 FActorComponentTickFunction *ThisTickFunction) override;
-
-  // Index = INDEX_NONE 时自动找空槽；指定时放入指定槽
-  UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly,
-            Category = "ItemContainer")
-  bool AddItem(const FItemInformation &Item, int32 Index = -1);
-
   // 按物品定义 + 数量添加：优先堆叠进已有的同 ItemID 未满堆
   // （受 IsStackable / MaxStackSize 限制），溢出部分再放入空槽。
   // 返回实际加入的数量（背包满时可能小于 Quantity）。
-  // 定义由调用方（如 Server_AddItem）从 ItemDatabaseSubsystem 取好后传入，
-  // 容器本身不依赖数据表，保持纯存储职责。
+  // 定义由调用方从 ItemDatabaseSubsystem 取好后传入，容器本身不持有数据表。
   UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly,
             Category = "ItemContainer")
   int32 AddItemStack(const FItemInformation &Item, int32 Quantity);
 
-  // 按 ItemID 删除最后一个槽位（O(1)），如果同一 ItemID
-  // 允许存在多个槽位，改成删除最后一个槽位
+  // 按 ItemID 添加（服务器权威）：内部经 ItemDatabaseSubsystem 查表取定义后
+  // 走 AddItemStack。掉落/合成/奖励等服务器流程用它最方便，也避免传入空定义。
+  // 返回实际加入的数量；ItemID 无效时返回 0。
   UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly,
             Category = "ItemContainer")
-  bool RemoveItem(int32 ItemID);
-  // 按 ItemID 删除所有
+  int32 AddItemByID(int32 ItemID, int32 Quantity);
+
+  // 按【槽位】移除物品：从 SlotIndex 处的槽位扣除 Quantity 个，
+  // -1（默认）表示清空整个槽位。部分扣除时保留该槽位（数量减少），
+  // 扣空则释放该槽位。有任何物品被移除时返回 true。
   UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly,
             Category = "ItemContainer")
-  bool RemoveAllItem(int32 ItemID);
+  bool RemoveItem(int32 SlotIndex, int32 Quantity = -1);
+
+  // 按【ItemID】移除物品：从该 ItemID 的所有槽位累计扣除 Quantity 个，
+  // -1（默认）表示移除全部。从最后一个槽位往前逐格扣除，扣空的槽位被释放。
+  // 有任何物品被移除时返回 true。
+  UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly,
+            Category = "ItemContainer")
+  bool RemoveAllItem(int32 ItemID, int32 Quantity = -1);
 
   // 整理容器：丢弃无效项(ItemID == -1)，合并同 ItemID 的堆叠
   // （是否可堆叠/最大堆叠数量决定每堆大小，满堆在前），
@@ -111,11 +123,6 @@ public:
   UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly,
             Category = "ItemContainer")
   void OrganizeContainer();
-
-  // 按槽位索引删除（O(1)）
-  UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly,
-            Category = "ItemContainer")
-  bool RemoveItemAtSlot(int32 SlotIndex);
 
   // 以下均为只读查询：客户端本地读复制的数据，故用 BlueprintPure
   // O(1) 查找槽位索引，返回 INDEX_NONE 表示未找到
@@ -149,6 +156,15 @@ public:
             Category = "ItemContainer")
   bool SwapSlots(int32 SlotA, int32 SlotB);
 
+  // 槽位间「放置」语义（拖拽落点用）：目标是空槽 -> 直接交换（等于移动）；
+  // 目标是同 ItemID 的可堆叠物品、且未满堆 -> 把源数量并入目标（目标加满为止），
+  // 装不下的多余数量留在源槽位；以上都不满足（不同 ItemID / 不可堆叠 / 目标已是
+  // 满堆）-> 交换两槽。合并只在这两个槽位之间重分配数量，不重新堆叠到其它槽位。
+  // 返回是否真的改动了容器。
+  UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly,
+            Category = "ItemContainer")
+  bool MoveOrMergeItem(int32 FromSlot, int32 ToSlot);
+
   UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly,
             Category = "ItemContainer")
   void ClearContainer();
@@ -170,19 +186,20 @@ public:
 
   UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable,
             Category = "ItemContainer|RPC")
-  void Server_RemoveItemAtSlot(int32 SlotIndex);
+  void Server_RemoveItem(int32 SlotIndex, int32 Quantity = -1);
 
   UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable,
             Category = "ItemContainer|RPC")
-  void Server_RemoveItem(int32 ItemID);
-
-  UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable,
-            Category = "ItemContainer|RPC")
-  void Server_RemoveAllItem(int32 ItemID);
+  void Server_RemoveAllItem(int32 ItemID, int32 Quantity = -1);
 
   UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable,
             Category = "ItemContainer|RPC")
   void Server_SwapSlots(int32 SlotA, int32 SlotB);
+
+  // 客户端拖拽放置请求：服务器按同一规则做合并/交换（UI 不得自行改容器数据）
+  UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable,
+            Category = "ItemContainer|RPC")
+  void Server_MoveOrMerge(int32 FromSlot, int32 ToSlot);
 
   UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable,
             Category = "ItemContainer|RPC")

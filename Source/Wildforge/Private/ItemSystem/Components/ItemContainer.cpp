@@ -27,6 +27,8 @@ void UItemContainer::GetLifetimeReplicatedProps(
 }
 
 void UItemContainer::OnRep_Slots() {
+  // 容器状态只在游戏线程访问：开发期断言拦截跨线程误用（Shipping 下被裁掉）
+  check(IsInGameThread());
   RebuildDerivedState();
   NotifyContainerChanged();
 }
@@ -76,6 +78,7 @@ void UItemContainer::TickComponent(
 }
 
 void UItemContainer::InitializeContainer(int32 InCapacity) {
+  check(IsInGameThread());
   if (InCapacity <= 0)
     return;
 
@@ -97,41 +100,9 @@ void UItemContainer::InitializeContainer(int32 InCapacity) {
   NotifyContainerChanged();
 }
 
-bool UItemContainer::AddItem(const FItemInformation &Item, int32 Index) {
-  int32 TargetSlot = INDEX_NONE;
-
-  if (Index == INDEX_NONE) {
-    if (FreeSlots.Num() == 0) {
-      return false; // 满了
-    }
-    TargetSlot = FreeSlots.Pop(EAllowShrinking::No);
-  } else {
-    if (!Slots.IsValidIndex(Index)) {
-      return false;
-    }
-    if (SlotOccupied[Index]) {
-      return false;
-    }
-    TargetSlot = Index;
-    // 显式指定槽位时，从 FreeSlots 里移除（O(n)，但仅此路径）
-    FreeSlots.RemoveSingleSwap(TargetSlot, EAllowShrinking::No);
-  }
-
-  Slots[TargetSlot] = Item;
-  SlotOccupied[TargetSlot] = true;
-  if (ItemIDToSlot.Contains(Item.ItemID)) {
-    ItemIDToSlot[Item.ItemID].Add(TargetSlot);
-  } else {
-    ItemIDToSlot.Add(Item.ItemID, {TargetSlot});
-  }
-  ++UsedCount;
-
-  NotifyContainerChanged();
-  return true;
-}
-
 int32 UItemContainer::AddItemStack(const FItemInformation &Item,
                                    int32 Quantity) {
+  check(IsInGameThread());
   if (Quantity <= 0) {
     return 0;
   }
@@ -194,40 +165,83 @@ int32 UItemContainer::AddItemStack(const FItemInformation &Item,
   return Quantity - Remaining;
 }
 
-bool UItemContainer::RemoveItem(int32 ItemID) {
-  if (const TArray<int32> *FoundSlots = ItemIDToSlot.Find(ItemID)) {
-    return RemoveItemAtSlot(FoundSlots->Last()); // 删除最后一个槽位
+int32 UItemContainer::AddItemByID(int32 ItemID, int32 Quantity) {
+  check(IsInGameThread());
+  const UItemDatabaseSubsystem *Database = UItemDatabaseSubsystem::Get(this);
+  if (!Database) {
+    return 0;
   }
-  return false;
+  const FItemInformation *Definition = Database->GetItemDefinition(ItemID);
+  return Definition ? AddItemStack(*Definition, Quantity) : 0;
 }
 
-bool UItemContainer::RemoveAllItem(int32 ItemID) {
-  const TArray<int32> *FoundSlots = ItemIDToSlot.Find(ItemID);
-  if (!FoundSlots || FoundSlots->Num() == 0)
-    return false;
-
-  // 先拷贝槽位列表：RemoveItemAtSlotInternal 会修改 ItemIDToSlot，
-  // 直接遍历 *FoundSlots 会因 map 变动而失效
-  const TArray<int32> SlotsToRemove = *FoundSlots;
-
-  bool bRemovedAny = false;
-  for (int32 SlotIndex : SlotsToRemove) {
-    bRemovedAny |= RemoveItemAtSlotInternal(SlotIndex);
-  }
-
-  // 批量删除只广播一次
-  if (bRemovedAny) {
-    NotifyContainerChanged();
-  }
-  return bRemovedAny;
-}
-
-bool UItemContainer::RemoveItemAtSlot(int32 SlotIndex) {
-  if (!RemoveItemAtSlotInternal(SlotIndex)) {
+bool UItemContainer::RemoveItem(int32 SlotIndex, int32 Quantity) {
+  check(IsInGameThread());
+  if (RemoveSlotQuantityInternal(SlotIndex, Quantity) <= 0) {
     return false;
   }
   NotifyContainerChanged();
   return true;
+}
+
+bool UItemContainer::RemoveAllItem(int32 ItemID, int32 Quantity) {
+  check(IsInGameThread());
+  if (RemoveByItemIDInternal(ItemID, Quantity) <= 0) {
+    return false;
+  }
+  NotifyContainerChanged();
+  return true;
+}
+
+int32 UItemContainer::RemoveSlotQuantityInternal(int32 SlotIndex,
+                                                 int32 Quantity) {
+  if (!Slots.IsValidIndex(SlotIndex) || !SlotOccupied[SlotIndex]) {
+    return 0;
+  }
+
+  // 已占用槽位至少含 1 个，避免未初始化/异常的数量
+  const int32 Current = FMath::Max(1, Slots[SlotIndex].ItemQuality);
+  const int32 Take = Quantity < 0 ? Current : FMath::Min(Current, Quantity);
+  if (Take <= 0) {
+    return 0;
+  }
+
+  if (Take >= Current) {
+    RemoveItemAtSlotInternal(SlotIndex); // 清空整槽
+  } else {
+    Slots[SlotIndex].ItemQuality = Current - Take; // 部分扣除，槽位保留
+  }
+  return Take;
+}
+
+int32 UItemContainer::RemoveByItemIDInternal(int32 ItemID, int32 Quantity) {
+  const TArray<int32> *FoundSlots = ItemIDToSlot.Find(ItemID);
+  if (!FoundSlots || FoundSlots->Num() == 0) {
+    return 0;
+  }
+
+  // 拷贝槽位列表：整槽移除会修改 ItemIDToSlot，直接遍历会失效
+  const TArray<int32> SlotsToProcess = *FoundSlots;
+
+  const bool bRemoveAll = Quantity < 0;
+  int32 Remaining = bRemoveAll ? 0 : Quantity;
+  int32 RemovedTotal = 0;
+
+  // 从最后一个槽位往前扣，符合原 RemoveItem“删最后一个槽位”的直觉
+  for (int32 i = SlotsToProcess.Num() - 1;
+       i >= 0 && (bRemoveAll || Remaining > 0); --i) {
+    const int32 Take = RemoveSlotQuantityInternal(SlotsToProcess[i],
+                                                  bRemoveAll ? -1 : Remaining);
+    if (Take <= 0) {
+      continue;
+    }
+    RemovedTotal += Take;
+    if (!bRemoveAll) {
+      Remaining -= Take;
+    }
+  }
+
+  return RemovedTotal;
 }
 
 bool UItemContainer::RemoveItemAtSlotInternal(int32 SlotIndex) {
@@ -277,6 +291,7 @@ bool UItemContainer::GetItemAtSlot(int32 SlotIndex,
 }
 
 bool UItemContainer::SwapSlots(int32 SlotA, int32 SlotB) {
+  check(IsInGameThread());
   if (!Slots.IsValidIndex(SlotA) || !Slots.IsValidIndex(SlotB))
     return false;
   if (SlotA == SlotB)
@@ -300,7 +315,69 @@ bool UItemContainer::SwapSlots(int32 SlotA, int32 SlotB) {
   return true;
 }
 
+bool UItemContainer::MoveOrMergeItem(int32 FromSlot, int32 ToSlot) {
+  check(IsInGameThread());
+  if (!Slots.IsValidIndex(FromSlot) || !Slots.IsValidIndex(ToSlot)) {
+    return false;
+  }
+  if (FromSlot == ToSlot) {
+    return false;
+  }
+  if (!SlotOccupied[FromSlot]) {
+    return false; // 源槽位已空（拖拽期间被别处改动），无事可做
+  }
+
+  // 目标空槽：交换即可（等价于把源物品挪过去，并顺带带走空槽）
+  if (!SlotOccupied[ToSlot]) {
+    return SwapSlots(FromSlot, ToSlot);
+  }
+
+  FItemInformation Source;
+  FItemInformation Target;
+  GetItemAtSlot(FromSlot, Source);
+  GetItemAtSlot(ToSlot, Target);
+
+  // 数量沿用 ItemQuality；已占用槽位至少 1 个，避免异常数量
+  const int32 SourceCount = FMath::Max(1, Source.ItemQuality);
+  const int32 TargetCount = FMath::Max(1, Target.ItemQuality);
+
+  // 只有「同 ItemID + 可堆叠 + 目标未满堆」才合并；不可堆叠、不同物品、
+  // 或目标已是满堆（数量达到最大可堆叠数量）一律交换。
+  const bool bSameItem = Source.ItemID == Target.ItemID;
+  const bool bStackable = Source.IsStackable && Target.IsStackable;
+  const int32 StackSize = bStackable ? FMath::Max(1, Target.MaxStackSize) : 1;
+
+  if (!bSameItem || !bStackable || TargetCount >= StackSize) {
+    return SwapSlots(FromSlot, ToSlot);
+  }
+
+  // 合并：只在目标与源两个槽位之间重分配数量——目标加到装满为止，剩下的留在源。
+  // 两个槽位本来就都占用且 ItemID 相同，所以本次操作：
+  //   - ItemIDToSlot 不变（ItemID 一个没变）
+  //   - UsedCount 不变；只有源被清空时才回收槽位
+  // 因此不需要 RebuildDerivedState，也不碰 FreeSlots，只需最后广播一次。
+  //
+  // 为什么不用 RemoveItemAtSlotInternal(源) + AddItemStack(源物品, 源数量)：
+  // AddItemStack 是「按定义把数量重新堆到任意同 ItemID 的槽位」——它会遍历
+  // ItemIDToSlot，可能先填满第三个同 ID 的未满堆，而不是本次拖拽的目标槽；
+  // 而且中间会让 UsedCount 先减后加、把刚释放的源槽重新分配一次。拖拽合并的
+  // 语义是「只有这两个槽位之间移动数量」，直接改数量既精确又原子。
+  const int32 Move = FMath::Min(SourceCount, StackSize - TargetCount);
+
+  Slots[ToSlot].ItemQuality = TargetCount + Move;   // 目标：装满
+  Slots[FromSlot].ItemQuality = SourceCount - Move; // 源：留下多余的数量
+
+  // 源被清空（数量全部并入），释放该槽位，避免留下一个占用但数量为 0 的槽
+  if (Slots[FromSlot].ItemQuality <= 0) {
+    RemoveItemAtSlotInternal(FromSlot);
+  }
+
+  NotifyContainerChanged();
+  return true;
+}
+
 void UItemContainer::ClearContainer() {
+  check(IsInGameThread());
   const int32 Capacity = Slots.Num();
   for (int32 i = 0; i < Capacity; ++i) {
     Slots[i] = FItemInformation();
@@ -318,6 +395,7 @@ void UItemContainer::ClearContainer() {
 }
 
 bool UItemContainer::ResizeContainer(int32 NewCapacity) {
+  check(IsInGameThread());
   if (NewCapacity <= 0)
     return false;
 
@@ -388,6 +466,7 @@ bool UItemContainer::ResizeContainer(int32 NewCapacity) {
 }
 
 void UItemContainer::OrganizeContainer() {
+  check(IsInGameThread());
   const int32 Capacity = Slots.Num();
   if (Capacity <= 0)
     return;
@@ -491,38 +570,28 @@ bool UItemContainer::Server_AddItem_Validate(int32 ItemID, int32 Quantity) {
 
 void UItemContainer::Server_AddItem_Implementation(int32 ItemID,
                                                    int32 Quantity) {
-  const UItemDatabaseSubsystem *Database = UItemDatabaseSubsystem::Get(this);
-  if (!Database) {
-    return;
-  }
-  if (const FItemInformation *Definition =
-          Database->GetItemDefinition(ItemID)) {
-    AddItemStack(*Definition, Quantity);
-  }
+  AddItemByID(ItemID, Quantity);
 }
 
-bool UItemContainer::Server_RemoveItemAtSlot_Validate(int32 SlotIndex) {
-  return SlotIndex >= 0;
+bool UItemContainer::Server_RemoveItem_Validate(int32 SlotIndex,
+                                                int32 Quantity) {
+  // Quantity 为负表示清空整槽（-1 为约定值）；只对正数设上限防止滥用
+  return SlotIndex >= 0 && Quantity <= 10000;
 }
 
-void UItemContainer::Server_RemoveItemAtSlot_Implementation(int32 SlotIndex) {
-  RemoveItemAtSlot(SlotIndex);
+void UItemContainer::Server_RemoveItem_Implementation(int32 SlotIndex,
+                                                      int32 Quantity) {
+  RemoveItem(SlotIndex, Quantity);
 }
 
-bool UItemContainer::Server_RemoveItem_Validate(int32 ItemID) {
-  return ItemID >= 0;
+bool UItemContainer::Server_RemoveAllItem_Validate(int32 ItemID,
+                                                   int32 Quantity) {
+  return ItemID >= 0 && Quantity <= 10000;
 }
 
-void UItemContainer::Server_RemoveItem_Implementation(int32 ItemID) {
-  RemoveItem(ItemID);
-}
-
-bool UItemContainer::Server_RemoveAllItem_Validate(int32 ItemID) {
-  return ItemID >= 0;
-}
-
-void UItemContainer::Server_RemoveAllItem_Implementation(int32 ItemID) {
-  RemoveAllItem(ItemID);
+void UItemContainer::Server_RemoveAllItem_Implementation(int32 ItemID,
+                                                         int32 Quantity) {
+  RemoveAllItem(ItemID, Quantity);
 }
 
 bool UItemContainer::Server_SwapSlots_Validate(int32 SlotA, int32 SlotB) {
@@ -531,6 +600,16 @@ bool UItemContainer::Server_SwapSlots_Validate(int32 SlotA, int32 SlotB) {
 
 void UItemContainer::Server_SwapSlots_Implementation(int32 SlotA, int32 SlotB) {
   SwapSlots(SlotA, SlotB);
+}
+
+bool UItemContainer::Server_MoveOrMerge_Validate(int32 FromSlot, int32 ToSlot) {
+  // 只做廉价检查；槽位有效性/占用/堆叠规则全在 MoveOrMergeItem 内部判定
+  return FromSlot >= 0 && ToSlot >= 0;
+}
+
+void UItemContainer::Server_MoveOrMerge_Implementation(int32 FromSlot,
+                                                       int32 ToSlot) {
+  MoveOrMergeItem(FromSlot, ToSlot);
 }
 
 bool UItemContainer::Server_OrganizeContainer_Validate() { return true; }

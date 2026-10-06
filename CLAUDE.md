@@ -63,3 +63,8 @@ Wildforge 是一个 **Unreal Engine 5.7** 的第一人称游戏（源自 First P
 - `Wildforge.Build.cs` 缺少 `EnhancedInput`，尽管代码中使用了 Enhanced Input 类——如遇链接错误请补上。
 - `DefaultEngine.ini` 中启用的 GameMode 指向 FirstPerson 蓝图路径，而 `Content/Core/` 下还存在另一个 `BP_FirstPersonGameMode` 资源。
 - `Config/DefaultGame.ini` 中仍是模板默认的 `ProjectName`（"First Person BP Game Template"）。
+
+## 强制约束
+
+1. **commit 消息禁止添加 `Co-Authored-By` 尾注。**
+2. **commit 消息必须详细描述修改内容。**
