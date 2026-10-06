@@ -114,6 +114,16 @@
 - **改 UCLASS/USTRUCT 头文件后必须先跑 UHT 再编译**：`GENERATED_BODY()` 展开成
   `FID_<file>_<line>_GENERATED_BODY`（宏名带行号），行号变了而 UHT 没重跑，就会报
   `a type specifier is required for all declarations`——那是宏对不上，不是代码写错（见 bug-014）。
+- **超大资源包不要进 git**：`Content/ProceduralNaturePack/`（1.8G、222 个 .uasset/.umap）已加进
+  `.gitignore`，只留在本地磁盘、不入库。它当初只被添加在**未 push 的那一个 tip commit**里，
+  所以移除历史用的是最轻的手段：`git rm -r --cached` 取消追踪（保留工作区文件）+
+  `git commit --amend --no-edit` 重写该 commit——**不需要 `filter-repo`/`filter-branch`**。
+  判定「要不要动真格的历史重写」先跑 `git log --all --oneline -- <路径>`：只在未推送的 tip
+  出现就能靠 amend 解决，一旦出现在已推送历史里才需要 filter-repo 且必须协调远端。
+- **git-lfs 的对象不会因为重写历史自动回收**：`.git/lfs/objects` 里未被任何 ref 引用的对象仍在
+  （本项目重写后 `git lfs prune --dry-run` 显示可清 830 个文件 / 约 1.9G，含本次的资源包和
+  早先重写遗留的孤儿）。`git lfs prune` 只删无引用对象、不动工作区文件，是安全的；但仍是**不可逆
+  删除**，执行前先 `--dry-run`、必要时 `--verify-remote`。
 
 ## Do-Not-Repeat
 
