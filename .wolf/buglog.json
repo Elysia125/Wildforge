@@ -168,6 +168,18 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-06T13:40:00"
+    },
+    {
+      "id": "bug-015",
+      "timestamp": "2026-10-06T15:10:00",
+      "error_message": "拖拽完成后源槽位外观没有恢复原样：断点确实进了 `UInventorySlotDragDropOperation::RestoreSourceWidget()` 的 `Widget->SetRenderOpacity(1.f)`，但格子看起来仍然变淡了",
+      "file": "Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+      "root_cause": "留在格子上的痕迹不是 `RenderOpacity`，而是 `SlotStyle`（`UBorder`）的 `BrushColor`。`RefreshSlotStyleColor()` 的「未高亮」分支硬编码写 `FLinearColor(1,1,1,0.5f)`，而引擎保证这个分支会被执行：拖拽开始时它会先把 `OnDragEnter` 发给**发起拖拽的那个控件**（SlateApplication.cpp:3412-3415），离开时发 `OnDragLeave`（:5697；鼠标抬起前还有一次合成指针移动 :5511-5514，ESC/取消走 `FSlateUser::CancelDragDrop`，SlateUser.cpp:528-548 也会补 DragLeave）→ 于是只要被拖拽扫过的格子，一定至少执行一次 `SetHighlight(false)`。而这个 0.5 本来是 `SetSelected(false)`「未选中」的着色（fdda399 起就存在），因为从来没有任何地方调用 `SetSelected`，在加入高亮功能之前它**从未真正生效过**：界面初始外观是设计器里的 `BrushColor`（`UBorder` 默认白色，Border.cpp:29；W_InventorySlot.uasset 里 `BrushColor` 0 命中，即没被改过）。所以「第一次拖拽」就是这个常量第一次生效的时刻 —— 格子从「设计器的不透明」永久变成「状态机的 50% 透明」，`RestoreSourceWidget()` 的 `SetRenderOpacity(1.f)` 动的是另一个属性（widget 级子树透明度），当然救不回来；连 Slate 重建也救不回，因为 `UBorder::SynchronizeProperties` 回放的正是被写坏的 `BrushColor`（Border.cpp:73-77）。",
+      "fix": "把「未选中/未高亮」的着色改成**从设计器抓来的基准色**：`RefreshSlotStyleColor()` 第一次执行时先 `NormalSlotColor = SlotStyle->GetBrushColor()`（必须早于本函数第一次写 BrushColor），未高亮时写回它，删掉硬编码的 0.5f。这样「没有经历过任何状态」的初始外观 == 状态机算出来的默认外观，拖拽只是临时染色、退出即还原。想让「未选中」看起来更暗，就在 WBP 的 `SlotStyle` 上设 `BrushColor`（基准色会自动跟着走）。",
+      "tags": ["umg", "drag-drop", "slate", "color", "border", "state", "regression"],
+      "related_bugs": ["bug-011", "bug-013"],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T15:10:00"
     }
   ]
 }

@@ -163,13 +163,22 @@ void UInventorySlotWidget::RefreshSlotStyleColor() {
   if (!SlotStyle)
     return;
 
+  // 基准色只抓一次，且必须早于本函数第一次写 BrushColor：
+  // 「未选中 / 未高亮」必须还原成**设计器里的样子**，不能是某个硬编码的常量。
+  // 否则第一次进入这个状态（拖拽悬停结束）就会永久改掉外观——见 bug-015。
+  if (!bNormalSlotColorCached) {
+    NormalSlotColor = SlotStyle->GetBrushColor();
+    bNormalSlotColorCached = true;
+  }
+
   // 使用 SetBrushColor 来设置边框本身的颜色/透明度。
   // 高亮优先于选中：拖拽悬停的反馈要比选中态更醒目。
   if (bHighlightedState) {
     SlotStyle->SetBrushColor(HighlightColor);
+  } else if (bSelectedState) {
+    SlotStyle->SetBrushColor(FLinearColor(1.f, 1.f, 1.f, 1.f));
   } else {
-    SlotStyle->SetBrushColor(bSelectedState ? FLinearColor(1.f, 1.f, 1.f, 1.f)
-                                            : FLinearColor(1.f, 1.f, 1.f, 0.5f));
+    SlotStyle->SetBrushColor(NormalSlotColor);
   }
 }
 

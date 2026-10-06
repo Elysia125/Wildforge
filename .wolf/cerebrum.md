@@ -158,6 +158,9 @@
 - [2026-10-06] **别再给 UI 加「容器一变就整表刷新」**：Grid 只做结构（容量/布局），内容由每个槽位
   自己按 (容器, 索引) 拉取 + diff。整表刷新会把 N 个格子的 Slate 写入全做一遍。见 bug-013 之后的
   Decision Log「背包槽位改为自持来源」。
+- [2026-10-06] **状态机里不要硬编码「默认外观」**：默认值要在第一次染色**之前**从设计器/初始值抓一次
+  （如 `RefreshSlotStyleColor()` 里的 `SlotStyle->GetBrushColor()`），否则「第一次进入该状态」就是
+  外观被永久改掉的时刻，而且 `UBorder::SynchronizeProperties` 重建时回放的正是被写坏的值。见 bug-015。
 
 ## Decision Log
 
@@ -187,6 +190,9 @@
   C++ 给默认表现（`SlotStyle` 描边染色 + 可调 `HighlightColor`），蓝图仍可覆写。选中/高亮两个
   状态分开记录、刷新时合成，避免 `SetSelected` 与 `SetHighlight` 互相冲掉颜色；拖拽视觉类默认
   取 `GetClass()`，`DragItemWidgetClass` 只作可选覆写（见 bug-011）。
+  **「未选中/未高亮」的着色不是常量**，而是第一次染色前从设计器抓下来的 `NormalSlotColor`
+  （`RefreshSlotStyleColor()` 内懒抓一次）：高亮是临时染色，退出必须回到进入前的样子，
+  否则拖拽扫过的格子会被永久改外观（见 bug-015）。
 - [2026-10-06] **裁剪 OpenWolf harness**：`anatomy.md` 只索引源码与配置（`Content/` 等二进制
   资产从 `config.json` 的 `anatomy.exclude_patterns` 排除，并手工剪掉历史条目；增量更新由
   `post-write.js` 的 `updateAnatomy()` 读同一份配置，见 bug-010）；`reframe-frameworks.md`

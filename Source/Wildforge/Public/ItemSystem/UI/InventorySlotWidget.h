@@ -174,6 +174,16 @@ private:
   // 按当前选中 / 高亮状态刷新 SlotStyle 的染色
   void RefreshSlotStyleColor();
 
+  // 「未选中、未高亮」时 SlotStyle 的着色。**不是硬编码常量**：第一次染色前从设计器里的值
+  // 抓一次（UBorder::GetBrushColor，Border.cpp:186；UBorder 默认白色，Border.cpp:29），
+  // 这样「没经历过任何状态」的初始外观 == 状态机算出来的默认外观。
+  // 硬编码的教训见 bug-015：那个 0.5f 只在 SetHighlight(false) 时才被写进去，而引擎在拖拽
+  // 起始/离开时会给格子发 OnDragEnter/OnDragLeave（SlateApplication.cpp:3412-3415、5697），
+  // 于是第一次拖拽就把格子永久压暗，且再也回不到设计器的样子。
+  FLinearColor NormalSlotColor = FLinearColor::White;
+
+  bool bNormalSlotColorCached = false;
+
   // —— 显示状态（外观的唯一真相源）——
   // 为什么要把数据存下来：Slate 控件会被释放并重建（UWidget::MyWidget / MyGCWidget 都是
   // TWeakPtr，Widget.h:1187/1193），重建时会**再跑一次 NativeConstruct**。所以外观必须能
