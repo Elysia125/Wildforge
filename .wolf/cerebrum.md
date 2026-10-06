@@ -1,7 +1,7 @@
 # Cerebrum
 
 > OpenWolf's learning memory. Updated automatically as the AI learns from interactions.
-> Last updated: 2026-10-06
+> Last updated: 2026-10-07
 
 **本文件的写法（约定）**
 
@@ -125,6 +125,31 @@
   早先重写遗留的孤儿）。`git lfs prune` 只删无引用对象、不动工作区文件，是安全的；但仍是**不可逆
   删除**，执行前先 `--dry-run`、必要时 `--verify-remote`。
 
+- **引擎结构体里的浮点 `RoundTo*` 重载在 UE 5.7 已改名**：`FMath::RoundToFloat` 不存在（本机实测
+  UnrealMathUtility.h 只剩 `RoundToZero` / `RoundToNegativeInfinity` / `RoundToPositiveInfinity`
+  的 float+double 重载），要取整到整数高度就用 `static_cast<float>(FMath::RoundToDouble(X))`。
+- **`UPARAM(ref)` 的输出引用不能排在「带默认值」的参数之后**（C++ 规则：默认值一旦开始，后面的参数都得有
+  默认值），否则编译器报 `missing default argument on parameter 'X'`——**UHT 不检查这条**，报错点在参数名上，
+  看起来像 UPARAM 的问题其实不是。正确做法是把输出引用放参数表**第一个**。见 bug-016。
+- **只前置声明的引擎类型要自己 include**：`GameFramework/Character.h` 只写了 `class UCapsuleComponent;`，
+  用 `GetCapsuleComponent()->GetScaledCapsuleRadius()` 必须 `#include "Components/CapsuleComponent.h"`
+  ——UBT 靠 SharedPCH 编得过，本项目的只读语法检查路径会报 incomplete type。同 bug-014。
+- **`FTimerManager::SetTimer` 的 `InRate <= 0` 是「清掉该句柄上的定时器」，不是「每帧触发」**：
+  `TimerManager.h:157` 的文档与 `TimerManager.cpp:617-659` 的实现都是这样（else 分支只 `InOutHandle.Invalidate()`，
+  根本不会 AddTimer）。唯一「每帧」的定时器 API 是 `SetTimerForNextTick`（`TimerManager.cpp:662-702`，内部
+  Rate 固定 0、bLoop=false），需要回调里自己续挂。见 bug-017。
+- **`GetTimerElapsed(Handle)` 是按 Rate 反推出来的**（`TimerManager.cpp:795-812` 的
+  `Rate - (ExpireTime - InternalTime)`）：掉帧时 TimerManager::Tick 会一次补触发多次
+  （`CallCount = (InternalTime - ExpireTime)/Rate + 1`，`:1057-1059`），此时它会给出负值。
+  累计时长要用世界时间差（`World->GetTimeSeconds()` 差分），不要累加它。
+- **Enhanced Input 的 `Completed` = 「Trigger 状态 Triggered→None」，不是「按键松开」**
+  （定义 `InputTriggers.h:52-55`，判定 `EnhancedPlayerInput.cpp:119-122`）。Hold 触发器勾了 Is One Shot 会在
+  达标后的下一帧返回 None（`InputTriggers.cpp:167-171`），Tap 触发器按住超过 `TapReleaseTimeThreshold` 也返回
+  None（`:207-211`）——两者都会在手还按着时发 Completed。见 bug-018。
+- **判定 `.uasset` 里某属性是否为非默认值**：按字节把文件读成 ASCII 看属性名在不在名字表里——只有被序列化的
+  （非默认的）tagged property 才会把属性名写进名字表；对照组（IA_Jump 的 `ActuationThreshold` 是默认值、
+  名字表里查不到）能确认这个方法有效。ripgrep 会静默跳过二进制 .uasset，见 Do-Not-Repeat。
+
 ## Do-Not-Repeat
 
 <!-- Mistakes made and corrected. Each entry prevents the same mistake recurring. -->
@@ -171,6 +196,17 @@
 - [2026-10-06] **状态机里不要硬编码「默认外观」**：默认值要在第一次染色**之前**从设计器/初始值抓一次
   （如 `RefreshSlotStyleColor()` 里的 `SlotStyle->GetBrushColor()`），否则「第一次进入该状态」就是
   外观被永久改掉的时刻，而且 `UBorder::SynchronizeProperties` 重建时回放的正是被写坏的值。见 bug-015。
+- [2026-10-06] `UFUNCTION` 里**不要把输出引用参数放在带默认值的参数之后**（如
+  `BlinkForward(float Distance, float MaxDistance = 1200.f, …, FVector& Out)`）：C++ 规定默认值一旦开始
+  后面都得有默认值，编译器会报 `missing default argument`，而 UHT 完全不查这条。把输出引用放第一个参数。见 bug-016。
+- [2026-10-06] 用到只被**前置声明**的引擎类型时**不要只靠 Character.h 之类的间接包含**：拿
+  `UCapsuleComponent` 的成员函数就必须 `#include "Components/CapsuleComponent.h"`，否则绕开 SharedPCH 的
+  语法检查报 incomplete type。同 bug-014。
+- [2026-10-07] **不要**给 `FTimerManager::SetTimer` 传 `0` 当「每帧」用（引擎语义是**清掉定时器**，一次都不会
+  触发）；每帧定时器要用 `SetTimerForNextTick` + 回调里续挂。见 bug-017。
+- [2026-10-07] **不要**把 Enhanced Input 的 `Completed` 当「按键松开」信号：Hold 触发器勾了 Is One Shot、或 Tap
+  触发器按超时，都会在手没松时发 Completed。要么取消 One Shot（并把 Tap 的 `Triggered` 当点按），要么自己用
+  阈值定时器 + 真正去查按键状态。见 bug-018。
 
 ## Decision Log
 

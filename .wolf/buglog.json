@@ -180,6 +180,42 @@
       "related_bugs": ["bug-011", "bug-013"],
       "occurrences": 1,
       "last_seen": "2026-10-06T15:10:00"
+    },
+    {
+      "id": "bug-016",
+      "timestamp": "2026-10-06T23:50:00",
+      "error_message": "ABaseCharacter 新增冲刺/闪现后，UHT 全过，但 clang-cl -fsyntax-only 报 3 处：BaseCharacter.h(160,30) / BaseCharacter.cpp(261,44) error: missing default argument on parameter 'OutLandingLocation'；BaseCharacter.cpp(313,38) 与 (314,42) error: member access into incomplete type 'const UCapsuleComponent'",
+      "file": "Source/Wildforge/Public/Character/BaseCharacter.h, Source/Wildforge/Private/Character/BaseCharacter.cpp",
+      "root_cause": "两个各自独立的问题：(1) BlinkForward 把输出引用 `FVector& OutLandingLocation` 放在了一串「带默认值」的参数之后（Distance 之后还有 MaxDistance = 1200.0f / bKeepVelocity = false / TraceChannel = ECC_Visibility）。C++ 规则要求「一旦某个参数有默认值，其后的所有参数都必须有默认值」，UHT 不检查这条，只有编译器会报 missing default argument（报在参数名上，所以看起来像 UPARAM 的问题，实际不是）。(2) 用 `GetCapsuleComponent()->GetScaledCapsuleRadius()/HalfHeight()` 时只 include 了 GameFramework/Character.h，而它只前置声明了 `class UCapsuleComponent`，完整定义在 Components/CapsuleComponent.h——UBT 编译靠 SharedPCH 里的间接包含能过，本项目这条只读语法检查路径（绕过 PCH 那条）就会报 incomplete type，与 bug-014 同源。",
+      "fix": "把输出引用改成第一个参数：`BlinkForward(FVector& OutLandingLocation, float Distance, float MaxDistance = 1200.0f, bool bKeepVelocity = false, TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Visibility)`，两个调用点同步调整；BaseCharacter.cpp 补 `#include \"Components/CapsuleComponent.h\"`（IWYU）。",
+      "tags": ["compile-error", "default-argument", "uht", "iwyu", "pch", "capsulecomponent", "incomplete-type", "clang-cl"],
+      "related_bugs": ["bug-014"],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T23:50:00"
+    },
+    {
+      "id": "bug-017",
+      "timestamp": "2026-10-07T00:20:00",
+      "error_message": "用户实测反馈：StartSpeedBoost 用默认参数 BoostInterval = 0 调用时加速完全不生效（速度一直停在起始值），而注释里写的是「传 0 = 每帧计算」",
+      "file": "Source/Wildforge/Private/Character/BaseCharacter.cpp, Source/Wildforge/Public/Character/BaseCharacter.h",
+      "root_cause": "FTimerManager::SetTimer 的 InRate <= 0 语义不是「每帧触发」，而是「清掉该句柄上的定时器」：文档见 TimerManager.h:157（'If <= 0.f, clears existing timers'），实现见 TimerManager.cpp:617-659（InRate > 0 才 AddTimer/进 PendingTimerSet，else 分支只做 InOutHandle.Invalidate()）。所以 SetTimer(Handle, this, &Fn, 0.f, /*bLoop=*/true) 之后句柄是无效的、根本不存在定时器——引擎里唯一「每帧触发」的定时器 API 是 SetTimerForNextTick（TimerManager.cpp:662-702，内部 Rate 固定 0、bLoop=false，需要回调里自己续挂）。当时的结果是：TimerHandle 无效 → IsSpeedBoostActive() 恒为 false，而且 StartSpeedBoost 末尾紧接着手调的那次 TickSprintBoost（ElapsedTime 还是 0 → Alpha=0）把速度写回起始值，整段加速等于没有。另有第二处隐患：ElapsedTime += GetTimerElapsed(Handle) 是按 Rate 反推的（TimerManager.cpp:795-812），掉帧补触发（Tick 里 CallCount > 1，TimerManager.cpp:1057-1059）时会算出负值，进度会倒退。",
+      "fix": "BoostInterval > 0 仍走普通循环定时器；BoostInterval <= 0 改用 SetTimerForNextTick(this, &TickSprintBoost) 并在 TickSprintBoost 末尾续挂（新增 bIntervalTimer 区分两种模式，回调只在自己这一代仍然有效时续挂）。ElapsedTime 改为用 World->GetTimeSeconds() 的差值累计（新增 LastUpdateTime），不再依赖 GetTimerElapsed。IsSpeedBoostActive() 改为只看自己维护的 bBoostActive 标志——到顶后句柄已被清掉、回调执行期间定时器状态是 Executing，用 IsTimerActive 都不可靠。新增 Generation 代次计数，防止 OnSpeedBoostUpdated 广播时蓝图重开/重置加速后旧回调又续挂出一条定时器链。",
+      "tags": ["timer", "settimer", "settimerfornexttick", "timerate", "engine-behavior", "regression", "speed-boost"],
+      "related_bugs": ["bug-016"],
+      "occurrences": 1,
+      "last_seen": "2026-10-07T00:20:00"
+    },
+    {
+      "id": "bug-018",
+      "timestamp": "2026-10-07T00:20:00",
+      "error_message": "用户反馈「我并没有松开 Shift 的长按，还是会触发 Completed 引脚」，导致冲刺刚起步就被停掉",
+      "file": "Content/Input/Actions/IA_Shift_Sprint.uasset, Content/Input/Actions/IA_Shift_Dash.uasset（蓝图/资产配置问题，不在 C++ 里）",
+      "root_cause": "Enhanced Input 的 Completed 事件语义是「Trigger 状态从 Triggered 变成 None」（定义见 InputTriggers.h:52-55，判定见 EnhancedPlayerInput.cpp:119-122），跟「按键松开」不是一回事；引擎里有两条会把状态提前打成 None 的路径：(1) UInputTriggerHold::UpdateState_Implementation 在 bIsOneShot 为 true 时只在第一次达标那一帧返回 Triggered，之后即使手一直按着也返回 None（InputTriggers.cpp:167-171），Triggered→None 于是「手没松」就发了 Completed；(2) UInputTriggerTap 在 HeldDuration 超过 TapReleaseTimeThreshold 后直接返回 None（InputTriggers.cpp:207-211，即「按太久不算点按」），同样在手没松时发 Completed。本项目资产实测（扫 .uasset 名字表，非默认值的属性名会被序列化进名字表）：IA_Shift_Sprint 挂着 InputTriggerHold 且序列化了 bIsOneShot（默认 false，出现即 true）；IA_Shift_Dash 挂着 InputTriggerTap（TapReleaseTimeThreshold 是默认值，未出现）。C++ 侧没有绑定任何输入，所以这不是代码 bug。",
+      "fix": "两条路：(1) 在 IA_Shift_Sprint 的 Hold 触发器上取消勾选 Is One Shot——此后按住期间 Triggered 每帧都发、Completed 只在真正松开时发；冲刺的停止继续绑 Completed，点按闪现改绑 IA_Shift_Dash 的 Triggered（Tap 触发器发 Triggered 本身就代表「确实是点按」），不要用它的 Completed。(2) 两个 Action 都去掉触发器，自己用 Started 起一个阈值定时器：定时器先到 = 长按 → Server_StartSpeedBoost；先收到 Completed = 点按 → Server_Blink，并在 Completed 里再核对一次按键是否真的松开（Is Input Key Down）。",
+      "tags": ["enhanced-input", "input-trigger", "hold", "tap", "oneshot", "completed-event", "blueprint-config", "uasset-scan"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-07T00:20:00"
     }
   ]
 }

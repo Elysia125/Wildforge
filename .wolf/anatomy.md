@@ -31,7 +31,7 @@
 
 ## Source/Wildforge/Private/Character/
 
-- `BaseCharacter.cpp` — ABaseCharacter 实现：构造函数创建 UCharacterAttributes 组件 (~300 tok)
+- `BaseCharacter.cpp` — ABaseCharacter 实现：构造函数创建 UCharacterAttributes 组件；BeginPlay 抓基准 MaxWalkSpeed/MaxWalkSpeedCrouched 并算出 CrouchSpeedRatio；StartSpeedBoost 按 BoostInterval 分两种刷新（>0 用循环定时器，=0 用 SetTimerForNextTick 每帧链，回调自己续挂——SetTimer 传 0 在引擎里是「清掉定时器」）并在 ElapsedTime/BoostDuration 上线性插值移动组件速度（到顶停表保持，bBoostActive 仍是加速中）；ApplyMaxWalkSpeed 让蹲伏速度按基准比例跟随；TickSprintBoost 用 World->GetTimeSeconds() 差分累计并靠 Generation 防重入续挂；ResetMaxSpeed 精确还原两个基准值；BlinkForward 用视线水平方向 + 胶囊体 Sweep 做 Teleport 闪现并校验落点有可站立面；Server_StartSpeedBoost/Server_StopSpeedBoost/Server_BlinkForward/Server_Blink 四个 RPC 转调权威函数 (~4700 tok)
 
 ## Source/Wildforge/Private/Character/Components/
 
@@ -71,7 +71,7 @@
 
 ## Source/Wildforge/Public/Character/
 
-- `BaseCharacter.h` — ABaseCharacter（ACharacter 子类）：bReplicates=true，持有 UCharacterAttributes 组件 (~600 tok)
+- `BaseCharacter.h` — ABaseCharacter（ACharacter 子类）：bReplicates=true，持有 UCharacterAttributes 组件；私有 FSprintBoostState（起始/目标速度、基准速度对 + CrouchSpeedRatio、ElapsedTime/BoostDuration/LastUpdateTime、FTimerHandle、Generation 代次、bBoostActive/bIntervalTimer）；权威函数 StartSpeedBoost/ResetMaxSpeed/SetBaseMaxSpeed（可带蹲伏基准）/BlinkForward（注意 BlinkForward 的 FVector& 输出引用必须排在带默认值的参数之前）+ 查询 IsSpeedBoostActive/GetSpeedBoostAlpha/GetBaseMaxWalkSpeed + Server_* RPC ×4 + DefaultMaxBlinkDistance (~2700 tok)
 
 ## Source/Wildforge/Public/Character/Components/
 
