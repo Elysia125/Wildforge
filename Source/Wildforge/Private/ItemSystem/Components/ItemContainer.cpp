@@ -4,6 +4,24 @@
 
 #include "ItemSystem/Database/ItemDatabaseSubsystem.h"
 #include "Net/UnrealNetwork.h"
+#include "Utils/WildforgeAuthority.h"
+#include "Utils/WildforgeLog.h"
+
+// 开发期门禁：本类所有修改函数都是 BlueprintAuthorityOnly，在客户端调用会被引擎
+// 静默丢弃（callspace = Absorbed）——单机测试看不出来，联机才失效，这类 bug 极难查。
+// 统一用本宏在非权威端立刻报错并安全返回（Shipping 下被裁掉，只剩日志）。
+// 客户端请改调对应的 Server_* RPC。
+// 注意：HasAuthority() 是 AActor 的方法，组件上不存在（会报 C3861），必须经
+// GetOwner() 转发——这里用 Utils/WildforgeAuthority.h 的辅助函数。
+#define WF_CONTAINER_AUTHORITY_GUARD(RetVal)                                   \
+  do {                                                                         \
+    if (!IsAuthoritativeForActorComponent(this)) {                             \
+      WFLOG_ERROR(                                                             \
+          "%s 在非权威端被调用，已忽略；客户端请改用对应的 Server_* RPC。",   \
+          *FString(__FUNCTION__));                                             \
+      return RetVal;                                                           \
+    }                                                                          \
+  } while (false)
 
 // Sets default values for this component's properties
 UItemContainer::UItemContainer() {
@@ -78,6 +96,7 @@ void UItemContainer::TickComponent(
 }
 
 void UItemContainer::InitializeContainer(int32 InCapacity) {
+  WF_CONTAINER_AUTHORITY_GUARD(void());
   check(IsInGameThread());
   if (InCapacity <= 0)
     return;
@@ -102,6 +121,7 @@ void UItemContainer::InitializeContainer(int32 InCapacity) {
 
 int32 UItemContainer::AddItemStack(const FItemInformation &Item,
                                    int32 Quantity) {
+  WF_CONTAINER_AUTHORITY_GUARD(0);
   check(IsInGameThread());
   if (Quantity <= 0) {
     return 0;
@@ -166,6 +186,7 @@ int32 UItemContainer::AddItemStack(const FItemInformation &Item,
 }
 
 int32 UItemContainer::AddItemByID(int32 ItemID, int32 Quantity) {
+  WF_CONTAINER_AUTHORITY_GUARD(0);
   check(IsInGameThread());
   const UItemDatabaseSubsystem *Database = UItemDatabaseSubsystem::Get(this);
   if (!Database) {
@@ -176,6 +197,7 @@ int32 UItemContainer::AddItemByID(int32 ItemID, int32 Quantity) {
 }
 
 bool UItemContainer::RemoveItem(int32 SlotIndex, int32 Quantity) {
+  WF_CONTAINER_AUTHORITY_GUARD(false);
   check(IsInGameThread());
   if (RemoveSlotQuantityInternal(SlotIndex, Quantity) <= 0) {
     return false;
@@ -185,6 +207,7 @@ bool UItemContainer::RemoveItem(int32 SlotIndex, int32 Quantity) {
 }
 
 bool UItemContainer::RemoveAllItem(int32 ItemID, int32 Quantity) {
+  WF_CONTAINER_AUTHORITY_GUARD(false);
   check(IsInGameThread());
   if (RemoveByItemIDInternal(ItemID, Quantity) <= 0) {
     return false;
@@ -291,6 +314,7 @@ bool UItemContainer::GetItemAtSlot(int32 SlotIndex,
 }
 
 bool UItemContainer::SwapSlots(int32 SlotA, int32 SlotB) {
+  WF_CONTAINER_AUTHORITY_GUARD(false);
   check(IsInGameThread());
   if (!Slots.IsValidIndex(SlotA) || !Slots.IsValidIndex(SlotB))
     return false;
@@ -316,6 +340,7 @@ bool UItemContainer::SwapSlots(int32 SlotA, int32 SlotB) {
 }
 
 bool UItemContainer::MoveOrMergeItem(int32 FromSlot, int32 ToSlot) {
+  WF_CONTAINER_AUTHORITY_GUARD(false);
   check(IsInGameThread());
   if (!Slots.IsValidIndex(FromSlot) || !Slots.IsValidIndex(ToSlot)) {
     return false;
@@ -377,6 +402,7 @@ bool UItemContainer::MoveOrMergeItem(int32 FromSlot, int32 ToSlot) {
 }
 
 void UItemContainer::ClearContainer() {
+  WF_CONTAINER_AUTHORITY_GUARD(void());
   check(IsInGameThread());
   const int32 Capacity = Slots.Num();
   for (int32 i = 0; i < Capacity; ++i) {
@@ -395,6 +421,7 @@ void UItemContainer::ClearContainer() {
 }
 
 bool UItemContainer::ResizeContainer(int32 NewCapacity) {
+  WF_CONTAINER_AUTHORITY_GUARD(false);
   check(IsInGameThread());
   if (NewCapacity <= 0)
     return false;
@@ -416,9 +443,8 @@ bool UItemContainer::ResizeContainer(int32 NewCapacity) {
     }
   } else {
     if (NewCapacity < UsedCount) {
-      UE_LOG(LogTemp, Warning,
-             TEXT("ResizeContainer: 新容量 %d 小于已用数量 %d，拒绝缩容"),
-             NewCapacity, UsedCount);
+      WFLOG_WARNING("ResizeContainer: 新容量 %d 小于已用数量 %d，拒绝缩容",
+                    NewCapacity, UsedCount);
       return false;
     }
 
@@ -436,7 +462,7 @@ bool UItemContainer::ResizeContainer(int32 NewCapacity) {
         }
       }
       if (Target == INDEX_NONE) {
-        UE_LOG(LogTemp, Warning, TEXT("ResizeContainer: 无可用空槽，缩容失败"));
+        WFLOG_WARNING("ResizeContainer: 无可用空槽，缩容失败");
         return false;
       }
 
@@ -466,6 +492,7 @@ bool UItemContainer::ResizeContainer(int32 NewCapacity) {
 }
 
 void UItemContainer::OrganizeContainer() {
+  WF_CONTAINER_AUTHORITY_GUARD(void());
   check(IsInGameThread());
   const int32 Capacity = Slots.Num();
   if (Capacity <= 0)
@@ -541,9 +568,8 @@ void UItemContainer::OrganizeContainer() {
   int32 WriteIndex = 0;
   for (const FOutStack &Stack : Stacks) {
     if (WriteIndex >= Capacity) {
-      UE_LOG(LogTemp, Warning,
-             TEXT("OrganizeContainer: 槽位不足，%d 个物品被丢弃"),
-             Stacks.Num() - WriteIndex);
+      WFLOG_WARNING("OrganizeContainer: 槽位不足，%d 个物品被丢弃",
+                    Stacks.Num() - WriteIndex);
       break;
     }
     Slots[WriteIndex] = Stack.Item;

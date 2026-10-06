@@ -216,7 +216,9 @@ void UInventoryUserWidget::OnOrganizeButtonClicked()
 {
 	if (ItemContainer)
 	{
-		ItemContainer->OrganizeContainer();
+		// 必须走 Server RPC：OrganizeContainer 是 BlueprintAuthorityOnly，
+		// UI 运行在客户端，直接调用会被静默丢弃（只有单机/主机才看起来有效）
+		ItemContainer->Server_OrganizeContainer();
 	}
 	PlayButtonClickFeedback(OrganizeButton);
 }

@@ -8,6 +8,7 @@
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
+#include "Utils/WildforgeLog.h"
 
 void UItemDatabaseSubsystem::Initialize(FSubsystemCollectionBase &Collection) {
   Super::Initialize(Collection);
@@ -15,16 +16,15 @@ void UItemDatabaseSubsystem::Initialize(FSubsystemCollectionBase &Collection) {
   // 数据表由项目设置提供（Project Settings > Game > Item System）。
   const UItemSystemSettings *Settings = GetDefault<UItemSystemSettings>();
   if (!Settings || Settings->ItemTable.IsNull()) {
-    UE_LOG(LogTemp, Warning,
-           TEXT("ItemDatabaseSubsystem: 未配置 ItemTable（Project Settings > "
-                "Game > Item System）"));
+    WFLOG_WARNING("ItemDatabaseSubsystem: 未配置 ItemTable（Project Settings > "
+                  "Game > Item System）");
     return;
   }
 
   ItemTable = Settings->ItemTable.LoadSynchronous();
   if (!ItemTable) {
-    UE_LOG(LogTemp, Warning, TEXT("ItemDatabaseSubsystem: 无法加载数据表 %s"),
-           *Settings->ItemTable.ToString());
+    WFLOG_WARNING("ItemDatabaseSubsystem: 无法加载数据表 %s",
+                  *Settings->ItemTable.ToString());
   }
 }
 
@@ -56,9 +56,8 @@ void UItemDatabaseSubsystem::BuildIndex() const {
   }
 
   if (ItemTable->GetRowStruct() != FItemInformation::StaticStruct()) {
-    UE_LOG(LogTemp, Error,
-           TEXT("ItemDatabaseSubsystem: 数据表 %s 的行结构不是 FItemInformation"),
-           *ItemTable->GetName());
+    WFLOG_ERROR("ItemDatabaseSubsystem: 数据表 %s 的行结构不是 FItemInformation",
+                *ItemTable->GetName());
     return;
   }
 

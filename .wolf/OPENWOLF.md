@@ -114,22 +114,10 @@ When the user asks you to check, evaluate, or improve the design/UI of their app
 
 **Token awareness:** Each screenshot costs ~2500 tokens. The command compresses images (JPEG quality 70, max width 1200px) to minimize cost. For large apps, use `--routes / /specific-page` to limit captures.
 
-## Reframe — UI Framework Selection
+## 会话收尾
 
-When the user asks to change, pick, migrate, or "reframe" their project's UI framework:
+在结束会话或用户要求收尾时：
 
-1. Read `.wolf/reframe-frameworks.md` for the full framework knowledge base.
-2. Ask the user the decision questions from the file (current stack, priority, Tailwind usage, theme preference, app type). Stop early once the choice narrows to 1-2 options.
-3. Present a recommendation with reasoning based on the comparison matrix.
-4. Once the user confirms, use the selected framework's prompt from the file — **adapted to the actual project** using `.wolf/anatomy.md` for real file paths, routes, and components.
-5. Execute the migration: install dependencies, update config, refactor components.
-6. After migration, run `openwolf designqc` to verify the new look.
-
-**Do NOT read the entire reframe-frameworks.md into context upfront.** Read the decision questions and comparison matrix first (~50 lines). Only read the specific framework's prompt section after the user chooses.
-
-## Session End
-
-Before ending or when asked to wrap up:
-
-1. Write a session summary to `.wolf/memory.md`.
-2. Review the session: did you learn anything? Did the user correct you? Did you fix a bug? If yes, update `.wolf/cerebrum.md` and/or `.wolf/buglog.json`.
+1. 把会话摘要写入 `.wolf/memory.md`。
+2. 复盘本次会话：有学到东西吗？用户纠正过我吗？修了 bug 吗？如果是，更新
+   `.wolf/cerebrum.md` 和/或 `.wolf/buglog.json`。

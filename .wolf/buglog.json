@@ -84,6 +84,42 @@
       "related_bugs": ["bug-006"],
       "occurrences": 1,
       "last_seen": "2026-10-06T11:30:00"
+    },
+    {
+      "id": "bug-008",
+      "timestamp": "2026-10-06T12:45:00",
+      "error_message": "背包「整理」按钮在联机客户端上点击无效：InventoryUserWidget::OnOrganizeButtonClicked 直接调 ItemContainer->OrganizeContainer()，而该函数是 BlueprintAuthorityOnly",
+      "file": "Source/Wildforge/Private/ItemSystem/UI/InventoryUserWidget.cpp",
+      "root_cause": "与 bug-007 同一类错误：UI 代码运行在客户端，BlueprintAuthorityOnly 函数在非权威端的 callspace 被引擎判为 Absorbed（AActor::GetFunctionCallspace，Actor.cpp:5432），调用被静默丢弃——只有单机/监听服务器（客户端即权威端）才看起来有效。全项目 C++ 审计后确认这是最后一处，其余权威函数调用点要么在 Server_* RPC 实现里、要么是只读查询、要么是 BeginPlay/构造函数（服务器上下文）。",
+      "fix": "(1) 改为 ItemContainer->Server_OrganizeContainer()；(2) 给 UItemContainer 的 10 个修改函数加 WF_CONTAINER_AUTHORITY_GUARD 宏（非权威端 UE_LOG(Error) + 安全返回），并给 UCharacterAttributes::SetHealth/SetMaxHealth 加同样的开发期门禁，把这类「静默无效」变成立即可见的错误。",
+      "tags": ["itemsystem", "ui", "rpc", "blueprintauthorityonly", "silent-failure", "authority-guard", "organize"],
+      "related_bugs": ["bug-007", "bug-006"],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T12:45:00"
+    },
+    {
+      "id": "bug-009",
+      "timestamp": "2026-10-06T13:40:00",
+      "error_message": "error C3861: \"HasAuthority\": 找不到标识符（CharacterAttributes.h(77,10) 与 (98,10)；ItemContainer.cpp 的 10 处 WF_CONTAINER_AUTHORITY_GUARD 全部报同一错）",
+      "file": "Source/Wildforge/Public/Character/Components/CharacterAttributes.h, Source/Wildforge/Private/ItemSystem/Components/ItemContainer.cpp",
+      "root_cause": "给 BlueprintAuthorityOnly 函数加开发期门禁时，直接写了 `HasAuthority()`——但它是 **AActor** 的方法，UActorComponent 上没有这个标识符（组件必须经 GetOwner() 转发）。UCharacterAttributes 与 UItemContainer 都是 UActorComponent 子类，所以编译不过。",
+      "fix": "新增 Public/Utils/WildforgeAuthority.h，提供 inline 辅助函数 IsAuthoritativeForActorComponent(const UActorComponent*)，实现即 GetOwner()->HasAuthority()（含空指针保护）；两处门禁改为调用它。该头文件同时包含 Components/ActorComponent.h 与 GameFramework/Actor.h（后者是调用 AActor::HasAuthority 所必需的完整定义）。CLAUDE.md 的约束 4 也补了这条，避免再犯。",
+      "tags": ["compile-error", "hasauthority", "uactorcomponent", "actorcomponent", "c3861", "authority-guard"],
+      "related_bugs": ["bug-008"],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T13:40:00"
+    },
+    {
+      "id": "bug-010",
+      "timestamp": "2026-10-06T15:00:00",
+      "error_message": "anatomy.md 无法瘦身：手工剪掉的二进制资产条目（Content/*.uasset 等）会在后续每次编辑源码时被重新加回文件",
+      "file": ".wolf/hooks/post-write.js",
+      "root_cause": "exclude_patterns 只在「全量重扫」路径被读取；post-write.js 每次写文件触发的增量更新（原 main() 内联的 ~70 行）完全不看 .wolf/config.json，于是被排除的文件在每次 edit 时都被重新加进 anatomy.md。对 UE 项目（90% 文件是二进制资产）后果尤其严重：anatomy 被噪音撑爆且永远瘦不下来。",
+      "fix": "把增量逻辑抽成 updateAnatomy()，开头用 getAnatomyExcludes() 读同一份 config 的 exclude_patterns，经 globToRegExp()/matchesAnatomyExclude()（通配符按 glob 匹配整路径或文件名；无通配符按路径段匹配）判断命中即直接 return，不写入也不改计数。只跳过 anatomy 这一步，memory.md / session tracker / bug 自动检测照常执行。config.json 同时补了 *.uproject。",
+      "tags": ["openwolf", "hook", "post-write", "anatomy", "exclude-patterns", "tooling"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T15:00:00"
     }
   ]
 }

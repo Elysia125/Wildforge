@@ -14,6 +14,10 @@ Wildforge 是一个 **Unreal Engine 5.7** 的第一人称游戏（源自 First P
 
 ## 构建与开发命令
 
+**本机的引擎路径、项目路径、工具链路径以及编译验证命令写在 `CLAUDE.LOCAL.md`（本机专属、不入 git）。**
+每个开发成员的安装路径都不同，所以下面的命令只是通用说明；**实际验证请以 `CLAUDE.LOCAL.md` 里的命令为准**。
+新增本地专属命令请写进 `CLAUDE.LOCAL.md`，不要写进本文件。
+
 项目内没有自带的构建脚本，构建通过 `.vscode/tasks.json` 中的 VS Code 任务调用 UBT（引擎路径硬编码在任务里）：
 
 - 构建编辑器目标（默认构建任务）：
@@ -64,7 +68,53 @@ Wildforge 是一个 **Unreal Engine 5.7** 的第一人称游戏（源自 First P
 - `DefaultEngine.ini` 中启用的 GameMode 指向 FirstPerson 蓝图路径，而 `Content/Core/` 下还存在另一个 `BP_FirstPersonGameMode` 资源。
 - `Config/DefaultGame.ini` 中仍是模板默认的 `ProjectName`（"First Person BP Game Template"）。
 
+## 上下文文件分工（写东西之前先看这里）
+
+`.wolf/` 与两个 CLAUDE 文件各有分工，**不要重复叙述同一件事**：
+
+| 要记的内容 | 写到哪 | 写法要求 |
+|---|---|---|
+| 一次 bug 的完整因果 | `.wolf/buglog.json` | 结构化：`error_message` / `file` / `root_cause` / `fix` / `tags`；**因果细节只写这里** |
+| 从 bug 提炼出的禁令 | `.wolf/cerebrum.md` 的 `## Do-Not-Repeat` | **一到两行**，只写"不要做什么 + 正确做法"，并**交叉引用 bug 编号**（如 `见 bug-007`），不要复述因果 |
+| 跨会话仍成立的机制/约定 | `.wolf/cerebrum.md` 的 `## Key Learnings` | 引擎行为、项目约定、易错 API 这类**读代码不容易发现**的结论 |
+| 架构级取舍与理由 | `.wolf/cerebrum.md` 的 `## Decision Log` | 一条决策一行到三行，写清"选了什么 + 为什么" |
+| 会话流水 | `.wolf/memory.md` | 每个动作一行，追加即可 |
+| **必须在每次会话都成立的强制约束** | **`CLAUDE.md`**（跨成员、入库）或 **`CLAUDE.LOCAL.md`**（本机专属、不入 git） | 简明确切、可执行；这两个文件会被 harness **每轮自动注入**，放这里的约束才真正"强制" |
+
+要点：
+
+- 重要约束**优先写 `CLAUDE.md`/`CLAUDE.LOCAL.md`**，而不是塞进 `.wolf/cerebrum.md`——
+  后者的生效依赖"AI 主动去读"，前者是自动注入。
+- `cerebrum.md` 的作用是**索引与提炼**，不是事件日志：同一个 bug 不要在两处各写一遍因果。
+- `.wolf/cerebrum.md` 与 `.wolf/anatomy.md` 的结构分别被 `.wolf/hooks/pre-write.js`
+  和 `.wolf/hooks/post-write.js` 按固定格式解析，**改标题/改格式前先看 hook 实现**。
+
 ## 强制约束
 
 1. **commit 消息禁止添加 `Co-Authored-By` 尾注。**
 2. **commit 消息必须详细描述修改内容。**
+3. **禁止使用 `UE_LOG` 打印日志**，一律使用 `Source/Wildforge/Public/Utils/WildforgeLog.h` 里的宏：
+   - 等级：`WFLOG_INFO` / `WFLOG_WARNING` / `WFLOG_ERROR`；蓝图侧调同名静态函数 `UWildforgeLog::Info/Warning/Error`。
+   - 它们是 `printf` 风格、需要 `TEXT()` 的**格式字符串字面量**（内部已做 `FString::Printf(TEXT(Format), ...)`），
+     所以写 `WFLOG_WARNING("ResizeContainer: 新容量 %d 小于已用数量 %d", NewCapacity, UsedCount)`，
+     **不要**再套 `TEXT(...)`，也**不要**用 `{}` 占位符（`FString::Format` 那套不适用）。
+   - 原因：`UE_LOG(LogTemp, ...)` 只进终端/Output Log，不落盘。`WFLOG_*` 经 `LogWildforge` 同时输出到终端
+     与 `Saved/Logs/Wildforge/<日期>/<等级>.log`（异步写、跨日切目录），便于事后排查联机问题。
+   - 唯一例外：`Utils/WildforgeLog.cpp` 自身内部的 `UE_LOG(LogWildforge, ...)`（它就是落盘设备的上游）。
+   - 新增 include：`#include "Utils/WildforgeLog.h"`。
+4. **客户端不得直接调用 `BlueprintAuthorityOnly` 的权威函数**（`UItemContainer` 的
+   `InitializeContainer` / `AddItemStack` / `AddItemByID` / `RemoveItem` / `RemoveAllItem` / `SwapSlots` /
+   `MoveOrMergeItem` / `ClearContainer` / `ResizeContainer` / `OrganizeContainer`，`UCharacterAttributes`
+   的 `SetHealth` / `AddHealth` / `SetMaxHealth`）。它们在非权威端的 callspace 是 `Absorbed`，
+   调用会被引擎**静默丢弃**——单机/监听服务器上看不出问题，联机客户端上直接失效。
+   - UI / 输入 / 蓝图等**可能在客户端执行**的代码：一律调对应的 `Server_*` RPC
+     （如 `Server_MoveOrMerge`、`Server_OrganizeContainer`）。Server RPC 在服务器上会**就地同步执行**，
+     所以单机与联机走同一条路径，**不要**写 `HasAuthority() ? 本地调用 : 发 RPC` 的分支。
+   - 纯服务器流程（掉落生成、合成产物、存档恢复等）可直接调权威函数。
+   - **禁止把 `FItemInformation` 从客户端发给服务器**：RPC 只传 `ItemID` + 数量或槽位索引，服务器负责查表与校验。
+   - **在 `UActorComponent` 子类里做权威判断，必须用 `Utils/WildforgeAuthority.h` 的
+     `IsAuthoritativeForActorComponent(this)`，不要写 `HasAuthority()`**——后者是 `AActor` 的方法，
+     组件上不存在该标识符，写了会直接编译失败（`error C3861: "HasAuthority": 找不到标识符`）。
+     其实现即 `GetOwner()->HasAuthority()`（含空指针保护）。
+   - 新增权威修改函数时，照抄 `UItemContainer.cpp` 顶部 `WF_CONTAINER_AUTHORITY_GUARD(RetVal)` 的门禁模式
+     （非权威端记一条 `WFLOG_ERROR` 并安全返回），让同类误用立刻可见而不是静默失效。

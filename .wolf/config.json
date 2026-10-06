@@ -26,7 +26,25 @@
         ".netlify",
         ".output",
         "*.min.js",
-        "*.min.css"
+        "*.min.css",
+        "Content",
+        "Binaries",
+        "Intermediate",
+        "DerivedDataCache",
+        "Saved",
+        "backup-repo.git",
+        "*.uasset",
+        "*.umap",
+        "*.uproject",
+        "*.target",
+        "*.dll",
+        "*.pdb",
+        "*.lib",
+        "*.exp",
+        "*.suo",
+        "*.futdcache*",
+        "compile_commands.json",
+        "*.sln"
       ]
     },
     "token_audit": {

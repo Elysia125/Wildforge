@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 
 #include "Components/ActorComponent.h"
+#include "Utils/WildforgeAuthority.h"
+#include "Utils/WildforgeLog.h"
 
 #include "CharacterAttributes.generated.h"
 
@@ -69,8 +71,17 @@ public:
             meta = (BlueprintThreadSafe))
   float GetHealth() const { return Health; }
 
+  // 以下三个 setter 都是 BlueprintAuthorityOnly：客户端直接调用会被引擎静默丢弃
+  // （且 BlueprintSetter 形式也一样），这里再加一道开发期门禁，让误用立刻可见。
+  // 注意用组件版判断：HasAuthority() 是 AActor 的方法，组件上不存在。
   UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Attributes")
   void SetHealth(float InHealth) {
+    if (!IsAuthoritativeForActorComponent(this)) {
+      WFLOG_ERROR(
+          "UCharacterAttributes::SetHealth 在非权威端被调用，已忽略；"
+          "客户端请改用对应的 Server_* RPC。");
+      return;
+    }
     if (Health != InHealth) {
       Health = InHealth;
       NotifyHealthChanged();
@@ -86,6 +97,12 @@ public:
 
   UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Attributes")
   void SetMaxHealth(float InHealth) {
+    if (!IsAuthoritativeForActorComponent(this)) {
+      WFLOG_ERROR(
+          "UCharacterAttributes::SetMaxHealth 在非权威端被调用，已忽略；"
+          "客户端请改用对应的 Server_* RPC。");
+      return;
+    }
     if (MaxHealth != InHealth) {
       MaxHealth = InHealth;
       NotifyMaxHealthChanged();

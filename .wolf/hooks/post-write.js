@@ -2,6 +2,113 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as crypto from "node:crypto";
 import { getWolfDir, ensureWolfDir, readJSON, writeJSON, parseAnatomy, serializeAnatomy, extractDescription, estimateTokens, appendMarkdown, timeShort, readStdin, normalizePath } from "./shared.js";
+// ─── 扫描范围过滤（对应 .wolf/config.json 的 openwolf.anatomy.exclude_patterns）───
+/**
+ * 增量更新 anatomy 时也要遵守 exclude_patterns。
+ *
+ * 背景：原实现只在「全量重扫」时读 config.json 的 exclude_patterns，而每次写文件触发的
+ * 增量更新（updateAnatomy）不看配置，于是被排除的文件会在每一次 edit 时被重新加回
+ * anatomy.md —— 对 UE 这类含大量二进制资产（Content/*.uasset）的项目，anatomy 会被
+ * 噪音撑爆且永远瘦不下来。本函数补齐这个缺口。
+ */
+function getAnatomyExcludes(wolfDir) {
+    const config = readJSON(path.join(wolfDir, "config.json"), {});
+    const patterns = config?.openwolf?.anatomy?.exclude_patterns;
+    return Array.isArray(patterns) ? patterns : [];
+}
+function globToRegExp(glob) {
+    const escaped = glob.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`^${escaped.replace(/\*/g, ".*").replace(/\?/g, ".")}$`, "i");
+}
+function matchesAnatomyExclude(relPath, patterns) {
+    const rel = normalizePath(relPath);
+    const base = rel.split("/").pop() || rel;
+    const segments = rel.split("/");
+    for (const raw of patterns) {
+        if (!raw)
+            continue;
+        const pattern = normalizePath(String(raw)).replace(/\/+$/, "");
+        if (!pattern)
+            continue;
+        if (pattern.includes("*") || pattern.includes("?")) {
+            const re = globToRegExp(pattern);
+            if (re.test(rel) || re.test(base))
+                return true;
+            continue;
+        }
+        // 无通配符：按路径段匹配（"Content" 命中任意层级的 Content 目录；
+        // "node_modules" 同理），同时也接受整段相对路径相等。
+        if (rel === pattern || base === pattern || segments.includes(pattern))
+            return true;
+    }
+    return false;
+}
+// ─── anatomy 增量更新 ────────────────────────────────────────────
+function updateAnatomy(wolfDir, projectRoot, absolutePath, input) {
+    const relPathLocal = normalizePath(path.relative(projectRoot, absolutePath));
+    if (matchesAnatomyExclude(relPathLocal, getAnatomyExcludes(wolfDir))) {
+        return; // 命中 exclude_patterns：不写入、也不更新计数
+    }
+    const anatomyPath = path.join(wolfDir, "anatomy.md");
+    let anatomyContent;
+    try {
+        anatomyContent = fs.readFileSync(anatomyPath, "utf-8");
+    }
+    catch {
+        anatomyContent = "# anatomy.md\n\n> Auto-maintained by OpenWolf.\n";
+    }
+    const sections = parseAnatomy(anatomyContent);
+    const dir = path.dirname(relPathLocal);
+    const fileName = path.basename(relPathLocal);
+    const sectionKey = dir === "." ? "./" : dir + "/";
+    let fileContent = "";
+    try {
+        fileContent = fs.readFileSync(absolutePath, "utf-8");
+    }
+    catch {
+        fileContent = input.tool_input?.content ?? "";
+    }
+    const desc = extractDescription(absolutePath).slice(0, 100);
+    const ext = path.extname(absolutePath).toLowerCase();
+    const codeExts = new Set([".ts", ".js", ".tsx", ".jsx", ".py", ".json", ".yaml", ".yml", ".css"]);
+    const proseExts = new Set([".md", ".txt", ".rst"]);
+    const type = codeExts.has(ext) ? "code" : proseExts.has(ext) ? "prose" : "mixed";
+    const tokens = estimateTokens(fileContent, type);
+    if (!sections.has(sectionKey))
+        sections.set(sectionKey, []);
+    const entries = sections.get(sectionKey);
+    const idx = entries.findIndex((e) => e.file === fileName);
+    if (idx !== -1) {
+        entries[idx] = { file: fileName, description: desc, tokens };
+    }
+    else {
+        entries.push({ file: fileName, description: desc, tokens });
+    }
+    let fileCount = 0;
+    for (const [, list] of sections)
+        fileCount += list.length;
+    const serialized = serializeAnatomy(sections, {
+        lastScanned: new Date().toISOString(),
+        fileCount,
+        hits: 0,
+        misses: 0,
+    });
+    const tmp = anatomyPath + "." + crypto.randomBytes(4).toString("hex") + ".tmp";
+    try {
+        fs.writeFileSync(tmp, serialized, "utf-8");
+        fs.renameSync(tmp, anatomyPath);
+    }
+    catch {
+        try {
+            fs.writeFileSync(anatomyPath, serialized, "utf-8");
+        }
+        catch { }
+        try {
+            fs.unlinkSync(tmp);
+        }
+        catch { }
+    }
+}
 async function main() {
     ensureWolfDir();
     const wolfDir = getWolfDir();
@@ -38,68 +145,9 @@ async function main() {
     }
     const oldStr = input.tool_input?.old_string ?? "";
     const newStr = input.tool_input?.new_string ?? "";
-    // 1. Update anatomy.md
+    // 1. Update anatomy.md（遵守 config.json 的 exclude_patterns；命中则跳过）
     try {
-        const anatomyPath = path.join(wolfDir, "anatomy.md");
-        let anatomyContent;
-        try {
-            anatomyContent = fs.readFileSync(anatomyPath, "utf-8");
-        }
-        catch {
-            anatomyContent = "# anatomy.md\n\n> Auto-maintained by OpenWolf.\n";
-        }
-        const sections = parseAnatomy(anatomyContent);
-        const relPathLocal = normalizePath(path.relative(projectRoot, absolutePath));
-        const dir = path.dirname(relPathLocal);
-        const fileName = path.basename(relPathLocal);
-        const sectionKey = dir === "." ? "./" : dir + "/";
-        let fileContent = "";
-        try {
-            fileContent = fs.readFileSync(absolutePath, "utf-8");
-        }
-        catch {
-            fileContent = input.tool_input?.content ?? "";
-        }
-        const desc = extractDescription(absolutePath).slice(0, 100);
-        const ext = path.extname(absolutePath).toLowerCase();
-        const codeExts = new Set([".ts", ".js", ".tsx", ".jsx", ".py", ".json", ".yaml", ".yml", ".css"]);
-        const proseExts = new Set([".md", ".txt", ".rst"]);
-        const type = codeExts.has(ext) ? "code" : proseExts.has(ext) ? "prose" : "mixed";
-        const tokens = estimateTokens(fileContent, type);
-        if (!sections.has(sectionKey))
-            sections.set(sectionKey, []);
-        const entries = sections.get(sectionKey);
-        const idx = entries.findIndex((e) => e.file === fileName);
-        if (idx !== -1) {
-            entries[idx] = { file: fileName, description: desc, tokens };
-        }
-        else {
-            entries.push({ file: fileName, description: desc, tokens });
-        }
-        let fileCount = 0;
-        for (const [, list] of sections)
-            fileCount += list.length;
-        const serialized = serializeAnatomy(sections, {
-            lastScanned: new Date().toISOString(),
-            fileCount,
-            hits: 0,
-            misses: 0,
-        });
-        const tmp = anatomyPath + "." + crypto.randomBytes(4).toString("hex") + ".tmp";
-        try {
-            fs.writeFileSync(tmp, serialized, "utf-8");
-            fs.renameSync(tmp, anatomyPath);
-        }
-        catch {
-            try {
-                fs.writeFileSync(anatomyPath, serialized, "utf-8");
-            }
-            catch { }
-            try {
-                fs.unlinkSync(tmp);
-            }
-            catch { }
-        }
+        updateAnatomy(wolfDir, projectRoot, absolutePath, input);
     }
     catch { }
     // 2. Append richer entry to memory.md
