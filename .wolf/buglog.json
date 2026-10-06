@@ -120,6 +120,54 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-06T15:00:00"
+    },
+    {
+      "id": "bug-011",
+      "timestamp": "2026-10-06T12:25:00",
+      "error_message": "拖拽背包格子时鼠标光标下什么都不显示：拖拽本身是好的（能放下、能合并/交换），但 DefaultDragVisual 是个空控件",
+      "file": "Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+      "root_cause": "两个原因叠加：(1) NativeConstruct 里把 DragItemWidgetClass 写死成 UInventorySlotWidget::StaticClass()，覆盖了 WBP 里的设置；原生 C++ 类没有 WidgetTree，UUserWidget::RebuildWidget 只能返回一个 SSpacer（UserWidget.cpp:1203），于是拖拽装饰器渲染为空白。(2) 即使类是对的，CreateWidget 之后立刻 SetItemData 也会被清掉——NativeConstruct（里面调了 ClearSlot）要等 TakeWidget() → RebuildWidget → OnWidgetRebuilt 才执行（UserWidget.cpp:1208-1224），物品数据先于构造写入、随后被重置。",
+      "fix": "(1) 视觉类默认取本控件自身的类（GetClass() → WBP_InventorySlot），蓝图指定的 DragItemWidgetClass 仍优先，但留空或指向原生类时同样退回自身；拖拽时鼠标下就是一个完整格子。(2) 在 SetItemData 之前显式 DragVisual->TakeWidget() 把构造流程走完，保证 NativeConstruct 不会清掉已写数据；(3) NativeConstruct 不再改写 DragItemWidgetClass（顺带修好「蓝图设置被 C++ 覆盖」）。（注：第 (2) 条只解决了第一次构造，Slate 重建时 NativeConstruct 会再跑一次，该做法已被 bug-013 取代。）",
+      "tags": ["ui", "umg", "dragdrop", "defaultdragvisual", "widgettree", "sspacer", "nativeconstruct", "takewidget"],
+      "related_bugs": ["bug-006", "bug-007"],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T12:25:00"
+    },
+    {
+      "id": "bug-012",
+      "timestamp": "2026-10-06T12:25:00",
+      "error_message": "数量为 1 的物品在背包格子里完全不显示（没有图标、没有名称、没有耐久条），只有数量 > 1 的堆叠才显示正常",
+      "file": "Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+      "root_cause": "SetItemData 开头写的是 `if (Quantity <= 1) { return; }`。本意只是「数量 1 不显示 xN 数量文本」，但 return 把后面的 SetTopText / SetItemIcon / SetItemHP 一起跳过了；ItemContainerGrid::UpdateSlot 传进来的正是 ItemInfo.ItemQuality，单件物品就是 1，于是整格空白。",
+      "fix": "删掉这个早退；数量 <= 1 的折叠本来就由 SetQuantity 自己处理（QuantityText 折叠为空）。",
+      "tags": ["ui", "umg", "setitemdata", "early-return", "inventory", "silent-bug"],
+      "related_bugs": ["bug-001"],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T12:25:00"
+    },
+    {
+      "id": "bug-013",
+      "timestamp": "2026-10-06T13:05:00",
+      "error_message": "拖拽视觉有边框但没有图标 / 名称 / 耐久：按 bug-011 的修法在 SetItemData 之前显式 DragVisual->TakeWidget()，鼠标下的格子依然是空槽外观",
+      "file": "Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+      "root_cause": "UWidget::MyWidget / MyGCWidget 都是 TWeakPtr（Widget.h:1187、1193），Slate 树只由父级 slot 持强引用。拖拽视觉没有父级，`DragVisual->TakeWidget();` 丢弃了返回的 TSharedRef，语句结束即析构整棵树（SObjectWidget::~SObjectWidget → ResetWidget → NativeDestruct + ReleaseSlateResources，SObjectWidget.cpp:42-86）；随后 FUMGDragDropOp::New 再 TakeWidget（UMGDragDropOp.cpp:192）触发 RebuildWidget → bNewlyCreated → SynchronizeProperties → OnWidgetRebuilt → NativeConstruct（Widget.cpp:1005-1110、UserWidget.cpp:1208-1224），里面无条件 ClearSlot() 把 SetItemData 刚写下的状态清空。即触发清除的是「重建那一次」的 NativeConstruct，不是第一次；顺序约定（先构造再灌数据）在控件会被重建的前提下必然失效。",
+      "fix": "(1) 把显示数据做成控件状态：新增 CurrentItem / CurrentQuantity / bHasItemData，SetItemData 只写状态、ClearSlot 只清状态；(2) 新增 RefreshFromState()，作为「状态 → 外观」的唯一出口，NativeConstruct 也调它（有数据画数据、没数据画空槽），于是构造几次都一样；(3) 拖拽路径删掉 TakeWidget，只 CreateWidget + SetItemData。",
+      "tags": ["ui", "umg", "dragdrop", "defaultdragvisual", "widget-lifetime", "tweakptr", "nativeconstruct", "takewidget", "state-driven"],
+      "related_bugs": ["bug-011", "bug-012"],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T13:05:00"
+    },
+    {
+      "id": "bug-014",
+      "timestamp": "2026-10-06T13:40:00",
+      "error_message": "无 PCH 的编译（clangd / `clang-cl @文件.obj.rsp -fsyntax-only`）在 ItemInfo.h 报 `unknown type name 'FTableRowBase'`：结构体继承了 FTableRowBase 却没 include 定义它的头文件",
+      "file": "Source/Wildforge/Public/ItemSystem/Structs/ItemInfo.h",
+      "root_cause": "FItemInformation : FTableRowBase，但 ItemInfo.h 只 include 了 ItemMaster.h、三个枚举和 ItemInfo.generated.h。UBT 编译时 SharedPCH 强制包含了 Engine/DataTable.h，所以命令行构建一直编得过；一旦离开 PCH（clangd 的 IntelliSense、本机的无 PCH 编译检查）就立刻暴露——clangd 里这一行一直是红的。",
+      "fix": "ItemInfo.h 补 `#include \"Engine/DataTable.h\"`（IWYU）。注意：补 include 会改变行号，必须重跑一次 UHT 再编译——UHT 生成的宏名带行号（FID_<file>_<line>_GENERATED_BODY），不重跑会报 `a type specifier is required for all declarations`，看起来像语法错误其实是宏对不上。",
+      "tags": ["include", "iwyu", "pch", "clangd", "datatable", "uht", "build"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T13:40:00"
     }
   ]
 }

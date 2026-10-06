@@ -7,45 +7,71 @@
 #include "Engine/Texture2D.h"
 #include "ItemSystem/UI/InventorySlotDragDropOperation.h"
 #include "Styling/SlateBrush.h"
+#include "UObject/Class.h"
 
 void UInventorySlotWidget::NativeConstruct() {
   Super::NativeConstruct();
 
-  ClearSlot();
-  DragItemWidgetClass = UInventorySlotWidget::StaticClass();
+  // 构造 / **重建** 完成后，按当前状态重画一次。
+  //
+  // NativeConstruct 不是「一辈子只跑一次」的：UWidget::MyWidget / MyGCWidget 都是
+  // TWeakPtr（Widget.h:1187、1193），Slate 树只由父级的 slot 持有强引用。
+  // 对于没有父级的控件（拖拽视觉就是这种），TakeWidget() 的返回值一被丢弃，
+  // 整棵树立刻析构（SObjectWidget::~SObjectWidget → ResetWidget → NativeDestruct +
+  // ReleaseSlateResources，SObjectWidget.cpp:42-86），引擎之后再 TakeWidget 就会
+  // 重建并**再跑一次本函数**。
+  //
+  // 所以这里不能盲清数据（会把 SetItemData 刚写进去的状态清掉），
+  // 而是「有数据就画数据、没数据就画空槽」——顺序无关，重建安全。
+  RefreshFromState();
 }
 
-void UInventorySlotWidget::SetItemData(const FItemInformation &Item,
-                                       int32 Quantity) {
-  // 当前数量 -> QuantityText（数量 <= 1 时折叠）
-  if (Quantity < 0) {
-    Quantity = Item.ItemQuality;
-  }
-  if (Quantity <= 1) {
+void UInventorySlotWidget::SetItemData(const FItemInformation &Item) {
+  // 数据整体落到状态上，再重画：Slate 控件随时可能被释放并重建，
+  // 外观必须能从状态重放，不能只依赖「构造之后灌数据」这一次性的顺序。
+  // 数量就是 Item.ItemQuality（本项目数量沿用该字段），不再单独传/存第二份。
+  CurrentItem = Item;
+  bHasItemData = true;
+
+  RefreshFromState();
+}
+
+// 按 CurrentItem / bHasItemData 重画整套外观。「状态 -> 外观」只有这一个出口：
+// NativeConstruct（构造与重建）、SetItemData、ClearSlot 都走它，下面那些单字段 setter 只被它调用。
+void UInventorySlotWidget::RefreshFromState() {
+  // 空槽：各 setter 会根据“空/无”自动折叠对应控件，形成默认不可见状态
+  if (!bHasItemData) {
+    SetTopText(FText::GetEmpty());
+    SetBottomText(FText::GetEmpty());
+    SetQuantity(0);
+    SetItemIcon(nullptr);
+    SetItemHP(0.f, 0.f);
     return;
   }
+
   // 名称 -> TopText（空名称会自动折叠）
-  SetTopText(Item.ItemName);
+  SetTopText(CurrentItem.ItemName);
 
   // 图标 -> ItemStyle（无图标会自动折叠）
-  SetItemIcon(Item.ItemIcon);
+  SetItemIcon(CurrentItem.ItemIcon);
 
   // 弹药 -> BottomText
   // 显示“子弹数量/最大子弹数量”（仅使用弹药的装备，如需要装备箭的弓）
-  if (Item.UseAmmo) {
+  if (CurrentItem.UseAmmo) {
     SetBottomText(FText::FromString(
-        FString::Printf(TEXT("%d/%d"), Item.Ammo, Item.AmmoMax)));
+        FString::Printf(TEXT("%d/%d"), CurrentItem.Ammo, CurrentItem.AmmoMax)));
   } else {
     SetBottomText(FText::GetEmpty());
   }
-  SetQuantity(Quantity);
+  // 当前数量 -> QuantityText（数量 <= 1 时由 SetQuantity 折叠）
+  SetQuantity(CurrentItem.ItemQuality);
 
   // 耐久 -> ItemHP（最大耐久 > 0 时才显示）
-  SetItemHP(static_cast<float>(Item.ItemCurHP),
-            static_cast<float>(Item.ItemMaxHP));
+  SetItemHP(static_cast<float>(CurrentItem.ItemCurHP),
+            static_cast<float>(CurrentItem.ItemMaxHP));
 
-  // 给蓝图一个机会做额外表现，比如动画、稀有度边框等
-  OnItemDataSet(Item, Quantity);
+  // 给蓝图一个机会做额外表现，比如动画、稀有度边框等（数量从 Item.ItemQuality 取）
+  OnItemDataSet(CurrentItem);
 }
 
 void UInventorySlotWidget::SetQuantity(int32 Quantity) {
@@ -124,21 +150,106 @@ void UInventorySlotWidget::SetSlotStyle(const FSlateBrush &InBrush) {
 }
 
 void UInventorySlotWidget::SetSelected(bool bSelected) {
+  bSelectedState = bSelected;
+  RefreshSlotStyleColor();
+}
+
+void UInventorySlotWidget::SetHighlight_Implementation(bool bHighlight) {
+  bHighlightedState = bHighlight;
+  RefreshSlotStyleColor();
+}
+
+void UInventorySlotWidget::RefreshSlotStyleColor() {
   if (!SlotStyle)
     return;
 
-  // 使用 SetBrushColor 来设置边框本身的颜色/透明度
-  SlotStyle->SetBrushColor(bSelected ? FLinearColor(1.f, 1.f, 1.f, 1.f)
-                                     : FLinearColor(1.f, 1.f, 1.f, 0.5f));
+  // 使用 SetBrushColor 来设置边框本身的颜色/透明度。
+  // 高亮优先于选中：拖拽悬停的反馈要比选中态更醒目。
+  if (bHighlightedState) {
+    SlotStyle->SetBrushColor(HighlightColor);
+  } else {
+    SlotStyle->SetBrushColor(bSelectedState ? FLinearColor(1.f, 1.f, 1.f, 1.f)
+                                            : FLinearColor(1.f, 1.f, 1.f, 0.5f));
+  }
 }
 
 void UInventorySlotWidget::ClearSlot() {
-  // 各 setter 会根据“空/无”自动折叠对应控件，形成默认不可见状态
-  SetTopText(FText::GetEmpty());
-  SetBottomText(FText::GetEmpty());
-  SetQuantity(0);
-  SetItemIcon(nullptr);
-  SetItemHP(0.f, 0.f);
+  // 清状态 + 重画：这样之后即使控件被重建，也仍然是空槽
+  // （只改外观不清状态的话，重建会把旧物品又画回来）
+  bHasItemData = false;
+  CurrentItem = FItemInformation();
+
+  RefreshFromState();
+}
+
+void UInventorySlotWidget::InitializeSlot(UItemContainer *InContainer,
+                                          int32 InSlotIndex) {
+  // 已经绑在同一个来源上：只补一次拉取（RefreshGrid 会重复调到这里）
+  if (OwningContainer == InContainer && SlotIndex == InSlotIndex) {
+    RefreshFromContainer();
+    return;
+  }
+
+  // 换来源：先退订旧的，避免同一个容器上挂两条
+  UnbindFromContainer();
+  OwningContainer = InContainer;
+  SlotIndex = InSlotIndex;
+
+  if (!OwningContainer || SlotIndex == INDEX_NONE) {
+    ClearSlot();
+    return;
+  }
+
+  // 订阅容器变更：之后容器一变，本控件就去比对「我这一格」有没有变
+  OwningContainer->OnContainerChanged.AddDynamic(
+      this, &UInventorySlotWidget::HandleContainerChanged);
+
+  // 立即拉一次。两种情况都靠它兜底：
+  //   - 控件是刚建出来的：本次广播的调用列表在广播前就被拷贝了
+  //     （ScriptDelegates.h:924-926），这一轮轮不到它，必须主动拉；
+  //   - Slate 还没构建（如拖拽视觉）：数据先落到状态里，NativeConstruct 会重放出来。
+  RefreshFromContainer();
+}
+
+void UInventorySlotWidget::UnbindFromContainer() {
+  if (OwningContainer) {
+    OwningContainer->OnContainerChanged.RemoveDynamic(
+        this, &UInventorySlotWidget::HandleContainerChanged);
+  }
+}
+
+void UInventorySlotWidget::HandleContainerChanged() { RefreshFromContainer(); }
+
+void UInventorySlotWidget::RefreshFromContainer() {
+  FItemInformation Item;
+  if (!OwningContainer || !OwningContainer->GetItemAtSlot(SlotIndex, Item)) {
+    // 空槽：本来就是空的就不要再写一遍 Slate 状态（一次广播会叫到所有槽位）
+    if (bHasItemData) {
+      ClearSlot();
+    }
+    return;
+  }
+
+  // 本槽数据没变就完全不碰外观：容器只改了一格时，其余槽位的 SetText / SetBrush /
+  // SetVisibility 全部省掉——这正是「每格各自刷新」比「整表刷新」省下来的部分。
+  if (IsSameAsCurrentData(Item)) {
+    return;
+  }
+
+  SetItemData(Item);
+}
+
+bool UInventorySlotWidget::IsSameAsCurrentData(
+    const FItemInformation &Item) const {
+  if (!bHasItemData) {
+    return false;
+  }
+
+  // 交给反射逐属性比较（数量也在结构体里，不用单独比），而不是手写一长串字段比较：
+  // 结构体以后加字段也不用回来维护。
+  const UScriptStruct *Struct = FItemInformation::StaticStruct();
+  return Struct != nullptr &&
+         Struct->CompareScriptStruct(&CurrentItem, &Item, PPF_None);
 }
 
 FReply UInventorySlotWidget::NativeOnMouseButtonDown(
@@ -166,22 +277,35 @@ void UInventorySlotWidget::NativeOnDragDetected(
     UDragDropOperation *&OutOperation) {
   Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
 
+  // 没有容器就没有可拖拽的内容来源，直接放弃（否则下面会解引用空指针）
+  if (!OwningContainer) {
+    return;
+  }
+
   // 1. 创建拖拽操作实例
   UInventorySlotDragDropOperation *DragOp =
       NewObject<UInventorySlotDragDropOperation>(this);
 
   // 2. 设置拖拽时显示的视觉元素
-  // 设置拖拽视觉
-  if (DragItemWidgetClass) {
-    UInventorySlotWidget *DragVisual = CreateWidget<UInventorySlotWidget>(
-        GetOwningPlayer(), DragItemWidgetClass);
-    if (DragVisual) {
-      FItemInformation ItemInfo;
-      if (OwningContainer->GetItemAtSlot(SlotIndex, ItemInfo)) {
-        DragVisual->SetItemData(ItemInfo);
-      }
-      DragOp->DefaultDragVisual = DragVisual;
-    }
+  // 视觉控件类：默认用「自己这个类」，也就是 WBP_InventorySlot 本身——鼠标下就是一个完整的
+  // 格子外观。两种坏值都退回默认：
+  //   - 空：WBP 里没指定；
+  //   - 指到原生 C++ 类：原生类没有 WidgetTree，RebuildWidget 只返回一个 SSpacer
+  //     （UserWidget.cpp:1203），表现是「鼠标下什么都没有」而不是报错。
+  TSubclassOf<UInventorySlotWidget> VisualClass = DragItemWidgetClass;
+  if (!VisualClass || VisualClass == UInventorySlotWidget::StaticClass()) {
+    VisualClass = GetClass();
+  }
+
+  if (UInventorySlotWidget *DragVisual =
+          CreateWidget<UInventorySlotWidget>(GetOwningPlayer(), VisualClass)) {
+    // 走和普通格子完全一样的数据路径：绑定 (容器, 索引)，然后由控件自己拉数据。
+    // 同样**不要**在这里 TakeWidget()：这个控件没有父级持有 Slate 引用，
+    // 手工 TakeWidget 拿到的 TSharedRef 一丢就整棵析构，引擎随后还会再建一次
+    // （FUMGDragDropOp::New 里的 TakeWidget，UMGDragDropOp.cpp:192）；
+    // 外观由 NativeConstruct 按状态重放，顺序无关。
+    DragVisual->InitializeSlot(OwningContainer, SlotIndex);
+    DragOp->DefaultDragVisual = DragVisual;
   }
   // 设置锚点：鼠标按下位置作为锚点
   DragOp->Pivot = EDragPivot::MouseDown;
@@ -207,6 +331,11 @@ void UInventorySlotWidget::NativeOnDragCancelled(
 }
 
 void UInventorySlotWidget::NativeDestruct() {
+  // Slate 资源被释放时会走到这里：先退订容器变更，别让容器继续挂着一个已经销毁的控件。
+  // （动态委托本身会跳过失效绑定并在广播后压缩列表，ScriptDelegates.h:931/945，
+  //  这里退订是为了不留无效条目、也让控件能被正常回收。）
+  UnbindFromContainer();
+
   // 兜底：拖拽途中本控件被销毁（例如容器容量变化导致网格重建）时，
   // 先复位自身不透明度，避免 Slate 资源释放后视觉状态残留。
   SetRenderOpacity(1.f);

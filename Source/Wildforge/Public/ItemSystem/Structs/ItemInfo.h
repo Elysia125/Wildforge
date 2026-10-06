@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Engine/DataTable.h" // FTableRowBase
+
 #include "../Actors/ItemMaster.h"
 #include "../Enums/ItemArmor.h"
 #include "../Enums/ItemRarity.h"

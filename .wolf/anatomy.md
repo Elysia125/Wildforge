@@ -83,7 +83,7 @@
 
 ## Source/Wildforge/Public/ItemSystem/Structs/
 
-- `ItemInfo.h` — FItemInformation（FTableRowBase）：ItemID/ItemName/ItemDesc/ItemQuality（兼作堆叠数量）/ItemDamage/IsStackable/MaxStackSize/ItemCurHP/ItemMaxHP/ItemIcon/ItemType/ItemRarity/ItemArmor/ItemClass/UseAmmo/Ammo/AmmoMax (~900 tok)
+- `ItemInfo.h` — FItemInformation（FTableRowBase，需 include Engine/DataTable.h——别靠 SharedPCH，见 bug-014）：ItemID/ItemName/ItemDesc/ItemQuality（兼作堆叠数量）/ItemDamage/IsStackable/MaxStackSize/ItemCurHP/ItemMaxHP/ItemIcon/ItemType/ItemRarity/ItemArmor/ItemClass/UseAmmo/Ammo/AmmoMax (~900 tok)
 
 ## Source/Wildforge/Public/ItemSystem/Database/
 
@@ -114,14 +114,14 @@
 
 ## Source/Wildforge/Public/ItemSystem/UI/
 
-- `ItemContainerGrid.h` — 背包网格 Widget（UniformGridPanel+ScrollBox）：InitializeGrid 绑定容器、订阅 OnContainerChanged 整表刷新；Bind/UnbindToContainer；EnsureSlotCount/LayoutSlots/UpdateSlot (~1100 tok)
+- `ItemContainerGrid.h` — 背包网格 Widget（UniformGridPanel+ScrollBox）：InitializeGrid 绑定容器并订阅 OnContainerChanged（**只处理结构**：容量变化才增删槽位/重排），RefreshGrid 为全量重建入口；Bind/UnbindToContainer；EnsureSlotCount（返回数量是否变化）/LayoutSlots；槽位内容由 UInventorySlotWidget 自己拉 (~1200 tok)
 - `InventoryUserWidget.h` — 背包主界面：FInventoryThemeConfig 主题结构体；InitializeInventory/ShowInventoryPage/ShowCraftPage；BindWidget 按钮/Tab/WidgetSwitcher/ItemContainerGrid/动画；主题美化 ApplyInitialThemeStyles (~2200 tok)
-- `InventorySlotWidget.h` — 单格 Widget：SetItemData/SetQuantity/SetItemHP/SetTopText/SetBottomText/SetItemIcon/SetSelected/ClearSlot；BindWidget TopText/BottomText/QuantityText/ItemHP/SlotStyle/ItemStyle/OverlayRoot/SizeBoxRoot；拖拽回调（含 NativeDestruct 兜底复位不透明度）+ SetHighlight 蓝图事件；持有 OwningContainer+SlotIndex (~1650 tok)
+- `InventorySlotWidget.h` — 单格 Widget。**对外只留「来源」与控件自身状态**：InitializeSlot(容器,索引)/UnbindFromContainer/RefreshFromContainer + GetOwningContainer/GetSlotIndex，SetSelected/SetSlotStyle，以及可被蓝图覆写的 SetHighlight（BlueprintNativeEvent：C++ 默认染色 + HighlightColor）；**SetItemData(只收结构体)/ClearSlot/SetQuantity/SetItemHP/SetTopText/SetBottomText/SetItemIcon/SetItemStyle 都是 private 渲染细节**（数量唯一来源是 Item.ItemQuality，没有 CurrentQuantity）；HandleContainerChanged 处理容器广播；BindWidget TopText/BottomText/QuantityText/ItemHP/SlotStyle/ItemStyle/OverlayRoot/SizeBoxRoot；拖拽回调（NativeDestruct 退订 + 兜底复位不透明度）；状态 CurrentItem/bHasItemData + RefreshFromState()/IsSameAsCurrentData()；蓝图钩子 OnItemDataSet(结构体) (~2400 tok)
 - `InventorySlotDragDropOperation.h` — 拖拽操作（UDragDropOperation）：SourceSlotIndex/SourceContainerType/ItemInfo/SourceContainer + TWeakObjectPtr<UUserWidget> SourceWidget（弱引用避免源控件被网格刷新销毁后悬空）与 RestoreSourceWidget() 兜底复位，供 NativeOnDrop 判定来源并恢复显示 (~700 tok)
 
 ## Source/Wildforge/Private/ItemSystem/UI/
 
-- `ItemContainerGrid.cpp` — 网格实现：NativeConstruct 从拥有者 Pawn 查找 UItemContainer 并 InitializeGrid；HandleContainerChanged→RefreshGrid；RefreshGrid 维持槽位数=容量、按 SlotWidgetClass 补建空槽、逐格 SetItemData/ClearSlot 并回填 OwningContainer/SlotIndex (~1500 tok)
+- `ItemContainerGrid.cpp` — 网格实现：NativeConstruct 从拥有者 Pawn 查找 UItemContainer 并 InitializeGrid；HandleContainerChanged 只做结构（容量变了才 EnsureSlotCount+LayoutSlots，不整表刷内容）；RefreshGrid 为全量入口（保证数量/布局 + 逐格 InitializeSlot 重绑并拉数据）；EnsureSlotCount 补建时当场 InitializeSlot、移除时先 UnbindFromContainer (~1600 tok)
 - `InventoryUserWidget.cpp` — 主界面实现：NativeConstruct 取容器 + 初始化网格；Tab 点击切 WidgetSwitcher 页并更新高亮/反馈动画；整理按钮调 Server_OrganizeContainer（RPC，不可直接调 OrganizeContainer）；ApplyInitialThemeStyles 应用配色与阴影 (~2600 tok)
-- `InventorySlotWidget.cpp` — 单格实现：SetItemData 按数据设置文本/图标/耐久/数量并自动折叠空控件；ClearSlot 复位；NativeOnDragDetected 创建 UInventorySlotDragDropOperation（回填 SourceContainer/SourceSlotIndex/SourceWidget）并半透明；NativeOnDrop 复位源控件显示 → 同槽/跨容器早退 → 发 Server_MoveOrMerge；NativeDestruct 兜底复位；DragOver 只接受本系统拖拽、Enter/Leave 高亮 (~2100 tok)
+- `InventorySlotWidget.cpp` — 单格实现：InitializeSlot 绑定 (容器,索引) 并退订/重订 + 首次拉取，HandleContainerChanged→RefreshFromContainer（GetItemAtSlot 拉取；本格没变直接返回，空槽不为空才 ClearSlot），UnbindFromContainer 在换绑/NativeDestruct 时退订；显示数据是控件状态（CurrentItem/CurrentQuantity/bHasItemData），RefreshFromState() 是「状态 → 外观」唯一出口（NativeConstruct 也调它，构造/重建都能重放，别再手工 TakeWidget）；SetItemData 只写状态+重画（不要写数量早退，会连图标一起跳过）、ClearSlot 清状态+重画；NativeOnDragDetected 视觉类为空/指向原生类时退回 GetClass()、只 CreateWidget+InitializeSlot，创建 UInventorySlotDragDropOperation（回填 SourceContainer/SourceSlotIndex/SourceWidget）并半透明；NativeOnDrop 复位源控件显示 → 同槽/跨容器早退 → 发 Server_MoveOrMerge；DragOver 只接受本系统拖拽、Enter/Leave 高亮（SetHighlight_Implementation 染色） (~2800 tok)
 - `InventorySlotDragDropOperation.cpp` — 拖拽操作实现：RestoreSourceWidget() 经弱引用 Pin 到源控件后 SetRenderOpacity(1.f)（失效即跳过） (~150 tok)

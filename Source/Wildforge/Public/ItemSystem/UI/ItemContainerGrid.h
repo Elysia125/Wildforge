@@ -19,7 +19,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "ItemContainerGrid")
     void InitializeGrid(UItemContainer* InContainer, int32 InSlotsPerRow = 5);
 
-    /** 根据容器数据重新生成/刷新所有槽位 */
+    /** 根据容器数据重建：保证槽位数量与布局，并让每个槽位重新绑定来源 + 拉一次数据。
+     *  容器内容变化时会自动走 HandleContainerChanged（结构）+ 各槽位自己的订阅（内容），
+     *  这个全量入口留给「初始化 / 换容器 / 改每行个数」。 */
     UFUNCTION(BlueprintCallable, Category = "ItemContainerGrid")
     void RefreshGrid();
 
@@ -39,7 +41,8 @@ protected:
     virtual void NativeConstruct() override;
     virtual void NativeDestruct() override;
 
-    /** 容器内容变化回调，触发整表刷新 */
+    /** 容器内容变化回调：只处理结构（容量变化 -> 增删槽位控件）。
+     *  内容不在这里刷——每个槽位都订阅了同一个委托，会自己按 (容器, 索引) 拉数据 */
     UFUNCTION()
     void HandleContainerChanged();
 
@@ -73,11 +76,9 @@ protected:
     UPROPERTY()
     TArray<TObjectPtr<UInventorySlotWidget>> SlotWidgets;
 
-    /** 更新单个槽位的显示 */
-    void UpdateSlot(int32 SlotIndex, UInventorySlotWidget* SlotWidget);
-
-    /** 保证槽位 Widget 数量恒等于容量：不足补建、多余移除（空槽也保留展示） */
-    void EnsureSlotCount(int32 DesiredCount);
+    /** 保证槽位 Widget 数量恒等于容量：不足补建、多余移除（空槽也保留展示）。
+     *  返回值：数量是否变化过（调用方据此决定要不要重排布局）。 */
+    bool EnsureSlotCount(int32 DesiredCount);
 
     /** 按 SlotsPerRow 重新排布所有已存在的槽位 */
     void LayoutSlots();

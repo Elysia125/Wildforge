@@ -80,10 +80,40 @@
 - **复制数组的「原地单元素修改」会被正常复制**：服务器变更检测走
   `FRepLayout::CompareProperties*`（按元素与 shadow state 比较），不要求整体重新赋值。
   `AddItemStack` 只改 `Slots[i].ItemQuality` 也能同步，就是依赖这个行为。
+- **UMG 的构造时机分两段**：`CreateWidget` 只做 `Initialize()`（建 WidgetTree / 绑定 BindWidget
+  属性 + `NativeOnInitialized`）；`NativePreConstruct` / `NativeConstruct` 要等 `TakeWidget()` →
+  `RebuildWidget()` → `OnWidgetRebuilt()` 才跑（`UserWidget.cpp:1203`、`1208-1224`）。没有
+  RootWidget 的 `UUserWidget` 只会渲染成 `SSpacer`。
+- **UMG 没有「只构造一次」这回事**：`UWidget::MyWidget` / `MyGCWidget` 都是 `TWeakPtr`
+  （`Widget.h:1187`、`1193`），Slate 树只由父级 slot 持强引用。谁丢掉了 `TakeWidget()` 的返回值
+  （未挂进任何父控件的实例，例如拖拽视觉），整棵树立刻析构（`SObjectWidget::~SObjectWidget` →
+  `ResetWidget` → `NativeDestruct` + `ReleaseSlateResources`，`SObjectWidget.cpp:42-86`），下次
+  `TakeWidget()` 会重建并**再跑一次 `NativeConstruct`**。所以控件外观必须能从自己的状态重放
+  （本项目 `UInventorySlotWidget::RefreshFromState()`），不要依赖「构造 / 灌数据」的先后顺序。见 bug-013。
+- **`BlueprintImplementableEvent` → `BlueprintNativeEvent` 向后兼容**：WBP 里已有的同名事件节点
+  会继续覆盖 C++ 的 `_Implementation` 默认实现（所以改完要确认 WBP 没留空事件节点）。
+  判断 WBP 有没有实现某事件：读 `.uasset` 字节做 ASCII 搜索，**同时搜一个必然存在的对照字符串**
+  （如 BindWidget 名 `QuantityText`）来确认这个方法可用——本项目实测可行（`SetHighlight` = 0 命中）。
 - **`AddItemStack` 不适合做「拖拽合并」**：它按物品定义把数量堆到**任意**同 ItemID 的槽位
   （可能先填第三个未满堆），且中间会让 `UsedCount` 先减后加。拖拽合并应直接在源/目标两槽间
   重分配数量（目标加满、余数留源），源清空再回收槽位——此时 `ItemIDToSlot`/`FreeSlots`/
   `UsedCount` 全不变，一次 `NotifyContainerChanged()` 即可。
+- **`FOnContainerChanged` 是「无参」动态多播**（`ItemContainer.h:14`），客户端那边还是
+  `OnRep_Slots` 聚合一次再广播（`ItemContainer.cpp:47-52`）——**「哪个槽变了」这个信息根本不存在**。
+  所以按需刷新只能由订阅者自己 diff：`UScriptStruct::CompareScriptStruct`（`Class.h:2406`，
+  运行时可用）按反射逐属性比，结构体加字段也不用维护比较代码。
+- **委托订阅的生命周期有引擎兜底**：`ProcessMulticastDelegate` 广播前拷贝调用列表
+  （`ScriptDelegates.h:924-926`）、广播后 `CompactInvocationList()` 清失效绑定（`:945`），
+  调用前还有 `IsBound()` 检查（`:931`）。所以「忘了退订」不会永久泄漏也不会调到已销毁对象；
+  但**广播中新订阅的订阅者收不到这一轮通知**（列表已拷贝）——新建控件必须当场自己拉一次。
+- **本项目有两条编译验证路径**：① 关掉编辑器后跑 UBT 纯构建（完整编译+链接）；
+  ② 编辑器开着（Live Coding 占用）时，用 `clang-cl @<文件>.cpp.obj.rsp -fsyntax-only` 单文件检查
+  ——rsp 就是 clangd 用的那份（含全部 `/I` `/D`），要剔除 `/Fo`、`/c`、`/clang:-M*`，
+  工作目录必须是引擎 `Source` 目录（里面的 `/I` 是相对路径）；**不能用 `cl.exe`**（rsp 是
+  clang 形态，且 MSVC 读不了 clang 的 .pch）。命令细节见 `CLAUDE.LOCAL.md`。
+- **改 UCLASS/USTRUCT 头文件后必须先跑 UHT 再编译**：`GENERATED_BODY()` 展开成
+  `FID_<file>_<line>_GENERATED_BODY`（宏名带行号），行号变了而 UHT 没重跑，就会报
+  `a type specifier is required for all declarations`——那是宏对不上，不是代码写错（见 bug-014）。
 
 ## Do-Not-Repeat
 
@@ -112,6 +142,22 @@
 - [2026-10-06] **不要在 `Content/` 上做文本处理**：`.uasset` 是二进制，ripgrep 默认直接跳过、
   不会报错——用必然存在的字符串做对照才能发现「0 命中」其实是无结果。要查蓝图引用请用
   编辑器的 Find References，或让用户自查。
+- [2026-10-06] **UMG 里不要用原生 C++ 类当拖拽视觉**（如 `UInventorySlotWidget::StaticClass()`）：
+  原生类没有 WidgetTree，`RebuildWidget` 只会返回 `SSpacer`，表现是「鼠标下什么都没有」而
+  不是报错。用 `GetClass()`/WBP 类。见 bug-011。
+- [2026-10-06] **不要靠「先 `TakeWidget()` 再灌数据」来防 `NativeConstruct` 覆盖**：没有父级持有
+  Slate 引用的控件（拖拽视觉），手工 `TakeWidget()` 的返回值一丢整棵树就析构，引擎随后还会重建并
+  **再跑一次 `NativeConstruct`**，顺序约定必然失效。正解是把数据存成控件状态、在 `NativeConstruct`
+  里按状态重放（`RefreshFromState()`）。见 bug-011、bug-013。
+- [2026-10-06] `SetItemData` 里**不要**写 `if (Quantity <= 1) return;` 这种早退：它会把图标/名称/
+  耐久一起跳过，单件物品整格空白。数量折叠只该由 `SetQuantity` 处理。见 bug-012。
+- [2026-10-06] 头文件里用到引擎类型就**自己 include**，别靠 SharedPCH（UBT 编得过、clangd 一直报红）：
+  例 `FTableRowBase` 要 `Engine/DataTable.h`。见 bug-014。
+- [2026-10-06] **改完 UCLASS/USTRUCT 头文件不要直接编译**：先生成一次 UHT，否则按行号命名的
+  `FID_..._<line>_GENERATED_BODY` 宏对不上，会看到 `a type specifier is required for all declarations`。
+- [2026-10-06] **别再给 UI 加「容器一变就整表刷新」**：Grid 只做结构（容量/布局），内容由每个槽位
+  自己按 (容器, 索引) 拉取 + diff。整表刷新会把 N 个格子的 Slate 写入全做一遍。见 bug-013 之后的
+  Decision Log「背包槽位改为自持来源」。
 
 ## Decision Log
 
@@ -137,8 +183,30 @@
   `CLAUDE.md` 只留跨成员通用内容；两边都会被 harness 自动注入。本机编译验证命令以
   `CLAUDE.LOCAL.md` 为准（`-Target=WildforgeEditor Win64 Development` **不能加引号**、
   `-OutputDir` 前必须有空格）。
+- [2026-10-06] 格子高亮 `SetHighlight` 从 `BlueprintImplementableEvent` 改成 `BlueprintNativeEvent`：
+  C++ 给默认表现（`SlotStyle` 描边染色 + 可调 `HighlightColor`），蓝图仍可覆写。选中/高亮两个
+  状态分开记录、刷新时合成，避免 `SetSelected` 与 `SetHighlight` 互相冲掉颜色；拖拽视觉类默认
+  取 `GetClass()`，`DragItemWidgetClass` 只作可选覆写（见 bug-011）。
 - [2026-10-06] **裁剪 OpenWolf harness**：`anatomy.md` 只索引源码与配置（`Content/` 等二进制
   资产从 `config.json` 的 `anatomy.exclude_patterns` 排除，并手工剪掉历史条目；增量更新由
   `post-write.js` 的 `updateAnatomy()` 读同一份配置，见 bug-010）；`reframe-frameworks.md`
   已清空停用（本项目是 UE+UMG，无 Web 框架可选）；`cerebrum.md` 只留跨会话结论、与
   `buglog.json` 交叉引用而不重复叙述。
+- [2026-10-06] `UInventorySlotWidget` 的外观改为**状态驱动**：`CurrentItem` / `CurrentQuantity` /
+  `bHasItemData` 是唯一真相源，`RefreshFromState()` 是「状态 → 外观」的唯一出口，`NativeConstruct`
+  只重放不清空，拖拽视觉不再手工 `TakeWidget()`。原因：Slate 控件随时可能被释放重建、
+  `NativeConstruct` 会重复执行，一次性顺序约定不可靠（见 bug-013）。
+- [2026-10-06] **背包槽位改为「自持来源」**：`UInventorySlotWidget::InitializeSlot(容器, 索引)`
+  自己拉数据 + 自己订阅容器变更 + 本地 diff（`IsSameAsCurrentData`），`UItemContainerGrid` 退化为
+  只管结构（`EnsureSlotCount` 返回是否变化，只有数量变了才 `LayoutSlots`），删掉 `UpdateSlot` /
+  `SetOwningContainer` / `SetSlotIndex`（蓝图侧无引用，可安全改签名）。选它的理由**是结构不是速度**：
+  数据源唯一（`GetItemAtSlot` O(1) 纯读）、槽位自洽可脱离 Grid 复用；省下来的只是视觉写入，
+  订阅本身因为是 dynamic 多播反而更贵。顺带把 `OwningContainer` 从裸指针改成
+  `UPROPERTY(Transient) TObjectPtr`（GC 可见、不会悬空），并在 `NativeDestruct` / 删槽位时显式退订。
+- [2026-10-06] **槽位的对外 API 只留「来源」与状态标志**：外部只能 `InitializeSlot(容器, 索引)`
+  （+ `UnbindFromContainer`/`RefreshFromContainer` 查询/手动刷新）、`SetSelected`/`SetHighlight`
+  （控件自身的视觉标志）和 `SetSlotStyle`（主题皮肤，重建安全）。`SetItemData`/`ClearSlot` 及
+  `SetQuantity`/`SetTopText`/`SetItemIcon`/`SetItemHP`/`SetItemStyle` 全部收成 private：它们只在
+  「状态 -> 外观」里用，外部直接戳会在下一次容器广播 / Slate 重建时被状态覆盖。
+  **数量只有一个来源：`FItemInformation::ItemQuality`**（不再有 `CurrentQuantity`，也没了
+  `SetItemData` 的第二个参数；蓝图钩子 `OnItemDataSet` 也只收结构体）。
