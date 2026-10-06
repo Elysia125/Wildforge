@@ -8,15 +8,17 @@ public class Wildforge : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
-		PublicDependencyModuleNames.AddRange(new string[] { 
-			"Core", 
-			"CoreUObject", 
-			"Engine", 
-			"InputCore", 
+		PublicDependencyModuleNames.AddRange(new string[] {
+			"Core",
+			"CoreUObject",
+			"Engine",
+			"InputCore",
 			"UMG",
 			"Slate",      // 添加 Slate 依赖
     		"SlateCore",
-			"DeveloperSettings"  // UDeveloperSettings（项目设置集成）
+			"DeveloperSettings",  // UDeveloperSettings（项目设置集成）
+			"AnimationModifiers",
+			"AnimationBlueprintLibrary"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

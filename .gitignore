@@ -19,3 +19,7 @@ backup-repo.git
 # 各开发成员的本地专属说明（引擎路径/项目路径/工具链因人而异，不入库）
 CLAUDE.LOCAL.md
 CLAUDE.local.md
+*/FreeAnimationLibrary
+
+# 体积过大的第三方资源包，不入库
+Content/ProceduralNaturePack/
