@@ -5,15 +5,19 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Utils/WildforgeLog.h"
 
-// 移动门控的设计（攻击 / 翻滚 / 滑行共用）：
-//   * 事件（OnAttackStarted / OnLandRollStarted / OnSlideStarted…）是**每端各自本地广播**的，
+// 移动门控的设计（攻击 / 翻滚 / 滑行 / 趴下共用）：
+//   * 事件（OnAttackStarted / OnLandRollStarted / OnSlideStarted / OnCrawlTransitionStarted…）
+//     是**每端各自本地广播**的，
 //     所以两端都能就地立即响应，不必等状态复制往返一个 RTT。
 //   * 锁分**两种强度**（见头文件里的大段说明）：
 //       - 攻击 = 硬锁：StopMovementImmediately + DisableMovement（MOVE_None），真把角色钉住；
-//       - 翻滚 / 滑行 = 软锁：只记账 + 复位加速，**不碰移动组件**。
-//     这两个能力都不能用硬锁：MOVE_None 会让 PerformMovement 直接 return 并**丢弃根运动**
+//       - 翻滚 / 滑行 / 趴下 = 软锁：只记账 + 复位加速，**不碰移动组件**。
+//     这几个能力都不能用硬锁：MOVE_None 会让 PerformMovement 直接 return 并**丢弃根运动**
 //     （CharacterMovementComponent.cpp:2716-2734），翻滚的位移就没了、滑行每帧写的速度也会被
 //     StopMovementImmediately 当场清掉；而且边跑边滚 / 边跑边滑会被变成急停。
+//   * 趴下的锁对象是「**这一次过渡动画**」，不是整个趴下姿态：动画一结束（组件广播
+//     OnCrawlTransitionFinished）就释放，所以趴着还能以爬行速度移动。锁住姿态本身会让
+//     玩家趴下后彻底动不了。
 //   * 锁的持有者记成**按来源的集合**（MovementLockHolders），不是布尔、也不是计数：
 //       - 布尔无法区分持有者 → 攻击结束会把翻滚的锁一起放掉；
 //       - 纯计数无法区分来源 → 重复事件（连击切段重复广播 OnAttackStarted）
@@ -25,21 +29,25 @@
 //   * 持有者被销毁时必须主动解锁（组件被移除后不会再广播 Finished，
 //     那份 FName 会永久留在集合里 = 角色永久不能动，详见头文件的前置条件说明）。
 //
-// 加速的复位也在这里：攻击 / 翻滚 / 滑行期间把最大速度还原到基准值，
+// 加速的复位也在这里：攻击 / 翻滚 / 滑行 / 趴下期间把最大速度还原到基准值，
 // 免得结束后角色带着加速状态继续滑。
 //
-// ⚠️ 滑行这条链上有一个**顺序依赖**：USlideComponent 是在广播 OnSlideStarted（也就是这里落锁、
-// 复位加速）**之后**才快照 / 改写自己的移动参数，所以它拿到的一定是「加速已复位」的状态。
-// 反过来（先改参数再广播）会让滑行收尾时把加速期间的旧值当成基线写回去。
+// ⚠️ 滑行与趴下这两条链上各有一个**顺序依赖**：USlideComponent / UCrawlingComponent 都是在
+// 广播 On*Started（也就是这里落锁、复位加速）**之后**才快照 / 改写自己的移动参数，
+// 所以它们拿到的一定是「加速已复位」的状态。
+// 反过来（先改参数再广播）会让收尾时把加速期间的旧值当成基线写回去。
 
 // 移动锁的来源标识。定义放在 .cpp 里，头文件只做声明。
 const FName APlayerCharacter::MovementLockAttack(TEXT("Attack"));
 const FName APlayerCharacter::MovementLockLandRoll(TEXT("LandRoll"));
 const FName APlayerCharacter::MovementLockSlide(TEXT("Slide"));
+const FName APlayerCharacter::MovementLockCrawl(TEXT("Crawl"));
 
 APlayerCharacter::APlayerCharacter() : ABaseCharacter() {
   Inventory = CreateDefaultSubobject<UPlayerInventory>(TEXT("Inventory"));
-  Inventory->InitializeContainer(30);
+  // 容量刻意**不在这里**初始化（原来硬编码的是 30）：构造函数读不到蓝图对
+  // InventoryCapacity 的覆盖，且客户端不该自己造玩法状态——统一挪到 BeginPlay
+  // 的权威端分支，见那里的注释。
 
   AttackComponent =
       CreateDefaultSubobject<UAttackComponent>(TEXT("AttackComponent"));
@@ -58,6 +66,12 @@ APlayerCharacter::APlayerCharacter() : ABaseCharacter() {
   // 这里只负责装配 + 订阅它的生命周期来做移动门控。
   SlideComponent =
       CreateDefaultSubobject<USlideComponent>(TEXT("SlideComponent"));
+
+  // 趴下（匍匐）组件：三段蒙太奇（站着趴下 / 奔跑趴下（可选）/ 回滚站立）、
+  // 姿态与过渡状态、冷却、复制的速度镜像都在它自己身上，
+  // 这里只负责装配 + 订阅它的过渡事件来做移动门控。
+  CrawlingComponent =
+      CreateDefaultSubobject<UCrawlingComponent>(TEXT("CrawlingComponent"));
 }
 
 void APlayerCharacter::BeginPlay() {
@@ -113,6 +127,22 @@ void APlayerCharacter::BeginPlay() {
                   *Who);
   }
 
+  if (CrawlingComponent != nullptr) {
+    CrawlingComponent->OnCrawlTransitionStarted.RemoveDynamic(
+        this, &APlayerCharacter::HandleCrawlTransitionStarted);
+    CrawlingComponent->OnCrawlTransitionStarted.AddDynamic(
+        this, &APlayerCharacter::HandleCrawlTransitionStarted);
+
+    CrawlingComponent->OnCrawlTransitionFinished.RemoveDynamic(
+        this, &APlayerCharacter::HandleCrawlTransitionFinished);
+    CrawlingComponent->OnCrawlTransitionFinished.AddDynamic(
+        this, &APlayerCharacter::HandleCrawlTransitionFinished);
+  } else {
+    WFLOG_WARNING("[移动门控] %s 没有 CrawlingComponent，趴下期间的移动门控不会生效"
+                  "（蓝图里创建该组件的节点需要重连到 GetCrawlingComponent）。",
+                  *Who);
+  }
+
   // 拆成组件之后，这两个是「必须有」的：缺了就等于加速 / 闪现能力整个消失，
   // 属于装配错误，要用 WARNING 让它在日志里立刻可见。
   if (SprintBoostComponent == nullptr) {
@@ -126,8 +156,31 @@ void APlayerCharacter::BeginPlay() {
                   *Who);
   }
 
+  // ===== 背包容器的初始化（只在权威端，且必须在 BeginPlay 而不是构造函数）=====
+  //   1) 构造函数里读 InventoryCapacity 拿到的是 **C++ 默认值**：蓝图子类
+  //      （BP_ThirdPersonCharacter）对类默认值的覆盖要在 C++ 构造函数跑完之后才应用，
+  //      策划在那里改容量会被静默忽略（这是把硬编码 30 提出来时最容易踩的坑）。
+  //   2) 客户端不需要、也不该初始化：Slots 是复制过来的（COND_OwnerOnly），客户端在
+  //      OnRep_Slots 里用 RebuildDerivedState 重建派生状态；而在客户端调
+  //      InitializeContainer（BlueprintAuthorityOnly）会被权威门禁记一条 ERROR。
+  if (Inventory == nullptr) {
+    WFLOG_WARNING("[背包] %s 没有 Inventory 组件，背包不可用。", *Who);
+  } else if (!HasAuthority()) {
+    WFLOG_INFO("[背包] %s 是客户端，不初始化背包：等服务器把 Slots 复制过来后由 "
+               "RebuildDerivedState 重建（容量以服务器为准）。",
+               *Who);
+  } else if (InventoryCapacity > 0) {
+    Inventory->InitializeContainer(InventoryCapacity);
+    WFLOG_INFO("[背包] %s 初始化背包容器：容量 %d 格（InventoryCapacity，可在蓝图类"
+               "默认值里改）。",
+               *Who, InventoryCapacity);
+  } else {
+    WFLOG_WARNING("[背包] %s 的 InventoryCapacity = %d（必须 > 0），背包不会被初始化。",
+                  *Who, InventoryCapacity);
+  }
+
   WFLOG_INFO("[移动门控] %s BeginPlay 完成：本端权威=%d，初始移动模式=%d，"
-             "持有者=[%s]（攻击组件=%d 翻滚组件=%d 滑行组件=%d 加速组件=%d 闪现组件=%d）。",
+             "持有者=[%s]（攻击组件=%d 翻滚组件=%d 滑行组件=%d 趴下组件=%d 加速组件=%d 闪现组件=%d）。",
              *Who, HasAuthority() ? 1 : 0,
              // ⚠️ MovementMode 是 TEnumAsByte，直接写在三元表达式里与 MOVE_None
              // 混用会得到 TEnumAsByte 与 EMovementMode 双向可转换的歧义，
@@ -137,7 +190,8 @@ void APlayerCharacter::BeginPlay() {
                                     : MOVE_None),
              *DescribeMovementLockHolders(), AttackComponent ? 1 : 0,
              LandRollComponent ? 1 : 0, SlideComponent ? 1 : 0,
-             SprintBoostComponent ? 1 : 0, BlinkComponent ? 1 : 0);
+             CrawlingComponent ? 1 : 0, SprintBoostComponent ? 1 : 0,
+             BlinkComponent ? 1 : 0);
 }
 
 void APlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason) {
@@ -159,6 +213,12 @@ void APlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason) {
         this, &APlayerCharacter::HandleSlideStarted);
     SlideComponent->OnSlideFinished.RemoveDynamic(
         this, &APlayerCharacter::HandleSlideFinished);
+  }
+  if (CrawlingComponent != nullptr) {
+    CrawlingComponent->OnCrawlTransitionStarted.RemoveDynamic(
+        this, &APlayerCharacter::HandleCrawlTransitionStarted);
+    CrawlingComponent->OnCrawlTransitionFinished.RemoveDynamic(
+        this, &APlayerCharacter::HandleCrawlTransitionFinished);
   }
 
   Super::EndPlay(EndPlayReason);
@@ -426,4 +486,35 @@ void APlayerCharacter::HandleSlideStarted() {
 // 滑行结束 → 释放软锁
 void APlayerCharacter::HandleSlideFinished() {
   ReleaseMovementLock(MovementLockSlide);
+}
+
+// 趴下过渡开始（站立趴下 / 奔跑趴下 / 回滚站立，**每一次**过渡都走这里）→ **软锁**。
+//
+// 为什么是软锁：趴下与起身的位移来自蒙太奇根运动，硬锁会在落锁那一刻
+// StopMovementImmediately（速度清零）并切成 MOVE_None（丢弃根运动），
+// 动作于是变成原地抖一下；这与翻滚 / 滑行是同一条原因。
+//
+// 为什么锁的是「过渡」而不是整个趴下姿态：趴下是持续状态，玩家趴着还要能爬。
+// 锁只持有到这次过渡的动画收尾（配对的那次 OnCrawlTransitionFinished），
+// 之后 `MovementLockCrawl` 就被移出集合——姿态本身由 `UCrawlingComponent` 的
+// `bIsProne` 与爬行速度表达，不需要占用移动锁。
+//
+// ⚠️ 与滑行同一条顺序依赖：组件是在广播 Started（= 这里落锁 + 复位加速）**之后**
+// 才快照基准速度并写爬行速度的。写反了会把加速期间的速度当成趴下前的基准记下来，
+// 起立时再写回去 = 角色永久带着加速速度（见 bug-027）。
+void APlayerCharacter::HandleCrawlTransitionStarted(ECrawlTransition Transition) {
+  ApplyMovementLock(MovementLockCrawl, /*bDisableMovement=*/false);
+}
+
+// 趴下过渡结束 → 释放软锁。
+//
+// 组件保证 Started / Finished 严格配对（没有动画表现的那次过渡两个事件都不广播），
+// 所以这里正常情况下一定释放的是一把落在集合里的锁；
+// 若日志里出现「并不持有锁」的 WARNING，说明配对被破坏了（见组件的 FinishCrawlTransition）。
+//
+// 注意：起立过渡结束时 bIsProne 才真正变 false，但**速度还原不在这里做**——
+// 那是权威状态，由 UCrawlingComponent::FinishCrawlTransition 在权威端统一处理
+// （客户端自己写速度只会和复制的镜像值打架）。
+void APlayerCharacter::HandleCrawlTransitionFinished(ECrawlTransition Transition) {
+  ReleaseMovementLock(MovementLockCrawl);
 }

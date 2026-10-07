@@ -260,8 +260,16 @@ bool UAttackComponent::AdvanceAttackChain(float PrevSegmentStartTime) {
   //
   // 交叉淡入时长：上一位作者通常把连击窗口摆在挥砍动作「已经打出去」的位置，
   // 所以这一段已经播了多久 = 可以用来做衔接的淡入时长。硬切会看到抽帧。
-  const float FadeInTime = FMath::Clamp(
-      GetWorld()->GetTimeSeconds() - PrevSegmentStartTime, 0.05f, 0.2f);
+  // 上下限是设计器可配参数（ComboBlendInMinTime / ComboBlendInMaxTime）；
+  // 这里再夹一次 [0, ...] 并保证 上界 >= 下界，免得两个值被配反时 Clamp
+  // 拿到反向区间（语义会反转成「恒取下界」）。
+  const float PrevSegmentElapsed =
+      GetWorld()->GetTimeSeconds() - PrevSegmentStartTime;
+  const float BlendInLower = FMath::Max(0.0f, ComboBlendInMinTime);
+  const float BlendInUpper =
+      FMath::Max(BlendInLower, FMath::Max(0.0f, ComboBlendInMaxTime));
+  const float FadeInTime =
+      FMath::Clamp(PrevSegmentElapsed, BlendInLower, BlendInUpper);
 
   WFLOG_INFO("[攻击] 连击切段：M%d/S%d（%s），交叉淡入 %.3fs。宿主 %s",
              NextMontage, NextSection, *Candidate->Montage->GetName(), FadeInTime,

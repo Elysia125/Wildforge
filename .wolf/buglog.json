@@ -732,6 +732,212 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-10-07T19:55:00"
+    },
+    {
+      "id": "bug-034",
+      "timestamp": "2026-10-07T12:10:43.501Z",
+      "error_message": "Incorrect value in code",
+      "file": "Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+      "root_cause": "Had \"Character/Components/LandRollComponent.h\"",
+      "fix": "Changed to \"Character/Components/CrawlingComponent.h\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "h"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-07T12:10:43.501Z"
+    },
+    {
+      "id": "bug-035",
+      "timestamp": "2026-10-07T12:10:44.579Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 7→8 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "h"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-07T12:10:44.579Z"
+    },
+    {
+      "id": "bug-036",
+      "timestamp": "2026-10-07T12:10:57.350Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 9→13 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-07T12:10:57.350Z"
+    },
+    {
+      "id": "bug-037",
+      "timestamp": "2026-10-07T12:11:02.448Z",
+      "error_message": "Null/undefined access in ",
+      "file": "Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-07T12:11:02.448Z"
+    },
+    {
+      "id": "bug-038",
+      "timestamp": "2026-10-07T12:11:02.981Z",
+      "error_message": "Incorrect value in code",
+      "file": "Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+      "root_cause": "Had \"持有者=[%s]（攻击组件=%d 翻滚组件=%d 滑行组件=%d 加速组件=%d 闪现组件=%d）",
+      "fix": "Changed to \"持有者=[%s]（攻击组件=%d 翻滚组件=%d 滑行组件=%d 趴下组件=%d 加速组件=%d ",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-07T12:11:02.981Z"
+    },
+    {
+      "id": "bug-039",
+      "timestamp": "2026-10-07T12:26:00.000Z",
+      "error_message": "c1xx: error C3859: 未能创建 PCH 的虚拟内存 / c1xx: note: 系统返回代码 1455: 页面文件太小，无法完成操作。 / c1xx: fatal error C1076: 编译器限制: 达到内部堆限制。UBA 侧表现为 `UbaSessionServer - Killed process X.cpp (Compile [x64]) (<1ms) - Low on memory (68.8gb/69.6gb)` 无限刷屏，UBT 日志涨到 441MB，且 Build.bat 无任何输出、7 分钟不返回。",
+      "file": "Source/Wildforge/Private/Character/Components/CrawlingComponent.cpp",
+      "root_cause": "根因与代码无关，是**内存不足**：本机物理内存 31.8GB 已被占满（仅剩 3.25GB 可用），页面文件 85.7GB 也只剩 4.32GB。MSVC c1xx 建 PCH 需要一次性提交一大块连续内存，提交失败就报 C3859（虚拟内存）→ C1076（内部堆上限）。雪上加霜的是编辑器的 Live Coding 构建服务器（dotnet UnrealBuildTool.dll ... -LiveCoding -WaitMutex）在失败后**无限重试**：每一轮都往 Log.txt 追加内容（涨到 441MB），一直占用 4GB 内存，并且**一直持有 UBT 互斥量**——所以同期的 `Build.bat` 既不编译也不报错，只是静静地阻塞（外表看起来像命令卡死）。",
+      "fix": "taskkill /PID <那个 dotnet UnrealBuildTool 进程> /T /F 杀掉 Live Coding 构建服务器（编辑器本身留着不动，之后想热重编再按 Ctrl+Alt+F11 即可）。内存随即从 3.25GB 空闲恢复到 7.03GB、页面文件空闲 4.32 → 8.52GB，构建立刻恢复正常。判断要点：崩溃前先看任务管理器/`Get-CimInstance Win32_OperatingSystem` 的 FreePhysicalMemory 与 FreeVirtualMemory，以及 UBT 日志（`%LOCALAPPDATA%/UnrealBuildTool/Log.txt`）尾部是不是被杀循环刷屏——是的话**先杀进程再怪代码**，反复重试一条注定失败的编译只会把内存和磁盘吃光。",
+      "tags": [
+        "build",
+        "memory",
+        "pagefile",
+        "c3859",
+        "c1076",
+        "unreal-build-tool",
+        "live-coding",
+        "mutex",
+        "toolchain"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-07T12:26:00.000Z"
+    },
+    {
+      "id": "bug-040",
+      "timestamp": "2026-10-07T12:32:52.308Z",
+      "error_message": "Incorrect value in code",
+      "file": "C:/Users/xf317/AppData/Local/Temp/wf-crawl-check-msvc.ps1",
+      "root_cause": "Had 'Stop'",
+      "fix": "Changed to 'CrawlingComponent'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ps1"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-10-07T12:33:22.233Z"
+    },
+    {
+      "id": "bug-041",
+      "timestamp": "2026-10-07T12:34:20.829Z",
+      "error_message": "Significant refactor of ",
+      "file": "C:/Users/xf317/AppData/Local/Temp/wf-crawl-check-msvc.ps1",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→8 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ps1"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-07T12:34:20.829Z"
+    },
+    {
+      "id": "bug-042",
+      "timestamp": "2026-10-07T12:35:11.589Z",
+      "error_message": "Significant refactor of ",
+      "file": "CLAUDE.LOCAL.md",
+      "root_cause": "17 lines replaced/restructured",
+      "fix": "Rewrote 31→71 lines (17 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-07T12:35:11.589Z"
+    },
+    {
+      "id": "bug-043",
+      "timestamp": "2026-10-07T13:53:18.000Z",
+      "error_message": "用户反馈：趴下前进、后退等等，动了一段距离会拉回去一点（问是动画的问题还是别的问题）",
+      "file": "Content/Characters/Man/Animations/Anims/UnarmedProne/anim_Prone_*_Loop*.uasset, Content/Characters/Man/Animations/BlendSpace/ProneBlendSpace.uasset, Content/Characters/Man/Animations/Blueprint/ThirdPersonAnimBlueprint.uasset",
+      "root_cause": "资源侧的根运动没有被引擎抹掉，模型自己随根骨骼位移前移、混合空间循环回第 0 帧时轨道重置 = 被拽回；与网络/组件代码无关。(1) 8 个趴下循环（Fwd/Bwd/Left/Right + 4 斜向）被勾了 bEnableRootMotion：用 git lfs smudge 还原 HEAD 版逐字节对比，HEAD=False、工作区=True，两个文件只差 61 字节（就是这条属性）；Idle / StandToProne / ProneToStand / RunToProne 以及站立 Walk/Run 全是 False，而 ProneBlendSpace 用的正好是那 8 个。(2) ThirdPersonAnimBlueprint 的 RootMotionMode 是引擎默认 RootMotionFromMontagesOnly（AnimInstance.cpp:129），ABP 资源里没有覆盖它的痕迹（名字表里没有 RootMotionMode）。(3) 引擎只在「要求提取」且「资源启用了根运动」时才会把根骨骼从姿态里抹掉：AnimationDecompression.cpp:274 与 AnimSequence.cpp:1841 的条件都是 (ExtractionContext.bExtractRootMotion && RootMotionReset.bEnableRootMotion) || bForceRootLock；而 ShouldExtractRootMotion()（AnimInstance.h:433）只在 RootMotionFromEverything / IgnoreRootMotion 时为真，BlendSpacePlayer 也把该值当提取标志传给采样（AnimNode_BlendSpacePlayer.cpp:134）——爬行时既没有蒙太奇在播、模式也不是那两个 → 既不提取也不抹除（引擎枚举注释：NoRootMotionExtraction = Leave root motion in animation）。(4) 已排除网络：WFLOG 证明拥有者客户端确实收到爬行速度（已把权威速度镜像到本端移动组件：MaxWalkSpeed 600.00 -> 150.00），SetBaseMaxSpeed 把蹲伏速度也写成 150（比例 1.0），两端无速度分叉；趴下只落软锁（不碰移动模式/速度），不存在 bug-029 那种服务器停/客户端走的橡皮筋。(5) 附带发现：趴下状态目前能触发加速（日志 13:16:39.966 StartSpeedBoost 基准=150.00 目标=1200.00，此时趴下=1，13:16:53 才起身），与本次拉回无关。",
+      "fix": "尚未改代码（属资源配置，需在编辑器里改）。修法：(A) 首选——ThirdPersonAnimBlueprint 的 Class Defaults 把 Root Motion Mode 从 Root Motion From Montages Only 改成 Ignore Root Motion（提取但不施加）：根骨骼被抹成 RefPose，爬行真正原地播放，位移全部由移动组件按 ProneMaxWalkSpeed=150 给；对服务器权威+预测的联机安全（引擎注释点名 RootMotionFromEverything 不适合联机），副作用是蒙太奇根运动也不再施加（现有 3 个过渡蒙太奇本来没开根运动）。(B) 治本——把 8 条循环在 DCC 里做成原地动画。(C) 注意：单纯取消勾选 Enable Root Motion 无效（抹除条件要求它为 true；关掉反而继续漂移）；且动画编辑器的单节点预览用的是资源自己的开关作提取判据（AnimSingleNodeInstanceProxy.cpp:324），所以在编辑器里勾上就看着正常、进游戏照样漂，这正是那个开关被勾上的原因。(D) 禁止改成 Root Motion From Everything：两端本地播动画相位不同步，提取的位移会分叉，那才会出现真正的网络橡皮筋。验证：改完 ABP 模式重启 PIE 爬行；若仍拉回，说明位移在 pelvis（髋）而非 root 骨骼上，需要把位移提取到 root。",
+      "tags": [
+        "动画",
+        "根运动",
+        "root-motion",
+        "爬行",
+        "趴下",
+        "BlendSpace",
+        "AnimBP",
+        "非网络"
+      ],
+      "related_bugs": [
+        "bug-029",
+        "bug-031"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-07T13:53:18.000Z"
+    },
+    {
+      "id": "bug-044",
+      "timestamp": "2026-10-07T14:26:28.151Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Public/ItemSystem/UI/ItemContainerGrid.h",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 3→5 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "h"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-07T14:26:28.151Z"
+    },
+    {
+      "id": "bug-045",
+      "timestamp": "2026-10-07T14:26:33.608Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→12 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-07T14:26:33.608Z"
     }
   ]
 }

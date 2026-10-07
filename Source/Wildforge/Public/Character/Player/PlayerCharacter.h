@@ -7,6 +7,7 @@
 #include "../BaseCharacter.h"
 #include "Character/Components/AttackComponent.h"
 #include "Character/Components/BlinkComponent.h"
+#include "Character/Components/CrawlingComponent.h"
 #include "Character/Components/LandRollComponent.h"
 #include "Character/Components/SlideComponent.h"
 #include "Character/Components/SprintBoostComponent.h"
@@ -27,12 +28,13 @@
  * | `USprintBoostComponent` | 加速（长按 Shift） | `bBoostActive` + `ReplicatedMaxWalkSpeed{,Crouched}`（拥有者客户端镜像进自己的移动组件） | `Server_StartSpeedBoost` |
  * | `UBlinkComponent` | 闪现（点按 Shift） | `LastBlinkTime` / `BlinkCount` | `Server_Blink` |
  * | `USlideComponent` | 滑行（滑铲） | `bIsSliding` + 逐帧速度曲线 | `Server_StartSlide` |
+ * | `UCrawlingComponent` | 趴下（匍匐） | `bIsProne`（**无 condition**：每个端的动画蓝图都要靠它保持趴下姿态）+ 过渡状态（`COND_OwnerOnly`） | `Server_EnterProne` / `Server_ExitProne` / `Server_ToggleProne` |
  *
- * ## 攻击 / 翻滚 / 滑行期间的移动门控在这里落地
+ * ## 攻击 / 翻滚 / 滑行 / 趴下期间的移动门控在这里落地
  *
  * 订阅攻击组件的 `OnAttackStarted`（禁止移动）/ `OnAttackFinished`（恢复移动）与
- * 翻滚组件、滑行组件的 `On*Started` / `On*Finished`，不对组件的内部逻辑做任何
- * 假设——组件只负责广播「开始了 / 结束了」。
+ * 翻滚组件、滑行组件、趴下组件的 `On*Started` / `On*Finished`，不对组件的内部逻辑
+ * 做任何假设——组件只负责广播「开始了 / 结束了」。
  *
  * ### 两种强度：硬锁与软锁（「边跑边滚 / 边跑边滑」手感的关键）
  *
@@ -41,6 +43,7 @@
  * | `MovementLockAttack` | **硬锁** | `StopMovementImmediately()` + `DisableMovement()`（MOVE_None） |
  * | `MovementLockLandRoll` | **软锁** | 什么都不做（只记账 / 复位加速 / 供 UI 查询） |
  * | `MovementLockSlide` | **软锁** | 同上（滑行的位移是它自己每帧写的速度，硬锁会当场把速度清零） |
+ * | `MovementLockCrawl` | **软锁** | 同上（趴下/起身的位移同样来自蒙太奇根运动，硬锁会把它和速度一起丢掉） |
  *
  * 翻滚为什么必须是软锁（踩过的坑）：
  *
@@ -58,7 +61,7 @@
  * ### 移动锁按「来源」记账，不是布尔、也不是计数
  *
  * 用一个 `TSet<FName>` 记录**谁**正持有锁（`MovementLockAttack` / `MovementLockLandRoll` /
- * `MovementLockSlide`），
+ * `MovementLockSlide` / `MovementLockCrawl`），
  * 再用第二个集合 `MovementDisablingHolders` 记录其中**要求禁用移动组件**的那部分
  * （硬锁）。四条不变式：
  *
@@ -85,6 +88,13 @@ class WILDFORGE_API APlayerCharacter : public ABaseCharacter {
 private:
   UPROPERTY(BlueprintGetter = GetInventory, Category = "Items")
   TObjectPtr<UPlayerInventory> Inventory;
+
+  // 背包容量（格数）。**只在权威端的 BeginPlay 里用来初始化容器**（见 .cpp 的实现注释）。
+  // 为什么不在构造函数里读它：蓝图子类（BP_ThirdPersonCharacter）对类默认值的覆盖是在
+  // C++ 构造函数跑完之后才应用的，构造函数里读到的永远是这里的 30，策划改了不起作用。
+  UPROPERTY(EditDefaultsOnly, Category = "Items",
+            meta = (ClampMin = "1", UIMin = "1"))
+  int32 InventoryCapacity = 30;
 
   // 攻击组件（由构造函数创建，随宿主 Actor 复制）
   UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Attack",
@@ -113,6 +123,14 @@ private:
   UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Slide",
             meta = (AllowPrivateAccess = "true"))
   TObjectPtr<USlideComponent> SlideComponent;
+
+  // 趴下组件（匍匐）：三段蒙太奇（站着趴下 / 奔跑趴下（可选）/ 回滚站立）与
+  // 全部权威入口都在它身上。起手 / 收手在蓝图侧（`Server_EnterProne` /
+  // `Server_ExitProne` / `Server_ToggleProne`），这里只负责「过渡期间的移动门控」
+  // ——落到 `MovementLockCrawl` 的**软锁**上。
+  UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Crawl",
+            meta = (AllowPrivateAccess = "true"))
+  TObjectPtr<UCrawlingComponent> CrawlingComponent;
 
   // 禁用移动前的移动模式，硬锁全部释放后用来恢复（对应「启动移动」操作）。
   // 只在本机本地读写，不复制：恢复的判断依据是 CharacterMovement
@@ -158,6 +176,11 @@ private:
   // 滑行也是软锁：它的位移由组件每帧写速度推进，硬锁的 `StopMovementImmediately()` +
   // `DisableMovement()` 会把速度清零、并在 MOVE_None 下丢弃根运动 = 滑行当场失效。
   static const FName MovementLockSlide;
+  // 趴下同样是软锁：趴下 / 起身的位移由蒙太奇根运动驱动，硬锁的
+  // `StopMovementImmediately()`（清零速度）+ MOVE_None（丢弃根运动）会让动作原地卡住。
+  // 另外趴下是**持续姿态**：锁只在「过渡动画在播」期间持有，动画一结束就释放，
+  // 之后角色以爬行速度自由移动（所以趴着还能爬，是设计内行为）。
+  static const FName MovementLockCrawl;
 
   // 移动锁持有者的一行快照（日志用），空集合返回 "无"
   FString DescribeMovementLockHolders() const;
@@ -214,6 +237,22 @@ protected:
   UFUNCTION()
   void HandleSlideFinished();
 
+  // 趴下过渡开始（**每一次**过渡都会广播：站立趴下 / 奔跑趴下 / 回滚站立）：
+  // 落**软锁**。锁的对象是「这一次过渡动画」，不是整个趴下姿态——
+  // 动画播完就释放，趴着爬行因此不受影响。
+  //
+  // 组件是在这个广播**之后**才写爬行速度的，所以这里复位加速拿到的一定是
+  // 「趴下前的基准速度」（与滑行同一条顺序依赖，写反了会把加速值当基准记下来）。
+  UFUNCTION()
+  void HandleCrawlTransitionStarted(ECrawlTransition Transition);
+
+  // 趴下过渡结束：软锁释放。
+  // ⚠️ 与 Started **严格配对**：组件只在真的广播过 Started 时才广播 Finished
+  // （没有动画表现的那次过渡两边都不广播），所以这里不会出现「释放了一把没落过的锁」
+  // ——那种情况会记 WARNING 并让持有者集合与实际状态错位。
+  UFUNCTION()
+  void HandleCrawlTransitionFinished(ECrawlTransition Transition);
+
 public:
   // Sets default values for this character's properties
   APlayerCharacter();
@@ -247,6 +286,14 @@ public:
   // 蓝图里的起手 / 收手就该连这里。
   UFUNCTION(BlueprintPure, Category = "Slide", meta = (BlueprintThreadSafe))
   USlideComponent *GetSlideComponent() const { return SlideComponent.Get(); }
+
+  // 趴下组件：`Server_EnterProne` / `Server_ExitProne` / `Server_ToggleProne` /
+  // `ForceEndProne` 与几个查询（`IsProne` / `IsCrawlReady` …）都在它身上。
+  // 蓝图里的趴下 / 起身按键就该连这里。
+  UFUNCTION(BlueprintPure, Category = "Crawl", meta = (BlueprintThreadSafe))
+  UCrawlingComponent *GetCrawlingComponent() const {
+    return CrawlingComponent.Get();
+  }
 
   // ===== 移动锁（供能力组件 / 它们的所有者调用）=====
 

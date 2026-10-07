@@ -36,10 +36,12 @@
   先确认是有意删除，是多此一举就撤回。
 - [2026-10-06] **"信息该写到哪个文件"的分流约定已成文**（用户要求）：完整因果 → `buglog.json`；
   提炼后的禁令（一两行 + `见 bug-NNN`）→ 本文件 `## Do-Not-Repeat`；跨会话机制/约定 →
-  `## Key Learnings`；架构取舍 → `- [2026-10-07] 本机内存紧张（物理 ~32GB / 提交上限 ~67GB）：**不要**把 clangd 配成 `--pch-storage=memory` + `-j=16`——单进程提交量会到 25GB+，让 UBA 内存看门狗在构建时杀编译进程（见 bug-020）。改用 `--pch-storage=disk` + 较小的 `-j`。
-
-## Decision Log`；会话流水 → `memory.md`；
+  `## Key Learnings`；架构取舍 → `## Decision Log`；会话流水 → `memory.md`；
   **强制约束 → `CLAUDE.md` / `CLAUDE.LOCAL.md`**。表格见 `CLAUDE.md` 的「上下文文件分工」。
+- [2026-10-07] 本机内存紧张（物理 ~32GB / 提交上限 ~67GB）：**不要**把 clangd 配成 `--pch-storage=memory` + `-j=16`——单进程提交量会到 25GB+，让 UBA 内存看门狗在构建时杀编译进程（见 bug-020）。改用 `--pch-storage=disk` + 较小的 `-j`。
+- [2026-10-07] 用户对自己设计的玩法约束很确定（如「趴下之后不能加速」）。他否定某个方向（「和 X 没关系」）时
+  就接受、把 X 移出假设集，但**仍要用日志/源码核实**——同一次排查里日志反而证明了趴下状态确实能触发加速
+  （`StartSpeedBoost` 基准=150→目标 1200，此时趴下=1）：**设计意图 ≠ 当前实现**，两者分开讲，别顺着意图改方向。见 bug-043。
 
 ## Key Learnings
 
@@ -256,6 +258,40 @@
   `FTickTaskLevel::RemoveTickFunction` / `AddTickFunction` **改 tick 列表**
   （`TickTaskManager.cpp:2434-2456`），而「滑行 / 蓄力这类动作的收尾」恰好常常发生在自己的 Tick 里。
   要么常开 Tick + 开头早退（`USlideComponent` 的做法），要么用延后手段（`SetComponentTickEnabledAsync`）。
+- **本项目的实际构建链是 MSVC `cl.exe`，不是 clang-cl**：`Intermediate/.../<文件>.cpp.obj.rsp` 是
+  MSVC 形态（`/Yu` `/Fp` `/experimental:log` `/sourceDependencies`，且**没有** `/clang:`、`/imsvc`），
+  2.5GB 的 SharedPCH `.pch` 也是 MSVC 造的（magic `VCPCH0`）。把这份 rsp 交给 clang-cl 会**在解析源码之前**
+  直接死在 `input is not a PCH file: ... file doesn't start with precompiled file magic`——
+  看着像编译失败，其实一个源码错误都没查。clang-cl 在本项目里只服务 clangd（clangd 自建 preamble、
+  忽略 `/Yu`/`/Fp`，所以 IntelliSense 一直是好的）。
+  ⇒ 想做「真编译级」单 TU 检查，用 **`cl.exe @obj.rsp /Zs`**（保留 `/Yu`+`/Fp`），不要用 clang-cl。见 bug-039。
+- **`cl.exe @obj.rsp /Zs` 是本机最省的单 TU 检查**：`/Zs` 只做语法检查、不写 `.obj`，所以 `/c`、`/Fo…`
+  留着也无害（不产出文件）；cwd 必须是引擎源码目录（**`Shared.rsp` 里的 `/I` 是相对路径**）。
+  仍要做**对照**：字节级复制源码（`Copy-Item`）后用 `AppendAllText`（UTF-8 无 BOM）追加一行
+  `int WfSyntaxProbe = ;`，必须精确报出那 **1** 个错误（`PROBE_ERRORS=1`，行号 = 原文件行数+1）
+  才说明这条检查真的在编译该 TU。
+- **UHT 一重跑，clangd 就可能对「包括没改过的文件」报 `unknown type name 'FID_<file>_<line>_DELEGATE'`**：
+  这是**虚警**（见 bug-014）。判据有两条：① 报错的那份 `*.generated.h` 里其实**有**该行号的宏定义
+  （`grep FID_.*_<line>_DELEGATE`）；② **未被本次改动触及**的文件（如 `LandRollComponent.cpp`）
+  会一起报同样的错。此时不要改代码，让 clangd 自己重解析（重开文件 / 等索引刷新）即可。
+- **序列动画的根运动只有两个下场：被提取，或者留在姿态里**——抹掉根骨骼的唯一条件是
+  `(bExtractRootMotion && bEnableRootMotion) || bForceRootLock`（`AnimationDecompression.cpp:274` 运行时压缩数据路径、
+  `AnimSequence.cpp:1841` 编辑器 raw 路径），而 `bExtractRootMotion = ShouldExtractRootMotion()`
+  只看**动画蓝图**的 Root Motion Mode（`AnimInstance.h:433`：仅 `RootMotionFromEverything` / `IgnoreRootMotion` 为真；
+  序列播放器 `AnimNode_SequencePlayer.cpp:137`、混合空间播放器 `AnimNode_BlendSpacePlayer.cpp:134` 都传它）。
+  ⇒ 在默认的 `RootMotionFromMontagesOnly` 下，**带位移的序列（爬行这类循环动画）位移会原样留在姿态里**：
+  模型随根骨骼前移、混合空间循环回第 0 帧时轨道重置 = 「走一段被拉回去一点」，而且每个方向一条动画就每个方向都拉。
+  四档语义见 `AnimEnums.h:29-44`：`NoRootMotionExtraction`＝Leave root motion in animation（漂移）、
+  `IgnoreRootMotion`＝提取但不施加（真原地）、`RootMotionFromEverything`＝提取并施加（引擎注释点名**不适合联机**）、
+  `RootMotionFromMontagesOnly`＝联机友好但序列不提取。见 bug-043。
+- **动画编辑器预览和游戏里跑的不是同一套根运动判据**：单节点预览把资源自己的 `bEnableRootMotion` 当提取标志
+  （`AnimSingleNodeInstanceProxy.cpp:324`），AnimBP 走的是模式判据 `ShouldExtractRootMotion()`。
+  所以「在编辑器里勾上 Enable Root Motion 就看着正常」是预览现象，进游戏该漂还是漂——排障时别拿预览当证据。见 bug-043。
+- **蓝图子类对类默认值的覆盖是在 C++ 构造函数跑完之后才应用的**：在构造函数里读自己的 `UPROPERTY`
+  （如 `Inventory->InitializeContainer(InventoryCapacity)`）拿到的永远是 **C++ 初始值**——BP 里改的
+  类默认值不起作用，而且不报任何错（静默失效）。要把硬编码值做成「策划可改」，消费点必须挪到属性
+  初始化之后（`PostInitializeComponents` / `BeginPlay`）。客户端实例会跑同一个构造函数，所以搬家时
+  别忘了加 `HasAuthority()` 判据——否则客户端调 `BlueprintAuthorityOnly` 函数会被权威门禁记 ERROR。
 
 ## Do-Not-Repeat
 
@@ -389,6 +425,23 @@
   `TickTaskManager.cpp:2434-2456`）：需要逐帧推进的组件用「常开 Tick + 开头早退」，不要动态开关。
 - [2026-10-07] **「本端进度 / 曲线」不要用复制的服务器时间戳算**：各端 World 时间起点不同，
   收到表现同步时自己记一份本端起算时间（`USlideComponent::RuntimeState.LocalSlideStartTime`）。
+- [2026-10-07] **看到 clangd 报 `unknown type name 'FID_..._<line>_DELEGATE'`（或 `a type specifier is required`）
+  时不要改代码**：UHT 刚重跑过的话这是虚警——先查那份 `*.generated.h` 里是否有该行号的宏定义，
+  再看**没改过的文件**是否也一起报；是就等 clangd 重解析。见 bug-014。
+- [2026-10-07] **不要把本项目的 `obj.rsp` 交给 clang-cl 做单 TU 检查**：那是 MSVC 形态的 rsp，
+  它配套的 `.pch` 是 cl.exe 造的，clang 会报 `file doesn't start with precompiled file magic`
+  并**在解析源码前退出**（等于什么都没检查）。要用 `cl.exe @obj.rsp /Zs`。见 bug-039。
+- [2026-10-07] **内存吃紧（编辑器 + clangd 常驻）时不要反复重跑注定失败的 UBT 构建**：`cl.exe` 会报
+  C3859 / C1076，而 UBA 会**无限重试**——每轮都往 `Log.txt` 追加（实测涨到 441MB），一直占 4GB 内存，
+  并且**始终持有 UBT 互斥量**，于是并行的 `Build.bat` 既不编译也不报错、只是静静阻塞（看起来像命令卡死）。
+  先看 `FreePhysicalMemory` / `FreeVirtualMemory`，必要时 `taskkill` 掉卡住的 `UnrealBuildTool` 进程。见 bug-039。
+- [2026-10-07] **不要用「取消勾选动画的 Enable Root Motion」去消除序列的漂移/回拉**：抹掉根骨骼的条件是
+  `bExtractRootMotion && bEnableRootMotion`（`AnimationDecompression.cpp:274`），关掉这个开关就是**永远不抹**，
+  游戏里照样漂；正确做法是改动画蓝图的 Root Motion Mode（想原地就 `Ignore Root Motion`）或把动画本身做成原地。
+  见 bug-043。
+- [2026-10-07] **不要用 `Root Motion From Everything` 做联机项目的位移来源**：引擎自己的枚举注释就写着
+  「not suitable for network multiplayer setups」——服务器与客户端各自本地播动画、相位不同步，提取出来的位移
+  会在两端分叉，等于把 bug-029 的橡皮筋请回来。速度驱动的位移交给移动组件（本项目爬行＝`ProneMaxWalkSpeed`）。见 bug-043。
 
 ## Decision Log
 
@@ -536,3 +589,29 @@
   波及所有蓝图角色的组件引用与 `FindComponentByClass` 调用点，收益不抵代价；② 让客户端按自己的时钟
   跑同一套曲线——相位差（RTT/2）与时钟起点差异会让它比镜像值更差，而且一旦本地提前结束就变成持续偏差。
   保留 `bMirrorSpeedOnOwningClient=false` 只是为了双人 PIE 里做对照（关掉就能看到纠正次数暴涨）。
+- [2026-10-07] **趴下（`UCrawlingComponent`）改速度只走 `USprintBoostComponent::SetBaseMaxSpeed()`**，
+  不自己快照 / 直写 `MaxWalkSpeed`（那是 Do-Not-Repeat 里明令禁止的第二份快照）。它会把新速度同时写进
+  复制镜像（`ReplicatedMaxWalkSpeed{,Crouched}`），拥有者客户端的预测因此一起变慢，不橡皮筋；
+  宿主没有该组件时才降级为直写并记 WARNING（说明客户端不会跟随）。抓基准速度必须在**复位加速之后**，
+  并用 `bProneBaseSpeedCaptured` 显式标志区分「还没抓过」与「基准真的是 0」。
+- [2026-10-07] **趴下用两个标志，不合并**：`bIsProne`（姿态，**不带 condition**，因为每个端的动画蓝图
+  都要靠它把角色保持在趴下姿态）+ `bCrawlTransitionActive`（过渡状态，`COND_OwnerOnly`）。
+  移动锁（`MovementLockCrawl`，软锁）只锁「这一次过渡动画」，动画 BlendOut/结束即释放——
+  趴着仍能以爬行速度移动。合并成一个标志会让「趴着发呆」和「正在过渡」互相污染（bug-030 的形态）。
+- [2026-10-07] **蒙太奇播不出来时的取舍按能力分别定**：趴下**保留**姿态与爬行速度（姿态是目的，
+  没动画也该趴下去），起立没动画则直接站起并还原速度；这与 `ULandRollComponent`「播不出来就回滚」相反，
+  也与 `USlideComponent`「蒙太奇为空是合法状态」同类。两个方向的差异都写进了头文件注释，
+  免得下一个人以为是漏改。
+- [2026-10-07] **趴下/起身的移动门控用软锁，且不加「能力互斥」逻辑**：跨能力排斥（翻滚 / 攻击 / 滑行
+  期间不能趴下）**不写进组件**，交给外部调用者用 `bCanCrawl`（总开关）与移动锁协调，
+  组件之间保持互不引用；这是本项目一贯的组件解耦方向。
+- [2026-10-07] **调参数值不放进 GameMode**：`AGameModeBase` 在联机里是服务器专属对象（客户端
+  `GetWorld()->GetAuthGameMode()` 恒为 null，也没有复制通道），而本项目的能力/移动参数必须在两端同源
+  （移动组件不复制参数，见 bug-031），所以能力参数留在各自组件的 `UPROPERTY` 上；要集中调参就用
+  DataAsset / `UDeveloperSettings`（与 `UItemSystemSettings` 同一路子）。GameMode 只留给「一局 / 一张地图
+  的规则」（昼夜、刷怪、掉落、复活…），且推荐只持有 DataAsset 引用、数值放资产里；客户端要展示的运行态
+  必须经 GameState 复制。据此外提了 ②类硬编码：背包容量 → `APlayerCharacter::InventoryCapacity`
+  （**权威端 BeginPlay 读取**，客户端等 Slots 复制）、网格列数 → `UItemContainerGrid::SlotsPerRow`
+  （`InitializeGrid` 的 `InSlotsPerRow <= 0` = 沿用设计器值，调用方不再传 5）、连击切段淡入 →
+  `UAttackComponent::ComboBlendInMinTime/MaxTime`。注意 RPC `_Validate` 里的上限（10000 / 60s / 100000）
+  **不属于**这一类：那是协议可信边界，留在实现旁边。

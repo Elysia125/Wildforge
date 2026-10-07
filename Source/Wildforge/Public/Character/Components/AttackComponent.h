@@ -106,6 +106,18 @@ public:
             meta = (ClampMin = "0", UIMin = "0"))
   float ComboMinInterval = 0.15f;
 
+  // 连击切段的交叉淡入时长区间（秒）：切段时取「上一段已经播了多久」，再夹到
+  // [ComboBlendInMinTime, ComboBlendInMaxTime]。硬切会看到抽帧，所以至少给一点淡入；
+  // 上限防止连击窗口摆得靠后时淡入过长、动作发肉（实测参考：窗口约在第 0.7s 处，
+  // 夹在 0.05~0.2s 之间手感最好）。这是**表现参数**，两端各自用同一份类默认值。
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack",
+            meta = (ClampMin = "0", UIMin = "0", ForceUnits = "s"))
+  float ComboBlendInMinTime = 0.05f;
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack",
+            meta = (ClampMin = "0", UIMin = "0", ForceUnits = "s"))
+  float ComboBlendInMaxTime = 0.2f;
+
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack")
   float AttackDamage = 10.0f;
 

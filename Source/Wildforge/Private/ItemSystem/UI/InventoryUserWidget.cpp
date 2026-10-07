@@ -140,7 +140,7 @@ void UInventoryUserWidget::InitializeInventory(UItemContainer* InContainer)
 
 	if (ItemContainerGrid && ItemContainer)
 	{
-		ItemContainerGrid->InitializeGrid(ItemContainer, 5);
+		ItemContainerGrid->InitializeGrid(ItemContainer); // 每行个数用网格控件自己的 SlotsPerRow
 	}
 }
 

@@ -164,3 +164,76 @@
 | 19:55 | 顺手核对同类代码，又发现并修掉同一族缺陷（记 **bug-033**）：五处「表现同步」Multicast 的 `_Implementation` 里加了「非权威端就 ERROR + return」的门禁，而客户端收到 Multicast 时必然是非权威端 → 加速/闪现/攻击的表现只在服务器与主机画面上存在。删掉 `USprintBoostComponent` ×2（Multicast_PlaySprintMontage/Effects）、`UBlinkComponent` ×2（Multicast_PlayBlinkMontage/Effects）、`UAttackComponent` ×1（Multicast_PlayAttackEffects）的门禁，并在三个头文件的 Multicast 声明处写明规则（引擎依据：`AActor::GetFunctionCallspace`，Actor.cpp:5500-5519 服务器 = Local\|Remote、客户端 = Local 且不再转发；只有 BlueprintAuthorityOnly 才 Absorbed，:5429-5432）。翻滚与滑行组件本来就是正确写法，是本条的参照物 | Private/Character/Components/{SprintBoost,Blink,Attack}Component.cpp, Public/Character/Components/{SprintBoost,Blink,Attack}Component.h | 完成 | ~9k |
 | 20:00 | 验证 bug-033 的改动：UHT `-WarningsAsErrors` `Result: Succeeded`（改头文件必须重跑）；`SprintBoostComponent` / `BlinkComponent` / `AttackComponent` / `SlideComponent` / `PlayerCharacter` 五份 obj.rsp 走 clang-cl `-fsyntax-only` 全部 **EXIT=0、零输出**；三个改过代码的 TU 各做注入对照（字节复制 + 追加 `int WfSyntaxProbe = ;`）均**精确报 1 个错误**（第 990 / 431 / 665 行） | Intermediate/.../*.cpp.obj.rsp | 通过（未链接） | ~4k |
 | 20:05 | 上下文：buglog 新增 bug-033（33 条，JSON 已验证）；anatomy 给 AttackComponent.cpp / BlinkComponent.cpp / SprintBoostComponent.cpp 三条补「Multicast 不加权威门禁」的结论 | .wolf/ | 完成 | ~3k |
+
+## Session: 2026-10-07 20:00
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-07 20:01
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:09 | Created Source/Wildforge/Public/Character/Components/CrawlingComponent.h | — | ~4821 |
+| 20:09 | Created Source/Wildforge/Private/Character/Components/CrawlingComponent.cpp | — | ~9593 |
+
+## Session: 2026-10-07 20:10
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:10 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | 2→3 lines | ~41 |
+| 20:10 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | 7→8 lines | ~120 |
+| 20:10 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | 1→2 lines | ~38 |
+| 20:10 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | 2→2 lines | ~34 |
+| 20:10 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | expanded (+8 lines) | ~112 |
+| 20:10 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | 2→7 lines | ~71 |
+| 20:10 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | expanded (+16 lines) | ~156 |
+| 20:10 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | expanded (+8 lines) | ~111 |
+| 20:10 | Edited Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp | 9→13 lines | ~179 |
+| 20:10 | Edited Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp | 11→13 lines | ~147 |
+| 20:10 | Edited Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp | expanded (+6 lines) | ~80 |
+| 20:11 | Edited Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp | added 1 condition(s) | ~234 |
+| 20:11 | Edited Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp | "持有者=[%s]（攻击组件=%d 翻滚组件=%d " → "持有者=[%s]（攻击组件=%d 翻滚组件=%d " | ~20 |
+| 20:11 | Edited Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp | 3→4 lines | ~65 |
+| 20:11 | Edited Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp | added 1 condition(s) | ~146 |
+| 20:11 | Edited Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp | modified HandleSlideFinished() | ~322 |
+| 20:31 | Created C:/Users/xf317/AppData/Local/Temp/wf-crawl-check.ps1 | — | ~835 |
+| 20:31 | Created C:/Users/xf317/AppData/Local/Temp/wf-crawl-check-msvc.ps1 | — | ~843 |
+| 20:32 | Edited C:/Users/xf317/AppData/Local/Temp/wf-crawl-check-msvc.ps1 | 1→2 lines | ~20 |
+| 20:32 | Edited C:/Users/xf317/AppData/Local/Temp/wf-crawl-check-msvc.ps1 | 2→2 lines | ~29 |
+| 20:33 | Edited C:/Users/xf317/AppData/Local/Temp/wf-crawl-check-msvc.ps1 | 2→3 lines | ~42 |
+| 20:33 | Edited C:/Users/xf317/AppData/Local/Temp/wf-crawl-check-msvc.ps1 | param() → IsNullOrWhiteSpace() | ~33 |
+| 20:33 | Edited C:/Users/xf317/AppData/Local/Temp/wf-crawl-check-msvc.ps1 | added 1 condition(s) | ~63 |
+| 20:34 | Edited C:/Users/xf317/AppData/Local/Temp/wf-crawl-check-msvc.ps1 | added 1 condition(s) | ~135 |
+| 20:09 | 实现 UCrawlingComponent：三段蒙太奇（站立趴下 / 奔跑趴下(可选，缺省回退站立段) / 回滚站立）、Server RPC + Multicast 表现同步、每端表现标志与兜底定时器、爬行速度经 SprintBoost 的 SetBaseMaxSpeed | Source/Wildforge/{Public,Private}/Character/Components/CrawlingComponent.{h,cpp} | 完成 | ~12000 |
+| 20:11 | 把趴下组件接入 APlayerCharacter：组件成员 + GetCrawlingComponent、订阅 OnCrawlTransitionStarted/Finished、MovementLockCrawl 软锁、BeginPlay/EndPlay 与日志表 | Source/Wildforge/{Public,Private}/Character/Player/PlayerCharacter.{h,cpp} | 完成 | ~3000 |
+| 20:26 | 构建卡死排查：编辑器 Live Coding 的 UnrealBuildTool 因内存与页面文件耗尽（c1xx C3859 / C1076）无限重试，UBA 刷屏把日志写到 441MB 并一直占住 UBT 互斥量（并行 Build.bat 静默阻塞） | %LOCALAPPDATA%/UnrealBuildTool/Log.txt | taskkill 掉该进程后恢复（空闲 3.25→7.03GB） | ~5000 |
+| 20:27 | UHT（-WarningsAsErrors）通过：确认 Multicast / Server RPC 的 _Implementation 用裸枚举类型；compile_commands.json 重写 | Intermediate/Build/Win64/UnrealEditor/Inc/Wildforge/UHT/CrawlingComponent.generated.h | 通过 | ~1200 |
+| 20:35 | 单 TU 真编译级检查（cl.exe @obj.rsp /Zs + 对照探针，先证明检查真的在编该 TU）：CrawlingComponent.cpp 与 PlayerCharacter.cpp 均 0 错误 | /tmp/wf-msvc-check.log, /tmp/wf-pc-check4.log | 通过 | ~3500 |
+| 20:40 | .wolf 更新：buglog 记录 bug-039（内存耗尽导致构建 livelock + clang-cl 读不了 MSVC PCH）、cerebrum 补 Key Learnings / Do-Not-Repeat / Decision Log | .wolf/{buglog.json,cerebrum.md,memory.md} | 完成 | ~2500 |
+| 20:35 | Edited CLAUDE.LOCAL.md | expanded (+40 lines) | ~881 |
+| 20:35 | Session end: 25 writes across 5 files (PlayerCharacter.h, PlayerCharacter.cpp, wf-crawl-check.ps1, wf-crawl-check-msvc.ps1, CLAUDE.LOCAL.md) | 3 reads | ~12198 tok |
+
+## Session: 2026-10-07 21:40
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:55 | 诊断「趴下前进/后退走一段被拉回」：查日志（Saved/Logs/Wildforge.log）+ 引擎源码 + uasset 取证，认定是动画资源问题——ProneBlendSpace 引用的 8 个 anim_Prone_*_Loop 被改成 bEnableRootMotion=True（HEAD=False，经 git lfs smudge 逐字节比对），而 ThirdPersonAnimBlueprint 用引擎默认 RootMotionFromMontagesOnly ⇒ ShouldExtractRootMotion()=false ⇒ 根骨骼位移留在姿势里、循环时回弹；日志已排除网络（权威速度已镜像 600→150） | Content/Characters/Man/Animations/Anims/UnarmedProne/*.uasset, Content/Characters/Man/Animations/BlendSpace/ProneBlendSpace.uasset, Content/Characters/Man/Animations/Blueprint/ThirdPersonAnimBlueprint.uasset, .wolf/buglog.json, .wolf/cerebrum.md | 结论=动画问题；修复（ABP Root Motion Mode 改 Ignore Root Motion，或 DCC 重导原位动画）需用户在编辑器执行，尚未改任何代码；已记 bug-043 | ~60k |
+
+## Session: 2026-10-07 22:12
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:17 | 设计咨询：盘点项目内硬编码数值的归属（哪些该进 GameMode）——给出判据（GameMode 服务器专属+无复制通道，客户端预测/UI 需要与按图变化性两条筛子）与四类归属表 | 只读，未改文件 | 结论：能力参数留组件/DataAsset、GameMode 只装「每局规则」并推荐持 DataAsset 引用；顺带指出 BP_FirstPersonGameMode 才是当前生效的 GameMode | ~33k |
+| 22:26 | Edited Source/Wildforge/Public/ItemSystem/UI/ItemContainerGrid.h | 3→5 lines | ~76 |
+| 22:26 | Edited Source/Wildforge/Private/ItemSystem/UI/ItemContainerGrid.cpp | 3→5 lines | ~59 |
+| 22:26 | Edited Source/Wildforge/Private/ItemSystem/UI/InventoryUserWidget.cpp | inline fix | ~21 |
+| 22:26 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | expanded (+12 lines) | ~198 |
+| 22:26 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | expanded (+8 lines) | ~154 |
+| 22:26 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | expanded (+7 lines) | ~111 |
+| 22:26 | Edited Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp | 2→4 lines | ~52 |
+| 22:26 | Edited Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp | added 3 condition(s) | ~287 |
+| 22:24 | 提取 ②类硬编码（3 处）：背包 30 → APlayerCharacter::InventoryCapacity（EditDefaultsOnly，改到权威端 BeginPlay 读，构造函数里读会被蓝图类默认值覆盖静默忽略）；网格 5 → InitializeGrid(InSlotsPerRow=0 表示沿用控件 SlotsPerRow)；连击淡入 0.05/0.2 → AttackComponent::ComboBlendInMin/MaxTime（取值时再夹 + 保证上界>=下界防配反） | PlayerCharacter.h/.cpp, ItemContainerGrid.h/.cpp, InventoryUserWidget.cpp, AttackComponent.h/.cpp | 已改完 | ~25k |
+| 22:27 | 编译验证：GenerateClangDatabase 刷新 UHT（4 files written）+ 关掉编辑器状态下的全量构建 | UHT / UBT | Result: Succeeded（13 actions，4 个改动 .cpp 全编 + Link UnrealEditor-Wildforge.dll） | ~8k |
+| 22:28 | 文档同步：anatomy.md 修复被 post-write hook 覆盖掉的 7 条描述并写入改动；cerebrum Key Learnings 记「蓝图类默认值覆盖在 C++ 构造函数之后才应用」+ Decision Log 记「调参数值不放进 GameMode」的归属结论 | .wolf/anatomy.md, .wolf/cerebrum.md | 已更新 | ~12k |
+| 22:28 | Session end: 8 writes across 7 files (ItemContainerGrid.h, ItemContainerGrid.cpp, InventoryUserWidget.cpp, AttackComponent.h, AttackComponent.cpp) | 11 reads | ~26918 tok |

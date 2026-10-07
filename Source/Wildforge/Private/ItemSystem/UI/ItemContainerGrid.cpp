@@ -70,7 +70,9 @@ void UItemContainerGrid::InitializeGrid(UItemContainer *InContainer,
     UnbindFromContainer();
     Container = InContainer;
   }
-  SlotsPerRow = FMath::Max(1, InSlotsPerRow);
+  // InSlotsPerRow <= 0 = 不覆盖，沿用控件上配置的 SlotsPerRow（WBP 设计器里配的每行个数；
+  // 调用方硬编码一个数字会把它悄悄冲掉）。统一夹到 >= 1：LayoutSlots 拿它当除数。
+  SlotsPerRow = FMath::Max(1, InSlotsPerRow > 0 ? InSlotsPerRow : SlotsPerRow);
 
   BindToContainer();
   RefreshGrid();

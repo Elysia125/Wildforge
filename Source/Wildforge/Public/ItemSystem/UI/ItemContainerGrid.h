@@ -15,9 +15,11 @@ class WILDFORGE_API UItemContainerGrid : public UUserWidget
     GENERATED_BODY()
 
 public:
-    /** 初始化网格：关联容器、设置每行个数，并立即刷新 */
+    /** 初始化网格：关联容器、设置每行个数，并立即刷新。
+     *  InSlotsPerRow <= 0（默认）表示沿用控件上配置的 SlotsPerRow —— 也就是 WBP 设计器里
+     *  设的每行个数；调用方不需要、也不应该再硬编码列数。 */
     UFUNCTION(BlueprintCallable, Category = "ItemContainerGrid")
-    void InitializeGrid(UItemContainer* InContainer, int32 InSlotsPerRow = 5);
+    void InitializeGrid(UItemContainer* InContainer, int32 InSlotsPerRow = 0);
 
     /** 根据容器数据重建：保证槽位数量与布局，并让每个槽位重新绑定来源 + 拉一次数据。
      *  容器内容变化时会自动走 HandleContainerChanged（结构）+ 各槽位自己的订阅（内容），
