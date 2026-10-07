@@ -1,4 +1,6 @@
 #pragma once
+#include "Animation/AnimMontage.h"
+
 #include "AttackMontageData.generated.h"
 
 USTRUCT(BlueprintType)
@@ -11,5 +13,5 @@ struct FAttackMontageData {
 
   // 起始的 Section 名字，默认为 "Default"
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack")
-  TArray<FName> SectionNames = { NAME_None };
+  TArray<FName> SectionNames = {NAME_None};
 };

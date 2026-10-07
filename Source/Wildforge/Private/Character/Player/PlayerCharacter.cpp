@@ -8,14 +8,18 @@
 APlayerCharacter::APlayerCharacter() : ABaseCharacter() {
   Inventory = CreateDefaultSubobject<UPlayerInventory>(TEXT("Inventory"));
   Inventory->InitializeContainer(30);
-  AttackComponent = CreateDefaultSubobject<UAttackComponent>(TEXT("AttackComponent"));
+  AttackComponent =
+      CreateDefaultSubobject<UAttackComponent>(TEXT("AttackComponent"));
+  LandRollComponent =
+      CreateDefaultSubobject<ULandRollComponent>(TEXT("LandRollComponent"));
 }
 
 void APlayerCharacter::BeginPlay() {
   Super::BeginPlay();
 
   // 订阅攻击组件的两个通知。
-  // 判断「当前是否已经绑过」再绑，避免蓝图里重复调用 BeginPlay 之类的场景重复注册
+  // 判断「当前是否已经绑过」再绑，避免蓝图里重复调用 BeginPlay
+  // 之类的场景重复注册
   // （动态多播内部本来也会按对象+函数去重，这里只是显式表达意图）。
   if (AttackComponent == nullptr) {
     WFLOG_WARNING("%s 没有 AttackComponent，攻击期间的移动门控不会生效。",
@@ -64,7 +68,8 @@ void APlayerCharacter::HandleAttackStarted() {
   Movement->DisableMovement();
 
   WFLOG_INFO("[攻击] %s 攻击开始：禁止移动（原移动模式 %d，本端权威=%d）。",
-             *GetName(), static_cast<int32>(MovementModeBeforeAttack.GetValue()),
+             *GetName(),
+             static_cast<int32>(MovementModeBeforeAttack.GetValue()),
              HasAuthority() ? 1 : 0);
 }
 
@@ -96,5 +101,6 @@ void APlayerCharacter::HandleAttackFinished() {
   Movement->StopMovementImmediately();
 
   WFLOG_INFO("[攻击] %s 攻击结束：恢复移动（移动模式 %d，本端权威=%d）。",
-             *GetName(), static_cast<int32>(RestoreMode), HasAuthority() ? 1 : 0);
+             *GetName(), static_cast<int32>(RestoreMode),
+             HasAuthority() ? 1 : 0);
 }

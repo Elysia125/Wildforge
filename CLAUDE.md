@@ -118,3 +118,4 @@ Wildforge 是一个 **Unreal Engine 5.7** 的第一人称游戏（源自 First P
      其实现即 `GetOwner()->HasAuthority()`（含空指针保护）。
    - 新增权威修改函数时，照抄 `UItemContainer.cpp` 顶部 `WF_CONTAINER_AUTHORITY_GUARD(RetVal)` 的门禁模式
      （非权威端记一条 `WFLOG_ERROR` 并安全返回），让同类误用立刻可见而不是静默失效。
+  5. **编写代码时请添加详细的日志，而不是一条日志不写。**
