@@ -468,6 +468,190 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-10-07T14:20:00"
+    },
+    {
+      "id": "bug-023",
+      "timestamp": "2026-10-07T15:52:00",
+      "error_message": "拆分加速/闪现组件后三处编译错误：(1) SprintBoostComponent.cpp(222,9) error: use of undeclared identifier 'GetWorldTimerManager'；(2) LandRollComponent.cpp(121,29) error: member access into incomplete type 'FTimerManager' + (210,3) unknown type name 'FTimerDelegate'；(3) BlinkComponent.cpp(79,23) error: out-of-line definition of 'BlinkForward_Implementation' does not match any declaration in 'UBlinkComponent'；另 PlayerCharacter.cpp(91,37) error: conditional expression is ambiguous, 'TEnumAsByte<enum EMovementMode>' can be converted to 'EMovementMode' and vice versa",
+      "file": "Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp, Source/Wildforge/Private/Character/Components/LandRollComponent.cpp, Source/Wildforge/Public/Character/Components/BlinkComponent.h, Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+      "root_cause": "四处都是「把代码从 AActor 搬到 UActorComponent」时带出来的类型/接口错位：(1) GetWorldTimerManager() 是 AActor 的方法，组件上没有——旧实现写在 ABaseCharacter 里所以能编；(2) LandRollComponent 重写时丢掉了 #include \"TimerManager.h\"（Engine/World.h 只前置声明 FTimerManager），于是 GetTimerManager()/FTimerDelegate 都是 incomplete/unknown；(3) BlinkForward 从 ABaseCharacter 的 UFUNCTION(BlueprintCallable) 改成组件的 UFUNCTION(BlueprintNativeEvent)，于是 _Implementation 的声明改由 UHT 生成——它对枚举参数生成的是裸 ECollisionChannel，头文件里写 TEnumAsByte<ECollisionChannel> 就对不上了（旧写法没有生成声明，所以隐式转换够用）；(4) MovementMode 是 TEnumAsByte，在 `cond ? MovementMode : MOVE_None` 里两个方向都能隐式转换，三元表达式类型有歧义。",
+      "fix": "(1) 组件里一律用 World->GetTimerManager()（GetWorld() 返回 UWorld*）；(2) 补回 #include \"TimerManager.h\"；(3) 头文件里把枚举参数写成裸 ECollisionChannel（并保持默认值与 `=` 同行）；(4) 统一 .GetValue() / 直接取 ECollisionChannel，不要拿裸枚举与 TEnumAsByte 混进同一个三元表达式。验证：UHT -WarningsAsErrors 通过 + 5 个 .cpp 走 clang-cl @obj.rsp -fsyntax-only 全 exit=0，并做了注入错误对照实验确认检查真的在编这些 TU。",
+      "tags": [
+        "compile-error",
+        "actorcomponent",
+        "refactor",
+        "getworldtimermanager",
+        "ftimermanager",
+        "blueprintnativeevent",
+        "tenumasbyte",
+        "uht-generated-declaration",
+        "conditional-expression-ambiguous"
+      ],
+      "related_bugs": [
+        "bug-009",
+        "bug-016"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-07T15:52:00"
+    },
+    {
+      "id": "bug-024",
+      "timestamp": "2026-10-07T15:52:00",
+      "error_message": "UHT: E:\\...\\SprintBoostComponent.h(325): Error: BlueprintReadOnly should not be used on private members",
+      "file": "Source/Wildforge/Public/Character/Components/SprintBoostComponent.h",
+      "root_cause": "把 bDriveOwnerLocally 放在 private: 区段里，又给它加了 UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, ...)。UHT（以 -WarningsAsErrors 运行）不允许私有成员暴露给蓝图读取——BlueprintReadOnly/BlueprintReadWrite 的语义就是「蓝图可见」，与 private 冲突。",
+      "fix": "把该 UPROPERTY 挪到 protected: 区段（并在注释里写明为什么不放 private，避免下次又被搬回去）。替代方案是去掉 BlueprintReadOnly 只留 EditDefaultsOnly。",
+      "tags": [
+        "uht",
+        "uproperty",
+        "blueprintreadonly",
+        "private-member",
+        "warnings-as-errors",
+        "build"
+      ],
+      "related_bugs": [
+        "bug-002"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-07T15:52:00"
+    },
+    {
+      "id": "bug-025",
+      "timestamp": "2026-10-07T17:30:00",
+      "error_message": "会话中途发现已跟踪文件 Source/Wildforge/Public/Utils/AuthorityGuard.h 在工作区被删除（git status 显示 ' D'）；git checkout 从 HEAD 恢复并确认逐字节一致后，**该文件又被删除了一次**（回收站里同名条目两条，删除时间 17:33 与 17:51，第二条晚于本次恢复），说明删除动作不是一次性的",
+      "file": "Source/Wildforge/Public/Utils/AuthorityGuard.h",
+      "root_cause": "未定位到确切的肇事方（本次会话没有对 .h 主动执行 Remove-Item/删除操作）。可确证的线索来自回收站：Shell.Application 的回收站里有两条 AuthorityGuard.h，删除时间 17:33 与 17:51，而 17:51 那次晚于本会话的恢复操作——即「恢复后又被删了一次」。假设与排除：本项目没有 auto-clean 构建产物以外的机制会删源码；UnrealBuildTool / Live Coding 会清理 Intermediate 与过期的 .obj，但不会删 Source 下的 .h；。wolf/hooks 只读写 md/json，也没有删除源码的代码路径。因此更可能是**本机的外部进程（安全软件 / 编辑器外的清理工具）**，或用户在编辑器里执行了源码控制层面的 revert/discard（那会把工作区文件按来源状态回滚成删除态）。补充事实：LandRollComponent 重写后已不再 include 它（改用 Utils/ComponentAuthorityGuard.h 的WF_COMPONENT_AUTHORITY_GUARD），BlinkComponent / SprintBoostComponent 用的也是新宏，所以文件消失不影响当前编译——这也是它没被编译器立刻发现的原因。",
+      "fix": "git checkout -- Source/Wildforge/Public/Utils/AuthorityGuard.h 再次恢复，并用 git hash-object 与 git rev-parse HEAD:<path> 比对 blob 哈希确认逐字节一致（14819b1a…，772 字节）；恢复后观察 12 秒未被再次删除，git status 不再显示 ' D'。教训：① 动过一堆文件之后必须跑 git status 核对清单，被跟踪文件的意外删除不会报错，只有用到它的编译单元才会暴露；② **恢复一次不算完**——本次恢复后又被删了一次，所以「已恢复」也要在会话结束前再核对一遍，并用 blob 哈希而不是「文件看起来在」来证明一致；③ 排查这类「文件自己消失」优先查回收站（删除时间能定位到具体操作窗口），比翻日志快得多。",
+      "tags": [
+        "git",
+        "accidental-deletion",
+        "working-tree",
+        "tooling",
+        "verification",
+        "recycle-bin",
+        "recurring"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-07T17:51:00"
+    },
+    {
+      "id": "bug-026",
+      "timestamp": "2026-10-07T19:05:00",
+      "error_message": "实现「只有向前移动才加速」的方向门控时，第一直觉是用 GetLastInputVector() 判方向；但该方法在服务器上恒为零向量，若按此实现，服务器侧判定会静默失效（永远读到「没有移动输入」，门控永不生效）——问题在写代码前的引擎查证阶段被截住，没有落到编译或联机测试里",
+      "file": "Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp",
+      "root_cause": "UPawnMovementComponent::GetLastInputVector() / APawn::GetLastMovementInputVector() 只是 APawn::LastControlInputVector 的转发（Pawn.cpp:819-822），而该成员只由客户端侧的 AddMovementInput 累加（Internal_AddMovementInput，Pawn.cpp:838-844）。服务器从不调用 AddMovementInput，它拿到的是客户端 move 包里带上的 Acceleration：MoveAutonomous 内 Acceleration = ConstrainInputAcceleration(NewAccel)（CharacterMovementComponent.cpp:10512），客户端则在 ControlledCharacterMove 的 :6350 设置。因此「服务器判方向」只能读 Acceleration，读 last input vector 会静默拿到零向量（不报错、不崩溃，只是判定永远不成立）。附带第二个坑：Acceleration 的长度不是输入强度——ScaleInputAcceleration 在无输入但仍有速度时会把它填成 Velocity.GetSafeNormal()（:3810-3820），长度恒为 1，所以只能看方向不能把长度当力度；另外模拟代理上它只在 bRepAcceleration 为真时才是真值，否则退化为速度方向（UpdateProxyAcceleration，:6866-6881），故只在权威端使用。",
+      "fix": "方向判定用 UCharacterMovementComponent::GetCurrentAcceleration() 的**方向**（归一化后与 Owner->GetActorForwardVector() 求 Acos 点积得夹角），并用 InputDirection.SizeSquared() <= KINDA_SMALL_NUMBER 判定「本帧无方向输入」而不是用它的长度衡量强度。判定集中在 EvaluateSprintDirection() 一个函数里供三处消费者共用（方向门控 / GetSprintBoostDebugString / 蓝图查询），避免三份实现漂移；非 MOVE_Walking 状态直接放行（空中不判定，避免跳跃时被收掉加速——UE 默认 AirControl=0.05，空中按方向键几乎不产生 Acceleration）；无移动输入也放行（先按 Shift 再按 W 是常见操作顺序）。",
+      "tags": [
+        "replication",
+        "server-authority",
+        "input",
+        "character-movement",
+        "acceleration",
+        "direction",
+        "silent-failure"
+      ],
+      "related_bugs": [
+        "bug-019"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-07T19:05:00"
+    },
+    {
+      "id": "bug-027",
+      "timestamp": "2026-10-07T19:40:00",
+      "error_message": "角色完全无法移动（走不动），且加速功能同时失效。症状出现在 PIE 双人联机中，双方角色都无法移动",
+      "file": "Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp",
+      "root_cause": "ResetMaxSpeed_Implementation 无条件把基准值写回移动组件：Movement->MaxWalkSpeed = BoostState.BaseMaxWalkSpeed。但 BaseMaxWalkSpeed 的默认值就是 0.0，而且**只有第一次 StartSpeedBoost 里的 CaptureBaseMaxSpeed() 才会给它赋值**（BeginPlay 刻意不抓基准速度——客户端此时 MaxWalkSpeed 还没复制到位，抓了会污染还原目标）。于是「基准值尚未捕获」与「基准值真的是 0」在数值上不可区分，任何在捕获之前调用 ResetMaxSpeed 的路径都会把 MaxWalkSpeed 钉成 0 —— 角色再也走不动，而且这个 0 会由 UCharacterMovementComponent 的 MaxWalkSpeed 复制同步到拥有者客户端。触发路径：APlayerCharacter::ApplyMovementLock 在权威端对每一次攻击/翻滚落锁都会调用 SprintBoostComponent->ResetMaxSpeed()（意图是「禁止移动期间复位加速」），所以**第一次攻击**就会触发。矛盾的证据是 ResetMaxSpeed 自己的文档注释写着「未加速时调用是安全的空操作」，实现却无条件写速度——文档与实现不一致，而这行代码是从旧 ABaseCharacter 实现里搬过来的，旧实现里它没有被任何「每帧/每次攻击都会调」的路径命中。",
+      "fix": "三处修复：① FSprintBoostState 新增 bBaseSpeedValid 标志，只有 CaptureBaseMaxSpeed() 成功时置 true；② ResetMaxSpeed_Implementation 改为 `if (!bWasActive || !bBaseSpeedValid)` 走「安全空操作」分支——不碰 MaxWalkSpeed，只清定时器/状态并记一条 INFO（说明为何不动速度）；③ ApplyMaxWalkSpeed 加兜底闸门：InMaxWalkSpeed <= 0 或非有限值时记 WFLOG_ERROR 并拒绝写入，让任何未来的误用立刻可见而不是静默锁死角色。附带修正 BeginPlay 的日志：原来打印 BoostState.BaseMaxWalkSpeed（未捕获时恒为 0），排查时会被误读成「角色速度是 0」，改为打印移动组件真实的 MaxWalkSpeed，并用 bBaseSpeedValid 明确表达基准值是否已捕获。",
+      "tags": [
+        "regression",
+        "movement",
+        "maxwalkspeed",
+        "reset",
+        "uninitialized-default",
+        "silent-lock",
+        "component-refactor",
+        "documentation-mismatch"
+      ],
+      "related_bugs": [
+        "bug-026"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-07T19:40:00"
+    },
+    {
+      "id": "bug-028",
+      "timestamp": "2026-10-07T19:45:00",
+      "error_message": "加速（冲刺）功能完全无效：日志显示 24 次 Server_StartSpeedBoost 全部被拒，拒绝原因清一色是「[加速] 被拒：刷新间隔 -1.000 非法」，成功的加速次数为 0",
+      "file": "Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp",
+      "root_cause": "StartSpeedBoost_Implementation 的参数校验写成 `if (!FMath::IsFinite(BoostInterval) || BoostInterval < 0.0f) return false;`，即把**负数一律当非法**拒绝。但组件的公开约定（头文件注释、_Validate、以及下方实现里的回退）都是「BoostDuration/BoostInterval < 0 = 使用组件默认值」；而蓝图里这个 pin 的默认值恰好就是 -1.0。于是校验层在实现层的回退逻辑（`BoostInterval >= 0.0f ? BoostInterval : DefaultBoostInterval`）之前就把请求杀掉了——两处规则直接矛盾，且只留一条 WARNING，功能表现为「按了没反应」。同时 _Validate 也写成 `BoostInterval >= -1.0f && BoostInterval <= 1.0f`，范围与实现不一致（比 -1 更负的哨兵值会被 _Validate 拒），是同一类问题的两个副本。",
+      "fix": "① 权威函数内只校验有限性（FMath::IsFinite），负数交给下方既有的默认值回退处理，并在拒绝日志里写明「负数表示用组件默认值，是合法的，不要在这里拒」；② _Validate 改为「有限 且（<0 或 <=上界）」的写法，与实现接受的范围对齐，并注明两处范围必须一致，否则会出现「_Validate 通过但实现拒绝」这种最难查的组合。",
+      "tags": [
+        "validation",
+        "default-argument",
+        "negative-sentinel",
+        "blueprint",
+        "silent-failure",
+        "sprint",
+        "rpc"
+      ],
+      "related_bugs": [
+        "bug-027"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-07T19:45:00"
+    },
+    {
+      "id": "bug-029",
+      "timestamp": "2026-10-07T21:10:00",
+      "error_message": "用户反馈「我移动的时候本来就可以翻滚啊，为什么现在很僵硬的一样」：边跑边滚时角色急停、原地滚一下再被拉回，完全没有翻滚的位移感",
+      "file": "Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp, Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+      "root_cause": "翻滚落的是**硬锁**（StopMovementImmediately + DisableMovement → MOVE_None），而硬锁有两个致命副作用：(1) `UCharacterMovementComponent::PerformMovement` 在入口对 MOVE_None 直接 return，并且**显式丢弃根运动**——CharacterMovementComponent.cpp:2716-2734 里 `RootMotionParams.Clear()` / `CurrentRootMotion.Clear()`，所以靠蒙太奇根运动位移的动作一旦被硬锁，位移就整段消失（LandRollMontage 的资源名字表里没有 bEnableRootMotion，即未启用根运动，位移本来只能靠保留的跑动速度/输入，被清零后必然原地滚）；(2) StopMovementImmediately 把跑动中的速度（实测 635/625）直接清零 = 急停。更糟的是翻滚的 Started 只在权威端的 LandRoll_Implementation 里广播，所以硬锁**只落在服务器**：日志证据是全部落锁行都是 `本端权威=1`，客户端世界一条落锁日志都没有、且结束时的调试串仍是 `移动模式=1 速度=478.0 本端权威=0`。服务器原地不动、客户端继续以跑速前进，误差累积后被 ClientAdjustPosition 拉回 = 橡皮筋。根因是把「禁止输入」错当成了「关掉移动组件」：MOVE_None 是给不需要位移的动作（攻击）用的。",
+      "fix": "给移动锁分两种强度：`ApplyMovementLock(Source, bDisableMovement)`——攻击走硬锁（保留原行为），翻滚走**软锁**（只记账 + 复位加速，完全不碰移动模式与速度），恢复移动模式的判据从「全部持有者清空」改成新增的 `MovementDisablingHolders`（硬锁子集）清空，否则「翻滚中攻击」这类交错会让软锁被硬锁语义污染；另加 `bMovementDisabledByLock` 显式记录「移动组件是被这套锁禁掉的」，不再靠 `MovementMode == MOVE_None` 反推（那可能是布娃娃/死亡/过场设的），并新增 `IsMovementDisabled()` 与 `IsMovementLocked()` 区分「有动作占用角色」和「真的动不了」。翻滚的位移改回由蒙太奇根运动 / 蓝图 / 保留的惯性驱动。",
+      "tags": [
+        "regression",
+        "movement-lock",
+        "movement-mode",
+        "move-none",
+        "root-motion",
+        "engine-behavior",
+        "character-movement",
+        "landroll",
+        "rubber-band",
+        "client-server-desync"
+      ],
+      "related_bugs": [
+        "bug-027"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-07T21:10:00"
+    },
+    {
+      "id": "bug-030",
+      "timestamp": "2026-10-07T21:25:00",
+      "error_message": "翻滚的生命周期广播与表现同步在客户端侧全线错位：(1) OnLandRollStarted 只在权威端广播，客户端的移动门控/订阅者收不到（头文件与 .cpp 顶部流程图却都声称「每端各自广播一次」）；(2) 翻滚表现没播起来（没配蒙太奇/没有 AnimInstance/Montage_Play 被拒）时没有任何收尾，bIsRolling 永久为 true、冷却与重入判定被卡死；(3) Multicast_PlayLandRollMontage 在客户端**每次正常接收**都打一条 WARNING「客户端本地发起了表现同步」，纯噪音且判断错误；(4) Multicast_PlayLandRollEffects 在非权威端直接 WFLOG_ERROR 并 return，而客户端收到 Multicast 时必然是非权威端——等于翻滚特效在客户端永远不会播；(5) FinishLandRoll 在客户端也写 bIsRolling（客户端写玩法状态，违反类注释里的权威边界）",
+      "file": "Source/Wildforge/Public/Character/Components/LandRollComponent.h, Source/Wildforge/Private/Character/Components/LandRollComponent.cpp",
+      "root_cause": "把「表现生命周期」与「玩法状态」混用了同一个判据 bIsRolling。它是 COND_OwnerOnly 的复制属性，模拟代理（其他玩家）永远收不到、永远是 false，所以任何一端拿它做判断都会在自己的端上失效；而移动门控是**每端本地**的，生命周期广播必须每端都成立。另外 Multicast 的语义被误解成「服务器专属调用」，于是在 _Implementation 里加了权威门禁——但 Multicast 在每个端都会执行，客户端那一次正是它存在的意义（引擎里 `AActor::GetFunctionCallspace` 对 Multicast 在客户端返回 Local，Actor.cpp:5500-5519，即客户端本地调用也只会本地执行、不发服务器），加门禁等于把客户端要的表现全挡掉。",
+      "fix": "新增**不复制**的本端表现标志 `bRollPresentationActive` 作为生命周期广播的唯一判据：由 Multicast 分支在 `PlayLandRollMontageInternal` **真的播起来之后**置 true 并广播 OnLandRollStarted（表现没起来就一个事件都不广播，权威端就地调 FinishLandRoll 收尾，避免落锁无人解锁与状态卡死），由 FinishLandRoll 置 false 并广播 OnLandRollFinished（Started/Finished 严格配对）；FinishLandRoll 里 bIsRolling 只在权威端写；OnLandRollBlendingOut 的判据从 bIsRolling 换成该标志；删掉 Multicast 里的伪门禁与那条错误 WARNING（改成带端标识的 INFO）；移除 Multicast_PlayLandRollEffects 的权威门禁（改成任何端都执行，这才是「表现同步」）；顺带把 LandRoll() 在表现未开始时的返回值改为 false 并把原因写进日志。另新增 BlueprintPure `IsRollPresentationActive()` 供动画蓝图/UI 在所有端使用（bIsRolling 在模拟代理上永远读不到）。",
+      "tags": [
+        "replication",
+        "condition",
+        "cond-owneronly",
+        "multicast",
+        "rpc",
+        "authority-guard",
+        "lifecycle",
+        "delegate",
+        "landroll",
+        "silent-failure"
+      ],
+      "related_bugs": [
+        "bug-029",
+        "bug-020"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-07T21:25:00"
     }
   ]
 }

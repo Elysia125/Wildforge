@@ -48,6 +48,12 @@
 		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/AttackComponent.cpp.obj"
 	},
 	{
+		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/BlinkComponent.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/BlinkComponent.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/BlinkComponent.cpp.obj"
+	},
+	{
 		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/CharacterAttributes.cpp",
 		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/CharacterAttributes.cpp.obj.rsp\" ",
 		"directory": "D:/UE/UE_5.7/Engine/Source",
@@ -58,6 +64,18 @@
 		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/LandRollComponent.cpp.obj.rsp\" ",
 		"directory": "D:/UE/UE_5.7/Engine/Source",
 		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/LandRollComponent.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/SlideComponent.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/SlideComponent.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/SlideComponent.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/SprintBoostComponent.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/SprintBoostComponent.cpp.obj"
 	},
 	{
 		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",

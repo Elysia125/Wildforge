@@ -166,12 +166,82 @@
   对象」本身**（本项目 `ActiveAttackMontage`），让判定与下标推进解耦。
 - **`UAnimMontage` 的长度在 UE 5.7 要用 `GetPlayLength()`**：`SequenceLength` 既是 `protected` 又已
   `UE_DEPRECATED`，直接读编译不过（见 bug-019）。
+- **`BlueprintNativeEvent` 的 `_Implementation` 声明是 UHT 生成的，签名必须逐字对上**：它对
+  枚举参数生成的是**裸枚举类型**（如 `ECollisionChannel`），不是 `TEnumAsByte<...>`——头文件里
+  写 `TEnumAsByte` 会在编译期报
+  `out-of-line definition of 'X_Implementation' does not match any declaration`
+  （UHT 自己反而能过）。旧的 `UFUNCTION(BlueprintCallable)` 没有生成声明，隐式转换够用，
+  所以这条只在改成 `BlueprintNativeEvent` 时才暴露。见 bug-023。
+- **`TEnumAsByte<T>` 不要和裸枚举混进同一个三元表达式**：`cond ? MovementMode : MOVE_None`
+  两个方向都能隐式转换，clang 报 `conditional expression is ambiguous`。统一取
+  `.GetValue()` 或统一用裸枚举。同 bug-023。
+- **`GetWorldTimerManager()` 是 `AActor` 的方法，组件上没有**（和 `HasAuthority()` 同一类坑）：
+  组件里要写 `GetWorld()->GetTimerManager()`；而且 `Engine/World.h` 只前置声明 `FTimerManager`，
+  用 `SetTimer`/`FTimerDelegate`/`ClearTimer` 必须自己 `#include "TimerManager.h"`。
+  把代码从 Actor 搬进组件、或重写组件头文件时最容易丢这条。见 bug-023。
+- **`COND_SimulatedOnly` 不会发给自主代理（本地玩家自己）**：它只发模拟端，而
+  「本地玩家的 UI / 输入门控要读的状态」恰好只有自主代理需要。组件里要让本人读到的状态
+  要用 `COND_OwnerOnly`（本项目 `ULandRollComponent` 的旧写法用的是 SimulatedOnly，
+  新组件 `USprintBoostComponent` / `UBlinkComponent` 改用了 OwnerOnly）。
+  另外组件的 `DOREPLIFETIME_*` 只有在构造函数里 `SetIsReplicatedByDefault(true)`
+  且宿主 Actor `bReplicates = true` 时才真的生效。
+- **移动输入的「方向」在服务器上要读 `Acceleration`，不能读 last input vector**：后者
+  （`UPawnMovementComponent::GetLastInputVector()` / `APawn::GetLastMovementInputVector()`）
+  只是 `APawn::LastControlInputVector` 的转发（`Pawn.cpp:819-822`），而它**只由客户端的
+  `AddMovementInput` 累加**——服务器上恒为零向量，于是「服务器判方向」会静默失效
+  （永远读到「没有输入」）。服务器能拿到的是客户端 move 包里的 `Acceleration`
+  （`MoveAutonomous`：`Acceleration = ConstrainInputAcceleration(NewAccel)`，
+  `CharacterMovementComponent.cpp:10512`；客户端则在 `ControlledCharacterMove` 的
+  `:6350` 设置），两端都有效，读法 `UCharacterMovementComponent::GetCurrentAcceleration()`。
+  两个坑：**它的长度不是输入强度**（`ScaleInputAcceleration` 在无输入但仍有速度时会把它
+  填成 `Velocity.GetSafeNormal()`，长度恒为 1，见 `:3810-3820`，所以只能看方向不能看长度）；
+  **模拟代理上它只在 `bRepAcceleration` 为真时才是真值**（否则退化为速度方向，`:6866-6881`），
+  所以只在权威端拿它做判定。
+- **`COND_OwnerOnly` 与 `COND_SimulatedOnly` 是两个互斥子集，选错就是「该看到的人看不到」**：引擎里就三行
+  判定（`RepLayout.h:149-152`：`ConditionMap[COND_OwnerOnly] = bIsOwner`、
+  `ConditionMap[COND_SimulatedOnly] = bIsSimulated`），而 `bNetOwner` 由「这条连接是不是角色的拥有者」决定
+  （`DataChannel.cpp:3787`）、`bNetSimulated` 由「复制期间角色是不是被降级成 SimulatedProxy」决定
+  （`:3812`，非拥有者的连接会在 `FScopedRoleDowngrade` 里被临时降级，`:3529-3541`）。于是：
+  **OwnerOnly = 只有本地玩家自己收得到；SimulatedOnly = 只有别人收得到，本地玩家反而收不到**。
+  想让**所有人**都读到，必须**不带 condition**（`DOREPLIFETIME` 裸写 = `COND_None`）。
+  选择规则先问「这个值最终是谁消费的」：拥有者客户端的 UI → OwnerOnly；其他玩家的表现 → SimulatedOnly；
+  两端都要 → 无 condition。（本项目 LandRoll 曾用 SimulatedOnly，于是本地玩家永远读不到自己的
+  `bIsRolling`；见 bug-030。）
+- **客户端上调用或接收 `NetMulticast` 都只会本地执行**：`AActor::GetFunctionCallspace` 对 Multicast 在服务器
+  返回 `Local | Remote`、在客户端返回 `Local`（`Actor.cpp:5500-5519`），所以客户端本地调用它既不发给服务器、
+  也不广播给别人；收到服务器发来的那一次同样是「非权威端在执行」。**推论：Multicast 的 `_Implementation`
+  里绝不能加「非权威端就忽略」这类门禁**——那等于客户端永远看不到该表现（本项目翻滚特效就这样被整段挡掉，
+  见 bug-030）。判据只能是「这个端要做什么」，不是「是谁调用的」。
+- **`MOVE_None` 会丢弃根运动**：`UCharacterMovementComponent::PerformMovement` 入口对
+  `MovementMode == MOVE_None` 直接 return，且显式 `RootMotionParams.Clear()` / `CurrentRootMotion.Clear()`
+  再 `ClearAccumulatedForces()`（`CharacterMovementComponent.cpp:2716-2734`）。所以 `DisableMovement()` 是
+  「连动画自带的位移一起关掉」，只适合不需要位移的动作（攻击）。需要位移的动作（翻滚 / 位移技）不要碰移动
+  组件；`StopMovementImmediately()` 也会把跑动惯性清零，边跑边滚会变成急停 + 原地滚。见 bug-029。
 
 ## Do-Not-Repeat
 
 <!-- Mistakes made and corrected. Each entry prevents the same mistake recurring. -->
 <!-- Format: [YYYY-MM-DD] Description of what went wrong and what to do instead. -->
 <!-- ⚠️ `.wolf/hooks/pre-write.js` 按本标题（## Do-Not-Repeat）硬编码切分，不可改名或搬走。 -->
+
+- [2026-10-07] **任何「写回基准值」的复位函数，写之前必须先确认基准值已捕获**：基准值的默认 0
+  与「角色不能动」的合法速度 0 无法区分，未捕获就写回会把角色永久钉在原地（本项目第一次攻击
+  就这样锁死了双方角色）。用显式标志位（`bBaseSpeedValid`）+ 写入口的兜底闸门，不要靠数值判断。
+  见 bug-027。
+- [2026-10-07] **校验规则必须与实现接受的范围一致**：参数「负数 = 用默认值」这种约定，如果
+  校验里写 `X < 0 就拒`，而实现里写着 `X < 0 ? 默认值 : X`，两者直接矛盾，蓝图 pin 的默认 -1
+  会让**每一个请求都被拒**（本项目 24/24 全灭）且只留一条 WARNING。关掉默认值的合理性：先读
+  实现，再写校验。见 bug-028。
+- [2026-10-07] **不要用 `DisableMovement()`（MOVE_None）做「动作期间的输入门控」**：它会丢弃根运动
+   （`CharacterMovementComponent.cpp:2716-2734`）并把跑动速度清零，靠位移的动作会变成原地滚 + 急停；
+   更糟的是如果这个锁只在服务器落（客户端没有对应事件），客户端还在以跑速前进，误差累积后被位置纠正
+   拉回来 = 橡皮筋。要「占住角色但不关移动」时用**软锁**（只记账 / 复位加速），位移留给根运动或蓝图。
+   见 bug-029。
+- [2026-10-07] **不要在 `NetMulticast` 的 `_Implementation` 里写「非权威端就忽略/报错」的门禁**：每个端
+   都会执行它，客户端那一份正是**正常接收**（`Actor.cpp:5500-5519`），加门禁等于客户端永远看不到表现。
+   同理，**生命周期广播不要拿 `COND_OwnerOnly` 的复制属性当判据**（模拟代理永远收不到、永远是 false），
+   要用一份各端自己维护的、不复制的表现标志，并让 Started / Finished 严格配对（表现没起来就一个都不广播，
+   否则订阅者「只落锁、没人解锁」）。见 bug-030。
 - [2026-10-05] **不要**给 `AddItem` 传空的 `FItemInformation`（ItemID=0、空名、无图标、
   ItemQuality=0），物品会显示为空。用 `AddItemByID(ItemID, 数量)`，或先用 `Get Data Table Row`
   取到完整定义再传。（注：`AddItem` 已删除，见 bug-001。）
@@ -242,6 +312,22 @@
   「每段只收一次输入、必须松开再按」这种显式标记，而不是把整段时间锁死。- [2026-10-07] **不要**假定「蒙太奇会在所有端播」：引擎默认只复制 RootMotion（本项目未启用 GAS），
   只在服务器 `Montage_Play` 的话客户端看不到动画、`OnMontageEnded` 不触发，挂在结束回调上的收尾逻辑
   （恢复移动等）在客户端全部失效。要同步表现必须自己 `NetMulticast`，见 bug-019。
+- [2026-10-07] **重写/搬运组件头文件时不要靠「以前编得过」推断 include 齐全**：把代码从 Actor 搬到
+  UActorComponent、或整文件重写组件头文件，最容易丢的是 `TimerManager.h`（`Engine/World.h` 只前置声明
+  `FTimerManager`）、以及把 `GetWorldTimerManager()`（AActor 的方法）一起搬过来。见 bug-023。
+- [2026-10-07] **`BlueprintNativeEvent` 的参数类型不要写 `TEnumAsByte<T>`**：UHT 生成的
+  `_Implementation` 声明用的是裸枚举类型，头文件必须逐字一致，否则编译期报
+  `out-of-line definition ... does not match any declaration`（UHT 自己不会报）。见 bug-023。
+- [2026-10-07] **`UPROPERTY(BlueprintReadOnly/BlueprintReadWrite)` 不要放在 `private:` 区段**：UHT 以
+  `-WarningsAsErrors` 运行，直接报 `BlueprintReadOnly should not be used on private members`。
+  想留在 private 就去掉蓝图可见性；否则挪到 protected。见 bug-024。
+- [2026-10-07] **多方共享的「禁止移动」锁不要用计数，用按来源记账的集合**：计数在「同一来源重复
+  请求」时会泄漏（连击切段重复广播 `OnAttackStarted` 就会让锁回不到 0），集合的重复 Add 幂等。
+  判断一个共享状态该用哪种抽象，先问「需不需要区分是谁在持有」。见 Decision Log。
+- [2026-10-07] **不要用 last input vector 在服务器上判移动方向**：它只由客户端累加，服务器上恒为零，
+  判定会静默失效（不是报错，是「判定结果永远是没输入」）。服务器读 `Acceleration`
+  （`GetCurrentAcceleration()`），并且**不要用它的长度当输入强度**——长度被引擎填成 1，不是玩家推的力度。
+  见 bug-026。
 
 ## Decision Log
 
@@ -310,3 +396,61 @@
   `bIsAttacking` 保持 true 所以移动锁不解；切段时引擎会触发上一段的 `OnMontageEnded(bInterrupted=true)`，
   要用 `bAdvancingCombo` 标记把它与「攻击链真的结束」区分开。**连击不受 `AttackCooldown` 约束**——那是管
   「两次起手之间」的，拿它卡窗口会让开得早的窗口被无声拒绝；连击只留 `ComboMinInterval` 做防刷包节流。
+- [2026-10-07] **能力做成组件的边界：组件自带它的复制通道与表现，宿主类只做装配**。加速与闪现原先写在
+  `ABaseCharacter` 上（`FSprintBoostState` + `BlinkForward` + 4 个 RPC），现已拆成
+  `USprintBoostComponent` / `UBlinkComponent` 挂到 `APlayerCharacter`——基类只保留「所有角色都存在」的
+  东西（`bReplicates` + `UCharacterAttributes`）。理由：能力的权威状态、复制通道、蒙太奇、RPC 入口都是
+  能力自己的事，放基类会让**每个**派生类都背一遍组件的开销与复制通道。
+  **代价（用户已知情并选择）**：旧蓝图节点（BP_ThirdPersonCharacter 里的 `Server_StartSpeedBoost` /
+  `Server_StopSpeedBoost`）需要手动重连到 `GetSprintBoostComponent()`，本次**没有**写 CoreRedirects。
+  player 类现在同时持有 5 个组件，访问器是 `GetInventory` / `GetAttackComponent` /
+  `GetLandRollComponent` / `GetSprintBoostComponent` / `GetBlinkComponent`。
+- [2026-10-07] **加速 / 闪现的可选蒙太奇做成「允许为空」的合法状态**：内容仓库里没有冲刺与闪现的蒙太奇
+  资源（`Content/Characters/Man/Animations/Montage/` 下只有 `LandRollMontage` + 4 个攻击蒙太奇），
+  所以新组件的 `SprintMontage` / `BlinkMontage` 默认空，播放时记一条 **INFO**（不是 WARNING——
+  空配置是设计内状态）后跳过，速度曲线与位移完全不受影响。这两个组件**都不订阅** `OnMontageEnded`：
+  加速的结束条件是速度曲线 / 松键，闪现是一次性位移，都不该被动画生命周期反向控制
+  （`ULandRollComponent` 则必须订阅——翻滚的收尾本来就由动画驱动）。
+- [2026-10-07] **攻击与翻滚共用一套移动门控，用「按来源记账的集合」而不是布尔或计数**（`APlayerCharacter`
+  的 `TSet<FName> MovementLockHolders`）：只在集合 0→1 时 `StopMovementImmediately + DisableMovement`、
+  回到 0 时才 `SetMovementMode` 恢复。**布尔**（`bMovementLockedBy…`）无法区分持有者，攻击结束会把
+  翻滚的锁一起放掉（不崩不报错，只表现为「翻滚没结束就能走」）；**纯计数**（`int32 MovementLockCount`，
+  我第一版写的）能区分数量但不能区分来源，而攻击组件在**每次连击切段**时都会重复广播
+  `OnAttackStarted`（一次 3 段连击 = 3 个 Started + 1 个 Finished），计数会泄漏到锁不回来 = 角色永久不能动；
+  集合的重复 Add 天然幂等，且 `DescribeMovementLockHolders()` 能直接打出「当前被谁锁着」。
+  **前置条件**：持有锁的组件必须与角色同生共死（本项目都是构造函数里 `CreateDefaultSubobject` 的），
+  运行时 `RemoveComponent` 掉持有锁的组件会让锁永远挂着——真要这么做必须先主动解锁。
+  **同日修正（见 bug-029）**：翻滚不再用硬锁 —— `ApplyMovementLock(Source, bDisableMovement)` 分两种强度，
+  攻击 = 硬锁（`StopMovementImmediately + DisableMovement`），翻滚 = **软锁**（只记账 + 复位加速，不碰移动
+  模式与速度）。因此「恢复移动」的判据从「全部持有者清空」改成新增的硬锁子集
+  `MovementDisablingHolders` 清空，并且用 `bMovementDisabledByLock` 显式记录「移动组件是被这套锁禁掉的」，
+  不再靠 `MovementMode == MOVE_None` 反推（它可能来自布娃娃 / 死亡 / 过场）。
+- [2026-10-07] **权威门禁宏抽成 `Utils/ComponentAuthorityGuard.h` 的 `WF_COMPONENT_AUTHORITY_GUARD`**：
+  与 `ItemContainer` 的 `WF_CONTAINER_AUTHORITY_GUARD`、`AttackComponent` 的 `WF_ATTACK_AUTHORITY_GUARD`
+  语义完全一致（非权威端 WFLOG_ERROR + 安全返回，void 用 `void()`），新组件统一用它，不再各写一份宏。
+- [2026-10-07] **「只有向前移动才加速」的方向门控写在 C++ 组件里，不在蓝图**（`USprintBoostComponent`
+  的 `bSprintOnlyForward` + `MaxForwardSprintAngle`，默认开启 / 60°）：`MaxWalkSpeed` 是服务器权威的，
+  只在客户端蓝图判方向的话，转向后服务器还在给加速速度、要等一个 RTT 才收（表现为「方向已经转过去、
+  加速还挂着」）；而且服务器根本读不到 last input vector（见 Key Learnings / bug-026），蓝图那条路
+  在联机下会静默失效。方向判定每个定时器回调跑一次（不是只在起手判一次）——到顶后 `bBoostActive`
+  仍是 true、速度仍保持，只在起手判定会变成「到顶后转向侧后方 = 无限时长朝后加速」。判定放行四种情况
+  都是防误伤：功能关着、**本帧没有移动输入**（先按 Shift 再按 W 是常见操作顺序）、非 `MOVE_Walking`
+  （空中不判定）、没有移动组件。判定集中在一个 `EvaluateSprintDirection()` 里，供门控 / 调试串 /
+  蓝图查询三处共用，避免实现漂移。可选表现留白：想「把冲刺速度改成按方向缩放」而不是直接收掉时，
+  不要动这个门控（它是「允许/不允许」的判定），另外加一个方向缩放因子。
+- [2026-10-07] **`USprintBoostComponent::ResetMaxSpeed()` 改为幂等安全复位，并显式区分「基准值是否已捕获」**
+  （`FSprintBoostState::bBaseSpeedValid`，只有 `CaptureBaseMaxSpeed()` 会置 true）：未加速时它**不碰
+  `MaxWalkSpeed`**，只清定时器/状态。原因见 bug-027 —— 基准值默认 0 与「角色不能动」的 0 无法区分，
+  而 `APlayerCharacter` 在每次攻击/翻滚落锁时都会调它，无条件写回等于把角色永久钉死。同时
+  `ApplyMaxWalkSpeed` 加了「速度 <= 0 或非有限值就记 ERROR 并拒写」的兜底闸门：速度提升永远不需要
+  非正值，这类误用必须立刻可见而不是静默把角色锁死。
+- [2026-10-07] **翻滚的「表现生命周期」与「玩法状态」用两套状态分离**（`ULandRollComponent`，见 bug-030）：
+  `bIsRolling` / `LastLandRollTime` / 冷却 / 累计次数继续由服务器写、`COND_OwnerOnly` 复制（服务拥有者客户端
+  的 UI / 调试）；而 `OnLandRollStarted` / `OnLandRollFinished` 由**不复制**的本端 `bRollPresentationActive`
+  驱动——它在 Multicast 分支「表现真的播起来之后」置位并广播 Started，在收尾时复位并广播 Finished，两者严格
+  配对。选它的理由：移动门控是**每端本地**的，必须每端都能就地落锁/解锁、不等一个 RTT；而 `COND_OwnerOnly`
+  的属性在模拟代理上永远读不到，拿它当判据会让别人的客户端只落锁不解锁。顺带加 `IsRollPresentationActive()`
+  给动画蓝图/UI 用（在所有端都有效），`bIsRolling` 则明确标注「只有拥有者客户端读得到」。
+- [2026-10-07] **表现同步的 Multicast 一律不在 `_Implementation` 里加权威门禁**（翻滚的特效与蒙太奇都按这条
+  改）：Multicast 在每个端都会执行，客户端那一次是正常接收，门禁只会让客户端永远看不到表现。要在实现里做
+  区分，只能区分「这个端该做什么」（权威端写状态、非权威端只播表现），不能区分「是谁调用的」。

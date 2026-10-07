@@ -370,10 +370,17 @@ void UAttackComponent::Multicast_PlayAttackMontage_Implementation(
              InSectionIndex, InFadeInTime);
 
   if (bAuthority) {
-    // 服务器本地那一次：走权威入口（带门禁），失败时调用方会回滚状态
+    // 服务器本地那一次：走权威入口（带门禁）。功能上等价于直接调内核
+    // （门禁在权威端必然通过），差别只是多一次检查与一条日志。
     PlayAttackMontage(InMontageIndex, InSectionIndex, InFadeInTime);
   } else {
-    // 客户端分支：只播动画，不碰任何玩法状态（选段下标仍以服务器复制为准）。
+    // 客户端分支：**只写「本端在播哪个蒙太奇」这个表现层标记**
+    // （PlayAttackMontageInternal 会写 ActiveAttackMontage，供 OnAttackMontageEnded
+    // 做归属判定），**绝不碰** bIsAttacking / 连击窗口 / 段位下标这些玩法状态
+    // ——它们仍以服务器复制为准。
+    //
+    // 为什么这里不调带门禁的权威入口：Multicast 在客户端本地被调用时（引擎允许），
+    // 门禁会记一条 ERROR 并**拒绝播放**；而这里的语义应该是「退化成纯本地表现」。
     // 参数由服务器随 RPC 带来，所以客户端与服务器播的一定是同一段。
     PlayAttackMontageInternal(InMontageIndex, InSectionIndex, InFadeInTime);
   }
