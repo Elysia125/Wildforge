@@ -5,15 +5,15 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Utils/WildforgeLog.h"
 
-// 移动门控的设计（攻击与翻滚共用）：
-//   * 事件（OnAttackStarted / OnLandRollStarted…）是**每端各自本地广播**的，
+// 移动门控的设计（攻击 / 翻滚 / 滑行共用）：
+//   * 事件（OnAttackStarted / OnLandRollStarted / OnSlideStarted…）是**每端各自本地广播**的，
 //     所以两端都能就地立即响应，不必等状态复制往返一个 RTT。
 //   * 锁分**两种强度**（见头文件里的大段说明）：
 //       - 攻击 = 硬锁：StopMovementImmediately + DisableMovement（MOVE_None），真把角色钉住；
-//       - 翻滚 = 软锁：只记账 + 复位加速，**不碰移动组件**。
-//     翻滚不能用硬锁：MOVE_None 会让 PerformMovement 直接 return 并**丢弃根运动**
-//     （CharacterMovementComponent.cpp:2716-2734），翻滚的位移就没了，
-//     而且边跑边滚会被 StopMovementImmediately 变成急停。
+//       - 翻滚 / 滑行 = 软锁：只记账 + 复位加速，**不碰移动组件**。
+//     这两个能力都不能用硬锁：MOVE_None 会让 PerformMovement 直接 return 并**丢弃根运动**
+//     （CharacterMovementComponent.cpp:2716-2734），翻滚的位移就没了、滑行每帧写的速度也会被
+//     StopMovementImmediately 当场清掉；而且边跑边滚 / 边跑边滑会被变成急停。
 //   * 锁的持有者记成**按来源的集合**（MovementLockHolders），不是布尔、也不是计数：
 //       - 布尔无法区分持有者 → 攻击结束会把翻滚的锁一起放掉；
 //       - 纯计数无法区分来源 → 重复事件（连击切段重复广播 OnAttackStarted）
@@ -25,12 +25,17 @@
 //   * 持有者被销毁时必须主动解锁（组件被移除后不会再广播 Finished，
 //     那份 FName 会永久留在集合里 = 角色永久不能动，详见头文件的前置条件说明）。
 //
-// 加速的复位也在这里：攻击 / 翻滚期间把最大速度还原到基准值，
+// 加速的复位也在这里：攻击 / 翻滚 / 滑行期间把最大速度还原到基准值，
 // 免得结束后角色带着加速状态继续滑。
+//
+// ⚠️ 滑行这条链上有一个**顺序依赖**：USlideComponent 是在广播 OnSlideStarted（也就是这里落锁、
+// 复位加速）**之后**才快照 / 改写自己的移动参数，所以它拿到的一定是「加速已复位」的状态。
+// 反过来（先改参数再广播）会让滑行收尾时把加速期间的旧值当成基线写回去。
 
 // 移动锁的来源标识。定义放在 .cpp 里，头文件只做声明。
 const FName APlayerCharacter::MovementLockAttack(TEXT("Attack"));
 const FName APlayerCharacter::MovementLockLandRoll(TEXT("LandRoll"));
+const FName APlayerCharacter::MovementLockSlide(TEXT("Slide"));
 
 APlayerCharacter::APlayerCharacter() : ABaseCharacter() {
   Inventory = CreateDefaultSubobject<UPlayerInventory>(TEXT("Inventory"));
@@ -48,6 +53,11 @@ APlayerCharacter::APlayerCharacter() : ABaseCharacter() {
       TEXT("SprintBoostComponent"));
   BlinkComponent =
       CreateDefaultSubobject<UBlinkComponent>(TEXT("BlinkComponent"));
+
+  // 滑行（滑铲）组件：位移、时长、冷却、蒙太奇与复制通道都在它自己身上，
+  // 这里只负责装配 + 订阅它的生命周期来做移动门控。
+  SlideComponent =
+      CreateDefaultSubobject<USlideComponent>(TEXT("SlideComponent"));
 }
 
 void APlayerCharacter::BeginPlay() {
@@ -87,6 +97,22 @@ void APlayerCharacter::BeginPlay() {
                   *Who);
   }
 
+  if (SlideComponent != nullptr) {
+    SlideComponent->OnSlideStarted.RemoveDynamic(
+        this, &APlayerCharacter::HandleSlideStarted);
+    SlideComponent->OnSlideStarted.AddDynamic(
+        this, &APlayerCharacter::HandleSlideStarted);
+
+    SlideComponent->OnSlideFinished.RemoveDynamic(
+        this, &APlayerCharacter::HandleSlideFinished);
+    SlideComponent->OnSlideFinished.AddDynamic(
+        this, &APlayerCharacter::HandleSlideFinished);
+  } else {
+    WFLOG_WARNING("[移动门控] %s 没有 SlideComponent，滑行期间的移动门控不会生效"
+                  "（蓝图里创建该组件的节点需要重连到 GetSlideComponent）。",
+                  *Who);
+  }
+
   // 拆成组件之后，这两个是「必须有」的：缺了就等于加速 / 闪现能力整个消失，
   // 属于装配错误，要用 WARNING 让它在日志里立刻可见。
   if (SprintBoostComponent == nullptr) {
@@ -101,7 +127,7 @@ void APlayerCharacter::BeginPlay() {
   }
 
   WFLOG_INFO("[移动门控] %s BeginPlay 完成：本端权威=%d，初始移动模式=%d，"
-             "持有者=[%s]（攻击组件=%d 翻滚组件=%d 加速组件=%d 闪现组件=%d）。",
+             "持有者=[%s]（攻击组件=%d 翻滚组件=%d 滑行组件=%d 加速组件=%d 闪现组件=%d）。",
              *Who, HasAuthority() ? 1 : 0,
              // ⚠️ MovementMode 是 TEnumAsByte，直接写在三元表达式里与 MOVE_None
              // 混用会得到 TEnumAsByte 与 EMovementMode 双向可转换的歧义，
@@ -110,8 +136,8 @@ void APlayerCharacter::BeginPlay() {
                                     ? GetCharacterMovement()->MovementMode.GetValue()
                                     : MOVE_None),
              *DescribeMovementLockHolders(), AttackComponent ? 1 : 0,
-             LandRollComponent ? 1 : 0, SprintBoostComponent ? 1 : 0,
-             BlinkComponent ? 1 : 0);
+             LandRollComponent ? 1 : 0, SlideComponent ? 1 : 0,
+             SprintBoostComponent ? 1 : 0, BlinkComponent ? 1 : 0);
 }
 
 void APlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason) {
@@ -127,6 +153,12 @@ void APlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason) {
         this, &APlayerCharacter::HandleLandRollStarted);
     LandRollComponent->OnLandRollFinished.RemoveDynamic(
         this, &APlayerCharacter::HandleLandRollFinished);
+  }
+  if (SlideComponent != nullptr) {
+    SlideComponent->OnSlideStarted.RemoveDynamic(
+        this, &APlayerCharacter::HandleSlideStarted);
+    SlideComponent->OnSlideFinished.RemoveDynamic(
+        this, &APlayerCharacter::HandleSlideFinished);
   }
 
   Super::EndPlay(EndPlayReason);
@@ -187,10 +219,13 @@ void APlayerCharacter::ResetSprintBoostOnMovementLock(FName Source) {
                *GetName(), *Source.ToString());
     SprintBoostComponent->ResetMaxSpeed();
   } else {
-    // 客户端侧不主动复位：本地改 MaxWalkSpeed 留不住，权威端复位后会复制下来。
-    // 这里的日志是为了让「加速没被本地中断」这件事在排查时可见。
+    // 客户端侧不主动复位：本地那份 MaxWalkSpeed 是**从服务器镜像下来的**
+    // （SprintBoostComponent 的 ReplicatedMaxWalkSpeed，见 bug-031），
+    // 在这里自己改回去只会和镜像值打架（下一帧就被核对写回来，
+    // 中途还平白制造一段与服务器不一致的预测）。权威端复位后镜像值会复制下来，
+    // 本端自动跟随。这条日志是为了让「加速没被本地中断」这件事在排查时可见。
     WFLOG_INFO("[移动门控] %s 落下移动锁（来源=%s），本端非权威，"
-               "加速复位交给服务器。",
+               "加速复位交给服务器（本端会通过复制的镜像值跟随）。",
                *GetName(), *Source.ToString());
   }
 }
@@ -376,4 +411,19 @@ void APlayerCharacter::HandleLandRollStarted() {
 // 翻滚结束 → 释放软锁
 void APlayerCharacter::HandleLandRollFinished() {
   ReleaseMovementLock(MovementLockLandRoll);
+}
+
+// 滑行开始 → **软锁**（与翻滚同理，不碰移动组件）。
+// 滑行的位移是组件每帧把速度夹到自己的曲线上，硬锁会在落锁那一刻
+// StopMovementImmediately 把速度清零、并把移动模式切成 MOVE_None，滑行直接失效。
+//
+// 顺带把加速复位（软锁路径里做）：这样组件稍后快照 / 改写自己的移动参数时，
+// 拿到的基准值是「没被加速抬高过」的那一份。
+void APlayerCharacter::HandleSlideStarted() {
+  ApplyMovementLock(MovementLockSlide, /*bDisableMovement=*/false);
+}
+
+// 滑行结束 → 释放软锁
+void APlayerCharacter::HandleSlideFinished() {
+  ReleaseMovementLock(MovementLockSlide);
 }

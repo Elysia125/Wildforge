@@ -652,6 +652,86 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-10-07T21:25:00"
+    },
+    {
+      "id": "bug-031",
+      "timestamp": "2026-10-07T18:52:00",
+      "error_message": "潜在联机问题（引擎源码求证出的结论，尚未在双人 PIE 里确认可见表现）：USprintBoostComponent 的设计前提是「服务器改 MaxWalkSpeed，客户端自动跟随」（其头文件写明「它由 UCharacterMovementComponent 自带复制（OnRep_MaxWalkSpeed）」）。但在本机安装的 UE 5.7 里 UCharacterMovementComponent **不复制任何移动参数**，客户端永远不知道服务器把速度提到了多少。",
+      "file": "Source/Wildforge/Public/Character/Components/SprintBoostComponent.h, Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp, Source/Wildforge/Public/Character/Components/SlideComponent.h, Source/Wildforge/Private/Character/Components/SlideComponent.cpp",
+      "root_cause": "证据链：① Engine/Source/Runtime/Engine/Classes/GameFramework/CharacterMovementComponent.h 里 MaxWalkSpeed(273-274) / MaxWalkSpeedCrouched(277-278) / GroundFriction(253-254) / BrakingDecelerationWalking(330-331) / MaxAcceleration(293-294) 的 UPROPERTY 都**没有** Replicated 标记（整个头文件 grep 'Replicated' 只有 4 处命中，全是 RPC 注释）；② 该 cpp 里 grep 'DOREPLIFETIME|GetLifetimeReplicatedProps' **零命中**，也没有 OnRep_MaxWalkSpeed（UE4 时代的 DOREPLIFETIME_CONDITION(..., MaxWalkSpeed, COND_SkipOwner) 在 5.7 已不存在）。后果：自主代理客户端始终用自己的 MaxWalkSpeed 参与 CalcVelocity（GetMaxSpeed() 取 MaxWalkSpeed，:3796 + :3510-3528），客户端预测的速度上不去，而服务器用提高后的值重放同一份 move 包（MoveAutonomous）→ 位置误差累积 → ServerMoveHandleClientError → ClientAdjustPosition 纠正 = 橡皮筋 / 两端手感不一致。",
+      "fix": "已修（2026-10-07T19:21）：改成「自己复制移动参数 + 拥有者镜像」。① USprintBoostComponent 新增复制属性 ReplicatedMaxWalkSpeed / ReplicatedMaxWalkSpeedCrouched（COND_OwnerOnly，只发拥有者；其它端上的这个角色是模拟代理，位置/速度由服务器复制驱动，其 MaxWalkSpeed 不参与任何计算），每次权威写入后由 SyncReplicatedSpeedFromMovement 同步（ApplyMaxWalkSpeed / ResetMaxSpeed / BeginPlay 基准同步三个调用点，漏一处客户端就会按旧速度预测）；② 拥有者客户端在 OnRep_ReplicatedMaxWalkSpeed{,Crouched} 里把同一份值写进**自己的**移动组件，TickComponent 再做一次兜底核对（值一致时只做两次浮点比较），镜像写之前一律校验「> 0 且有限」，绝不把 0 写进移动组件（那是 bug-027 的形态）；③ 删掉原来的 bDriveOwnerLocally / TickLocalBoostVisualOnly（它只在客户端推进度、不碰移动组件，且其前提「客户端改自己的 MaxWalkSpeed 留不住」正是错的：该字段根本不复制，没人会覆盖客户端的本地写入）——客户端不再自己跑曲线、也不自己判方向结束（本地提前收掉只会制造持续偏差）；④ 保留 bMirrorSpeedOnOwningClient 开关（默认 true）供双人 PIE 做对照实验。安全性：这两个字段只由服务器写、服务器从不读客户端那份，客户端把它们改大只会让自己被纠正得更狠。残差：一个 RTT/2 的相位差（斜率 500/1.5≈333 cm/s²，RTT 50ms → ~8 cm/s 跟踪误差 → 每 ~0.2s 一次 2cm 级纠正），要做到零残差必须自定义 UCharacterMovementComponent 子类按 move 包时间戳重放，代价不抵收益（见 cerebrum Decision Log）。验证：UHT -WarningsAsErrors Succeeded；SprintBoostComponent.cpp / PlayerCharacter.cpp 单 TU clang-cl -fsyntax-only EXIT=0；注入对照（副本追加 int WfSyntaxProbe = ;）精确 1 错。尚未做双人 PIE 实测。",
+      "tags": [
+        "replication",
+        "character-movement",
+        "maxwalkspeed",
+        "prediction",
+        "rubber-band",
+        "engine-behavior",
+        "sprint",
+        "slide",
+        "latent-bug",
+        "cond-owneronly",
+        "mirror",
+        "onrep"
+      ],
+      "related_bugs": [
+        "bug-027",
+        "bug-029",
+        "bug-032"
+      ],
+      "occurrences": 2,
+      "last_seen": "2026-10-07T19:21:00"
+    },
+    {
+      "id": "bug-032",
+      "timestamp": "2026-10-07T19:21:00",
+      "error_message": "潜在联机问题（写 bug-031 的修复时发现，与它同源，尚未在双人 PIE 里确认）：USprintBoostComponent 的「加速中」与「加速进度」在客户端上永远是假值 —— IsSpeedBoostActive() 恒返回 false、GetSpeedBoostAlpha() 恒返回 0、复制的 bBoostActive 恒为 false。表现是：客户端看不到加速状态（UI 冲刺条 / FOV / 特效全部不响应），而服务器上一切正常。",
+      "file": "Source/Wildforge/Public/Character/Components/SprintBoostComponent.h, Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp",
+      "root_cause": "同一个状态被写成了两份：① 公开的复制属性 UPROPERTY(Replicated) bool bBoostActive（USprintBoostComponent.h:163-165）**全项目没有任何一处写入**（grep 'bBoostActive\\s*=' 只命中声明处的 = false 与私有结构体成员），所以它恒为 CDO 默认值 false，复制给客户端也永远是 false；② 私有的 FSprintBoostState::bBoostActive（同文件 :392）才是真正被 StartSpeedBoost / ResetMaxSpeed / TickSprintBoost 写的那个；③ 而查询接口 IsSpeedBoostActive() 返回的恰恰是**私有**那份（:220 的 BoostState.bBoostActive），头文件注释却写着「与复制的 bBoostActive 同源」——两者其实是两个成员。GetSpeedBoostAlpha()（.cpp:697-705）同样读私有的 BoostState.ElapsedTime / BoostDuration（都不复制，客户端恒为 0），完全没用上早就复制好的 BoostAlpha。同类陷阱：GetBaseMaxWalkSpeed() 直接返回 BoostState.BaseMaxWalkSpeed，而基准值在客户端（以及权威端第一次加速之前）恒为 0 —— 拿它做 UI 会显示「速度 0」，本项目排查 bug-027 时就被这个 0 误导过一轮。",
+      "fix": "已修（2026-10-07T19:21）：「一个状态只留一份」+「查询只读复制的权威值」。① 删掉 FSprintBoostState 里的私有 bBoostActive，复制的那个 UPROPERTY 成为唯一真相（权威端也写它）；② IsSpeedBoostActive() 改为 return bBoostActive（在所有端都返回权威结论，不再是本地推测）；③ GetSpeedBoostAlpha() 改为 return bBoostActive ? BoostAlpha : 0.0f（权威端 BoostAlpha 由 ApplyMaxWalkSpeed 每次写入时同步，数值等价于原来现算的 ElapsedTime/BoostDuration；客户端读复制值），并给 BoostAlpha 加 ReplicatedUsing=OnRep_BoostAlpha，让客户端在收到权威进度时转发 OnSprintBoostUpdated（UI / FOV 不必自己插值）；④ 给 bBoostActive 加 ReplicatedUsing=OnRep_BoostActive，客户端能按时间线记录「什么时候知道加速开始/结束了」（与服务器侧日志的时间差就是传播延迟）；⑤ GetBaseMaxWalkSpeed{,Crouched}() 在「基准值尚未捕获」时改为返回复制的镜像值（ReplicatedMaxWalkSpeed{,Crouched}）而不是 0 —— 客户端与「权威端第一次加速之前」都因此拿到有意义的速度值。验证同 bug-031（UHT + 单 TU clang-cl + 注入对照）。",
+      "tags": [
+        "replication",
+        "cond-owneronly",
+        "single-source-of-truth",
+        "query-returns-wrong-value",
+        "silent-failure",
+        "sprint",
+        "ui",
+        "onrep",
+        "latent-bug"
+      ],
+      "related_bugs": [
+        "bug-031",
+        "bug-027",
+        "bug-029"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-07T19:21:00"
+    },
+    {
+      "id": "bug-033",
+      "timestamp": "2026-10-07T19:55:00",
+      "error_message": "潜在联机问题（改 bug-031 时顺手核对同类代码发现，尚未在双人 PIE 里确认）：五个「表现同步」Multicast 的 _Implementation 里都加了「非权威端就 WFLOG_ERROR 并 return」的门禁，而客户端收到 Multicast 时**必然**是非权威端 —— 于是这些表现只有服务器（以及主机自己的画面）里能看到：USprintBoostComponent::Multicast_PlaySprintMontage / Multicast_PlaySprintEffects、UBlinkComponent::Multicast_PlayBlinkMontage / Multicast_PlayBlinkEffects、UAttackComponent::Multicast_PlayAttackEffects。日志上表现为客户端每次加速/闪现/攻击都刷一条 ERROR「被非权威端调用，已忽略」，而画面里什么都没有。",
+      "file": "Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp, Source/Wildforge/Private/Character/Components/BlinkComponent.cpp, Source/Wildforge/Private/Character/Components/AttackComponent.cpp, Source/Wildforge/Public/Character/Components/SprintBoostComponent.h, Source/Wildforge/Public/Character/Components/BlinkComponent.h, Source/Wildforge/Public/Character/Components/AttackComponent.h",
+      "root_cause": "把 Multicast 当成了「服务器调用的函数」，于是照抄权威函数的门禁模式。引擎规则（Actor.cpp:5500-5519 的 AActor::GetFunctionCallspace）：FUNC_NetMulticast 在服务器返回 `Local | Remote`（本地执行 + 发给所有客户端），在客户端只返回 `Callspace` = `Local`（只有被标成 BlueprintAuthorityOnly 才是 Absorbed，:5429-5432）——「客户端执行的那一次」正是**收到服务器的表现同步**，而且它不会再被转发（客户端的分支不带 Remote）。所以：① 门禁挡掉的恰好是唯一需要播表现的那一端；② 门禁注释里写的理由「客户端也能发包刷屏」不成立——客户端调用 Multicast 只会在本机执行。翻滚（ULandRollComponent::Multicast_PlayLandRollEffects / Multicast_PlayLandRollMontage）与滑行（USlideComponent::Multicast_BeginSlide / Multicast_PlaySlideEffects）都已经是正确写法（无门禁、按本端分支做该做的事），本条是当时遗漏的三处。",
+      "fix": "已修（2026-10-07T19:55）：删掉上述五处的权威门禁，实现保持「只做表现、不写任何玩法状态」（客户端分支可安全重复执行）；并在三个头文件的 Multicast 声明处写明规则：「Multicast 的 _Implementation 不能加非权威端门禁；Multicast 在服务器是 Local|Remote、在客户端是 Local 且不再转发（Actor.cpp:5500-5519），客户端自己调用只作用于本机」。USprintBoostComponent 的实现另加注释说明「只能区分这个端该做什么，不能区分是谁调用的」。验证：UHT -WarningsAsErrors Succeeded；SprintBoostComponent.cpp / BlinkComponent.cpp / AttackComponent.cpp / SlideComponent.cpp / PlayerCharacter.cpp 单 TU clang-cl -fsyntax-only 全部 EXIT=0；三个改动过的 TU 各做注入对照（副本追加 int WfSyntaxProbe = ;）均精确 1 错。",
+      "tags": [
+        "replication",
+        "multicast",
+        "authority-guard",
+        "presentation",
+        "client-invisible",
+        "silent-failure",
+        "onrep",
+        "latent-bug"
+      ],
+      "related_bugs": [
+        "bug-030",
+        "bug-031",
+        "bug-032"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-07T19:55:00"
     }
   ]
 }

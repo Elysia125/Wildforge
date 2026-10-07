@@ -11,13 +11,19 @@
 
 #include "SprintBoostComponent.generated.h"
 
+// 只用于 `GetOwnerMovementComponent()` 的返回类型（以及 .cpp 里的实现），
+// 头文件里不需要它的完整定义——不引引擎头能少一层编译依赖。
+class UCharacterMovementComponent;
+
 // 加速进度的本地广播。
 //
 // 与「复制属性」的分工：本委托在**服务器与每个客户端各自本地广播**，订阅者
 // （UI 冲刺条 / 镜头 FOV / 后处理）能就地立即响应，不必等状态复制往返一个 RTT。
-// 服务器侧由 TickSprintBoost 每帧触发；客户端侧不会自动触发（除非显式开
-// `bDriveOwnerLocally`，见下），需要每帧数值的客户端请自己按
-// `GetBoostAlpha()` 插值，或直接开本地驱动。
+// 权威端由 TickSprintBoost 每次推进曲线时触发；客户端在**收到复制的权威进度 /
+// 加速状态时**触发（见 OnRep_* 与 MirrorAuthoritativeSpeedToLocalMovement）。
+// 注意客户端**不预测**这个值：`OnSprintBoostUpdated` / `OnSprintBoostStarted` /
+// `OnSprintBoostStopped` 在客户端上都比服务器晚约 RTT/2（这是权威结论的传播延迟），
+// 需要更平滑的进度条显示就在 UI 里对 `GetSpeedBoostAlpha()` 做插值。
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSprintBoostUpdated,
                                             float, BoostAlpha);
 
@@ -35,16 +41,63 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnSprintBoostStopped);
  * | 加速曲线推进 `StartSpeedBoost()` | 服务器 | ✗ 调不动（Absorbed） | `Server_StartSpeedBoost` |
  * | 复位 `ResetMaxSpeed()` | 服务器 | ✗ | `Server_StopSpeedBoost` |
  * | 基准速度改写 `SetBaseMaxSpeed()` | 服务器 | ✗ | 服务器蓝图 / 装备系统 |
- * | **`MaxWalkSpeed` 本身** | 服务器写 | 跟随 | **`UCharacterMovementComponent` 自带复制，无需我们再复制一份** |
- * | `bBoostActive` / `BoostAlpha` | 服务器写 | 只读（复制下来） | `DOREPLIFETIME_CONDITION(COND_OwnerOnly)` |
+ * | **`MaxWalkSpeed` / `MaxWalkSpeedCrouched`** | 服务器写自己那份 | **在本地那份上写同一份值（镜像）** | `ReplicatedMaxWalkSpeed{,Crouched}` + `OnRep_*` |
+ * | `bBoostActive` / `BoostAlpha` / `LastTargetSpeed` | 服务器写 | 只读（复制下来） | `DOREPLIFETIME_CONDITION(COND_OwnerOnly)` |
  * | 蒙太奇播放（可选） / 表现特效 | 服务器发起 | 跟随 | `Multicast_PlaySprintMontage` / `Multicast_PlaySprintEffects` |
  *
- * ## 设计要点（两条，都是从旧实现踩过来的）
+ * ## 为什么必须**自己**复制移动参数（bug-031，改这里之前先读完）
  *
- * 1. **真正的权威状态只有「CharacterMovement 的 MaxWalkSpeed」一个**：它由
- *    `UCharacterMovementComponent` 自带复制（`OnRep_MaxWalkSpeed`）。所以本能力全部在
- *    权威端跑——客户端自己算一套速度只会和服务器打架（客户端改自己的 `MaxWalkSpeed`
- *    既留不住、又会让服务器回滚）。
+ * 本组件原来的设计前提是「`UCharacterMovementComponent` 自带复制 `MaxWalkSpeed`，
+ * 客户端自动跟随」。**这个前提在 UE 5.7 是错的**，证据（本机安装的引擎源码）：
+ *
+ *   * `CharacterMovementComponent.h` 里 `MaxWalkSpeed`(273-274) /
+ *     `MaxWalkSpeedCrouched`(277-278) / `GroundFriction`(253-254) /
+ *     `BrakingDecelerationWalking`(330-331) / `MaxAcceleration`(293-294) 的
+ *     `UPROPERTY` **都没有 `Replicated` 标记**（整个头文件里 grep "Replicated"
+ *     只有 4 处命中，全是 RPC 注释）；
+ *   * `CharacterMovementComponent.cpp` 里 grep `DOREPLIFETIME` /
+ *     `GetLifetimeReplicatedProps` / `OnRep_MaxWalkSpeed` **零命中**
+ *     ——UE4 时代那条 `DOREPLIFETIME_CONDITION(..., MaxWalkSpeed, COND_SkipOwner)`
+ *     在 5.7 已经不存在了。
+ *
+ * 而 `MaxWalkSpeed` 恰恰是**客户端预测要用的那个参数**：`GetMaxSpeed()` 直接读它
+ * （`CharacterMovementComponent.h:1304` → `.cpp:3510-3528`，调用点在 `CalcVelocity`
+ * 的 :3796）。于是「服务器单方面提速」的后果是：
+ *
+ *   1. 自主代理客户端仍按基准速度（默认 600）跑 `CalcVelocity`，预测出一个位置；
+ *   2. 服务器拿到同一份 move 包，用**加速后的**速度重放
+ *      （`MoveAutonomous`，`CharacterMovementComponent.cpp:10512`），算出更远的位置；
+ *   3. 两者位置差超过容差 → `ServerMoveHandleClientError` → `ClientAdjustPosition`，
+ *      客户端被拽回去 = 持续橡皮筋，两端手感完全不一致。
+ *
+ * 容差小得反直觉：`AGameNetworkManager::ExceedsAllowablePositionError` 判的是
+ * `(LocDiff | LocDiff) > MAXPOSITIONERRORSQUARED`（`GameNetworkManager.cpp:166-169`），
+ * 默认 `MAXPOSITIONERRORSQUARED = 3.0f`（同文件 :29）——即 **√3 ≈ 1.73 cm**。
+ * 500 cm/s 的速度差只要跑 3.5 ms 就越线，等于**每份 move 包都会被纠正一次**。
+ *
+ * 所以本组件自己把权威速度复制给拥有者（`ReplicatedMaxWalkSpeed` /
+ * `ReplicatedMaxWalkSpeedCrouched`，`COND_OwnerOnly`），拥有者客户端把同一份值写进
+ * **自己的**移动组件（`MirrorAuthoritativeSpeedToLocalMovement`：`OnRep` 即时应用 +
+ * `TickComponent` 兜底核对）。
+ *
+ * 为什么这样写是安全的：这两个字段只由服务器写、只发给拥有者，服务器**从不读**
+ * 客户端那一份（校验与重放用的永远是服务器自己的值）。客户端把它们改大只会让自己
+ * 被纠正得更狠，撬不动权威位置。
+ *
+ * 剩下的残差是**一个 RTT/2 的相位差**（客户端拿到的是服务器 RTT/2 之前的值）：
+ * 曲线斜率 = (目标 − 起始) / `BoostDuration`，默认 500/1.5 ≈ 333 cm/s²，
+ * RTT 50 ms 时约 8 cm/s —— 变成「每 ~0.2 s 一次 2 cm 级的极小纠正」，
+ * 与「每份包都纠正」是质的区别。要做到零残差必须让服务器按 move 包里的时间戳重放
+ * （自定义 `UCharacterMovementComponent` 子类），本项目没走这条路：
+ * 换掉 `ACharacter` 的移动组件类会波及所有蓝图角色，代价远大于收益。
+ *
+ * ## 设计要点（都是从旧实现踩过来的）
+ *
+ * 1. **真正的权威状态只有「服务器那份 `MaxWalkSpeed`」一个**：曲线、方向门控、
+ *    结束判定全部只在权威端跑，客户端的 `MaxWalkSpeed` 是**复制的镜像值**，
+ *    客户端既不自己推进曲线、也不自己判结束（本地收掉只会让它低于服务器 →
+ *    又变成预测偏差）。客户端要数值请读 `GetSpeedBoostAlpha()` /
+ *    `IsSpeedBoostActive()`，它们读的是复制下来的权威状态。
  *
  * 2. **`BoostInterval = 0` 必须走 `SetTimerForNextTick` 链，不能交给 `SetTimer`**：
  *    `FTimerManager::SetTimer` 的 `InRate <= 0` 语义是「清掉该句柄上的定时器」
@@ -116,8 +169,11 @@ public:
   //      还在给加速速度，要等一个 RTT 才收——表现为「方向已经转过去了、加速还挂着」。
   //   3. 调用方不再各自实现一遍：任何走 `Server_StartSpeedBoost` 的入口自动获得同一套规则。
   //
-  // 客户端**也**在本地跑同一套判定（`bDriveOwnerLocally` 开启时），保证本地预测与
-  // 服务器结论一致；权威结论始终在服务器。
+  // ⚠️ 客户端**不**自己跑这套判定（曾经在 `bDriveOwnerLocally` 下跑过，已删）：
+  //    客户端的 `MaxWalkSpeed` 现在是从服务器镜像下来的（见类注释的 bug-031），
+  //    本地把加速收掉只会让客户端速度低于服务器 = 自造一份预测偏差。
+  //    方向判定只在权威端跑，结论通过复制 / 复位传下去。客户端要显示「冲刺条件是否
+  //    满足」仍可读 `IsSprintInputDirectionForward()`（读的是客户端的本地输入，只做 UI）。
   //
   // 默认 true：默认行为就是「向前才加速」，关掉即恢复旧行为（按住 Shift 就加速）。
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SprintBoost|Direction")
@@ -160,14 +216,22 @@ public:
 
   // 是否处于「加速中」——含已经到顶、定时器已停但速度仍保持的状态，
   // 直到 `ResetMaxSpeed()` 才变 false。
-  UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Replicated,
-            Category = "SprintBoost")
+  //
+  // ⚠️ 这是**唯一**的「加速中」标记：私有状态里刻意不再留一份同名字段
+  //    （曾经两份并存，而复制的那份从来没人写过 —— 恒为 false，
+  //     `IsSpeedBoostActive()` 又读的是私有那份，于是客户端永远看不到加速中，bug-032）。
+  UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly,
+            ReplicatedUsing = OnRep_BoostActive, Category = "SprintBoost")
   bool bBoostActive = false;
 
   // 加速进度 0..1（0 = 刚起步，1 = 已到顶）。复制给拥有者客户端做 UI，
   // 免得客户端只能靠 `MaxWalkSpeed` 反推进度。
-  UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Replicated,
-            Category = "SprintBoost")
+  // 权威端由 `ApplyMaxWalkSpeed` 每次写入时同步，客户端读复制下来的值。
+  //
+  // 用 `ReplicatedUsing`：客户端每收到一次权威进度就转发一次 `OnSprintBoostUpdated`
+  // （见 `OnRep_BoostAlpha`），UI / FOV 不必自己插值。
+  UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly,
+            ReplicatedUsing = OnRep_BoostAlpha, Category = "SprintBoost")
   float BoostAlpha = 0.0f;
 
   // 上一次加速目标速度（cm/s），供 UI / 调试显示；不参与判定。
@@ -175,10 +239,37 @@ public:
             Category = "SprintBoost")
   float LastTargetSpeed = 0.0f;
 
+  // ===== 移动参数镜像（bug-031 的修复核心，见类注释）=====
+
+  // 权威端**当前**的 `MaxWalkSpeed` / `MaxWalkSpeedCrouched`，每写一次就同步一次
+  // （`ApplyMaxWalkSpeed` / `ResetMaxSpeed` / `BeginPlay`）。
+  //
+  // 为什么必须自己复制：`UCharacterMovementComponent` 不复制任何移动参数，
+  // 客户端预测用的 `MaxWalkSpeed` 永远停在基准值 → 位置对不上 → 每份 move 包都被
+  // `ClientAdjustPosition` 纠正。拥有者客户端拿到这两个值后会写进**自己的**移动组件
+  // （见 `MirrorAuthoritativeSpeedToLocalMovement`），预测参数与服务器一致。
+  //
+  // 用 `ReplicatedUsing`：OnRep 就是「立刻应用到本地移动组件」的时机，
+  // 不能等下一次 Tick（那会多滞后一帧，白白多攒 1.7cm 级的偏差）。
+  //
+  // 默认值 0.0f 是**故意的**：它不是合法速度（`ApplyMaxWalkSpeed` 拒绝 <= 0），
+  // 所以任何时刻的运行值都 != CDO 默认值，初次复制（新客户端进场 / 角色重生）
+  // 一定会把它发下来并触发 OnRep。
+  UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly,
+            ReplicatedUsing = OnRep_ReplicatedMaxWalkSpeed,
+            Category = "SprintBoost")
+  float ReplicatedMaxWalkSpeed = 0.0f;
+
+  UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly,
+            ReplicatedUsing = OnRep_ReplicatedMaxWalkSpeedCrouched,
+            Category = "SprintBoost")
+  float ReplicatedMaxWalkSpeedCrouched = 0.0f;
+
   // ===== 通知（每端各自本地广播）=====
 
-  // 每次刷新速度（每帧 / 固定间隔）时触发，参数是当前进度 0..1。
+  // 每次刷新速度（起步 / 推进 / 到顶 / 复位）时触发，参数是当前进度 0..1。
   // 客户端可在这里做 FOV / 冲刺特效；**不要**在这里改速度相关的权威状态。
+  // 权威端由 `ApplyMaxWalkSpeed` 触发；客户端由 `OnRep_BoostAlpha` 在收到权威进度时触发。
   UPROPERTY(BlueprintAssignable, Category = "SprintBoost")
   FOnSprintBoostUpdated OnSprintBoostUpdated;
 
@@ -197,6 +288,11 @@ public:
 
   // 在所有端播放可选的冲刺蒙太奇。`InSectionName` 为 `NAME_None` 时从头播。
   // 服务器调用才会转成 Multicast；客户端调用只会本地播放（纯表现，无害）。
+  //
+  // ⚠️ 两个 `Multicast_*` 的 `_Implementation` **不能加「非权威端就忽略」的门禁**：
+  //    客户端执行的那一次就是「收到服务器的表现同步」，门禁会让客户端永远看不到表现。
+  //    引擎规则：Multicast 在服务器返回 `Local | Remote`，在客户端只返回 `Local`
+  //    且不再转发（`Actor.cpp:5500-5519`），客户端自己调用只作用于本机。
   UFUNCTION(NetMulticast, Reliable, BlueprintCallable,
             Category = "SprintBoost|RPC")
   void Multicast_PlaySprintMontage(FName InSectionName);
@@ -214,26 +310,42 @@ public:
 
   // ===== 查询（纯读，任何端都能安全调用）=====
 
-  // 是否正处于加速中（与复制的 `bBoostActive` 同源，供 C++ 方即读取用）
+  // 是否正处于加速中。读的是**复制的** `bBoostActive`（服务器写、其它端只读），
+  // 所以在客户端上也是对的——它反映的是权威结论，不是本地推测。
   UFUNCTION(BlueprintPure, Category = "SprintBoost",
             meta = (BlueprintThreadSafe))
-  bool IsSpeedBoostActive() const { return BoostState.bBoostActive; }
+  bool IsSpeedBoostActive() const { return bBoostActive; }
 
-  // 当前加速进度 0..1；未加速时为 0
+  // 当前加速进度 0..1；未加速时为 0。
+  // 读的是**复制的** `BoostAlpha`（权威端由 `ApplyMaxWalkSpeed` 同步），
+  // 因此客户端拿到的是服务器的真实进度，而不是本地自己插值出来的一个猜测。
   UFUNCTION(BlueprintPure, Category = "SprintBoost",
             meta = (BlueprintThreadSafe))
   float GetSpeedBoostAlpha() const;
 
-  // 当前「未加速时」的基准 MaxWalkSpeed，也就是 `ResetMaxSpeed()` 会回到的值
+  // 当前「未加速时」的基准 MaxWalkSpeed，也就是 `ResetMaxSpeed()` 会回到的值。
+  //
+  // ⚠️ 基准值只存在于权威端，而且**第一次加速之前刻意没有捕获**（见 BeginPlay 注释）。
+  //    所以这里在「还没捕获过基准」时返回**复制的权威镜像值**
+  //    （`ReplicatedMaxWalkSpeed`：权威端 BeginPlay 就同步过它，未加速时它就等于基准值；
+  //    客户端上它是唯一可用的那个数）。加速**进行中**时它返回的是当前加速值，不是基准值。
+  //
+  //    以前这里直接返回 `BoostState.BaseMaxWalkSpeed`，于是客户端上永远是 0、权威端上
+  //    第一次加速前也是 0 —— 拿它做 UI 会显示「速度 0 / 角色不能动」，排查 bug-027 时
+  //    就被这个 0 误导过一轮（同类陷阱见 bug-032）。
   UFUNCTION(BlueprintPure, Category = "SprintBoost",
             meta = (BlueprintThreadSafe))
-  float GetBaseMaxWalkSpeed() const { return BoostState.BaseMaxWalkSpeed; }
+  float GetBaseMaxWalkSpeed() const {
+    return BoostState.bBaseSpeedValid ? BoostState.BaseMaxWalkSpeed
+                                      : ReplicatedMaxWalkSpeed;
+  }
 
-  // 当前（未加速时的）基准蹲伏速度
+  // 当前（未加速时的）基准蹲伏速度。取值规则与 `GetBaseMaxWalkSpeed()` 相同。
   UFUNCTION(BlueprintPure, Category = "SprintBoost",
             meta = (BlueprintThreadSafe))
   float GetBaseMaxWalkSpeedCrouched() const {
-    return BoostState.BaseMaxWalkSpeedCrouched;
+    return BoostState.bBaseSpeedValid ? BoostState.BaseMaxWalkSpeedCrouched
+                                      : ReplicatedMaxWalkSpeedCrouched;
   }
 
   // 加速状态的一行快照，专供日志 / 调试用（每个判定点都会打它）。
@@ -327,24 +439,29 @@ protected:
   // Called when the game starts
   virtual void BeginPlay() override;
 
-  // Called every frame（默认关掉，只有开了 `bDriveOwnerLocally` 才用）
+  // Called every frame。**所有端都开着**，第一行就按「权威端 / 非本地控制 / 开关」
+  // 早退：真正干活的只有「本地控制的自主代理」那一个端，且只在镜像值与本地值不一致时
+  // 才写移动组件（一致时只是两次浮点比较）。
+  //
+  // 为什么不用 `SetComponentTickEnabled` 运行期开关：在自己 Tick 里关自己的 Tick
+  // 容易与当帧后续逻辑打架，而且开关时机还要处理「Possess 发生在 BeginPlay 之后」
+  // 这种时序（本地玩家 Pawn 的 BeginPlay 里 `GetController()` 可能还是空）。
   virtual void
   TickComponent(float DeltaTime, ELevelTick TickType,
                 FActorComponentTickFunction *ThisTickFunction) override;
 
-  // 加速曲线是否跑在本地（默认关）。
+  // 把权威端的 `MaxWalkSpeed` / `MaxWalkSpeedCrouched` 镜像到**拥有者客户端自己**的
+  // 移动组件上。默认开：关掉它就等于回到 bug-031（客户端按基准速度预测、
+  // 服务器按加速后的速度重放，每份 move 包都被纠正）。
   //
-  // 为什么默认关：`MaxWalkSpeed` 由 CharacterMovement 复制，权威端在服务器；
-  // 客户端再算一套只会在收到复制值那一帧被覆盖，纯粹的浪费。
-  // 但它对**单机 / 本地调试**和「想要本地立刻起速的竞速手感」是有用的，
-  // 所以做成开关而不是彻底删掉。开启后 `OnSprintBoostUpdated` 也会在客户端每帧广播，
-  // UI 不必再自己插值。
+  // 保留开关只是为了做对照实验：双人 PIE 里把它关掉、配
+  // `p.NetShowCorrections 1` / `p.NetCorrectionLifetime` 就能直观看到纠正次数暴涨。
   //
   // ⚠️ 它必须在 protected 而不是 private：UHT 不允许在**私有**成员上用
   // `BlueprintReadOnly`（会报 "BlueprintReadOnly should not be used on private
-  // members"）。想留在 private 就得去掉 BlueprintReadOnly。
+  // members"）——这与原来那个 `bDriveOwnerLocally` 的约束是同一条。
   UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "SprintBoost|Advanced")
-  bool bDriveOwnerLocally = false;
+  bool bMirrorSpeedOnOwningClient = true;
 
 private:
   // ===== 加速的内部状态 =====
@@ -388,8 +505,8 @@ private:
     // 否则会出现两条定时器链同时跑（旧链的句柄被覆盖，谁也停不掉它）。
     uint32 Generation = 0;
 
-    // 是否处于「加速中」——含已经到顶、定时器已停但速度仍保持的状态
-    bool bBoostActive = false;
+    // ⚠️ 这里**没有** bBoostActive：「加速中」的唯一真相是复制的那个 UPROPERTY
+    //    （曾经两份并存 → 复制的永远没人写、查询又读私有的那份，见 bug-032）。
     // 刷新方式：true = 固定间隔的循环定时器；false = 每帧一次的 next-tick 链
     bool bIntervalTimer = false;
     // 已完成的「开始」广播是否还没被「结束」广播配对掉（保证 Started/Stopped 成对）
@@ -446,8 +563,47 @@ private:
   void CaptureBaseMaxSpeed();
   // 权威端专用：把步行速度写到移动组件，并让蹲伏速度按基准比例跟随缩放
   void ApplyMaxWalkSpeed(float InMaxWalkSpeed, float Alpha);
-  // 客户端本地驱动用的轻量插值：只更新 BoostAlpha 并广播，**不碰移动组件**
-  void TickLocalBoostVisualOnly();
+
+  // ===== 移动参数镜像（bug-031）=====
+
+  // 取宿主的移动组件（没有则返回 nullptr）。抽出来是因为下面几处都要用，
+  // 而「找不到移动组件」的日志每条路径的措辞不同。
+  UCharacterMovementComponent *GetOwnerMovementComponent() const;
+
+  // 本端这个 Pawn 是否是「本地控制的自主代理」（客户端预测的那一端）。
+  // 与 `USlideComponent::IsLocallyControlledOwner` 同义：
+  // 权威端（单机 / 监听服务器）与模拟代理都返回 false。
+  bool IsLocallyControlledOwner() const;
+
+  // 权威端每次写完移动组件后调它：把当前两个值同步到复制的镜像字段上，
+  // 变化时记一条 INFO（客户端什么时候拿到、拿到多少，靠这条日志对账）。
+  void SyncReplicatedSpeedFromMovement(const TCHAR *Reason);
+
+  // 拥有者客户端专用：把复制的权威速度写进**本端**移动组件。
+  // 权威端 / 模拟代理 / `bMirrorSpeedOnOwningClient=false` 都会立刻返回；
+  // 值已经一致时也只做两次浮点比较，不写组件。
+  void MirrorAuthoritativeSpeedToLocalMovement(const TCHAR *Reason);
+
+  // `ReplicatedMaxWalkSpeed{,Crouched}` 变化时的回调（只在拥有者客户端触发）
+  UFUNCTION()
+  void OnRep_ReplicatedMaxWalkSpeed();
+
+  UFUNCTION()
+  void OnRep_ReplicatedMaxWalkSpeedCrouched();
+
+  // `bBoostActive` 变化时的回调：只负责在客户端把「加速开始 / 结束」记进日志
+  // （速度本身的镜像由上面两个 OnRep 负责），方便联机时按时间线对账。
+  UFUNCTION()
+  void OnRep_BoostActive();
+
+  // `BoostAlpha` 变化时的回调：把权威进度转发给 `OnSprintBoostUpdated` 的订阅者，
+  // 让客户端 UI / FOV 不必自己插值（值就是权威值，不做本地预测）。
+  UFUNCTION()
+  void OnRep_BoostAlpha();
+
+  // 镜像值非法（<= 0 / 非有限值）时只告警一次，避免每帧刷屏；
+  // 收到合法值时重新武装。
+  bool bMirrorInvalidWarned = false;
 
   // 已经广播过 OnSprintBoostStarted、但还没被 OnSprintBoostStopped 配对掉。
   // 用它保证 Started/Stopped 严格成对（订阅者不会收到「无对应的结束」）。

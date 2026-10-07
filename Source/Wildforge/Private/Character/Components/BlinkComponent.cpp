@@ -291,13 +291,13 @@ void UBlinkComponent::ResetBlinkCooldown() {
 
 void UBlinkComponent::Multicast_PlayBlinkMontage_Implementation(
     FVector InLandingLocation) {
-  // Multicast 会被复制到所有端，客户端理论上也能反过来调用它（发包合法）。
-  // 这里加门禁：只允许服务器发起表现同步，避免客户端拿它刷屏。
-  if (!IsAuthoritativeForActorComponent(this)) {
-    WFLOG_ERROR("[闪现] Multicast_PlayBlinkMontage 被非权威端调用，已忽略。");
-    return;
-  }
-
+  // ⚠️ 这里**刻意不加权威门禁**（曾经有 `if (!IsAuthoritativeForActorComponent(this))
+  //    { WFLOG_ERROR(...); return; }`）：Multicast 在每个端都会执行，**客户端那一次是
+  //    正常接收**，加门禁等于让客户端永远看不到闪现蒙太奇。
+  //    引擎规则（Actor.cpp:5500-5519）：Multicast 在服务器返回 `Local | Remote`，
+  //    在客户端只返回 `Local`（除非函数被标成 BlueprintAuthorityOnly，Actor.cpp:5429-5432），
+  //    所以客户端的这次执行不会再转发给任何人，「客户端调用刷屏」的担心不成立。
+  //    与翻滚 / 滑行组件保持一致（cerebrum Decision Log）。
   if (BlinkMontage == nullptr) {
     // 空配置是**设计内的合法状态**（内容仓库里当前没有闪现蒙太奇），
     // 所以这里用 INFO 而不是 WARNING，避免每次闪现都刷一条告警。
@@ -338,14 +338,13 @@ void UBlinkComponent::Multicast_PlayBlinkMontage_Implementation(
 
 void UBlinkComponent::Multicast_PlayBlinkEffects_Implementation(
     FVector InLandingLocation, bool bSucceeded) {
-  if (!IsAuthoritativeForActorComponent(this)) {
-    WFLOG_ERROR("[闪现] Multicast_PlayBlinkEffects 被非权威端调用，已忽略。");
-    return;
-  }
-
-  WFLOG_INFO("[闪现] 广播闪现表现：落点 %.1f,%.1f,%.1f，成功=%d。宿主 %s",
+  // ⚠️ 与上面的蒙太奇同理：**不加**权威门禁。客户端的这次执行是「收到服务器的表现
+  //    同步」，被门禁挡掉就等于闪现特效（残影 / 音效 / 镜头）只在服务器上播。
+  //    函数体只做表现：日志 + PlayBlinkEffects + OnBlinkPerformed 广播，不写任何权威状态，
+  //    所以对「任何端、任何调用来源」都是安全的。
+  WFLOG_INFO("[闪现] 广播闪现表现：落点 %.1f,%.1f,%.1f，成功=%d（本端权威=%d）。宿主 %s",
              InLandingLocation.X, InLandingLocation.Y, InLandingLocation.Z,
-             bSucceeded ? 1 : 0,
+             bSucceeded ? 1 : 0, IsAuthoritativeForActorComponent(this) ? 1 : 0,
              GetOwner() ? *GetOwner()->GetName() : TEXT("None"));
 
   // 每端各播一次（服务器这次是本地执行，不额外发 RPC）

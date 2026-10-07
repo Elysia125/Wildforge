@@ -8,6 +8,7 @@
 #include "Character/Components/AttackComponent.h"
 #include "Character/Components/BlinkComponent.h"
 #include "Character/Components/LandRollComponent.h"
+#include "Character/Components/SlideComponent.h"
 #include "Character/Components/SprintBoostComponent.h"
 #include "ItemSystem/Components/PlayerInventory.h"
 
@@ -23,21 +24,23 @@
  * | `UPlayerInventory` | 背包 | `Slots`（`COND_OwnerOnly`） | `Server_*` |
  * | `UAttackComponent` | 攻击 / 连击 | `bIsAttacking` / 连击窗口 / 段位下标 | `Server_Attack` |
  * | `ULandRollComponent` | 翻滚 | `bIsRolling` | `Server_LandRoll` |
- * | `USprintBoostComponent` | 加速（长按 Shift） | `bBoostActive` + `CharacterMovement::MaxWalkSpeed` | `Server_StartSpeedBoost` |
+ * | `USprintBoostComponent` | 加速（长按 Shift） | `bBoostActive` + `ReplicatedMaxWalkSpeed{,Crouched}`（拥有者客户端镜像进自己的移动组件） | `Server_StartSpeedBoost` |
  * | `UBlinkComponent` | 闪现（点按 Shift） | `LastBlinkTime` / `BlinkCount` | `Server_Blink` |
+ * | `USlideComponent` | 滑行（滑铲） | `bIsSliding` + 逐帧速度曲线 | `Server_StartSlide` |
  *
- * ## 攻击 / 翻滚期间的移动门控在这里落地
+ * ## 攻击 / 翻滚 / 滑行期间的移动门控在这里落地
  *
  * 订阅攻击组件的 `OnAttackStarted`（禁止移动）/ `OnAttackFinished`（恢复移动）与
- * 翻滚组件的 `OnLandRollStarted` / `OnLandRollFinished`，不对组件的内部逻辑做任何
+ * 翻滚组件、滑行组件的 `On*Started` / `On*Finished`，不对组件的内部逻辑做任何
  * 假设——组件只负责广播「开始了 / 结束了」。
  *
- * ### 两种强度：硬锁与软锁（「边跑边滚」手感的关键）
+ * ### 两种强度：硬锁与软锁（「边跑边滚 / 边跑边滑」手感的关键）
  *
  * | 来源 | 强度 | 对移动组件做了什么 |
  * |---|---|---|
  * | `MovementLockAttack` | **硬锁** | `StopMovementImmediately()` + `DisableMovement()`（MOVE_None） |
  * | `MovementLockLandRoll` | **软锁** | 什么都不做（只记账 / 复位加速 / 供 UI 查询） |
+ * | `MovementLockSlide` | **软锁** | 同上（滑行的位移是它自己每帧写的速度，硬锁会当场把速度清零） |
  *
  * 翻滚为什么必须是软锁（踩过的坑）：
  *
@@ -54,7 +57,8 @@
  *
  * ### 移动锁按「来源」记账，不是布尔、也不是计数
  *
- * 用一个 `TSet<FName>` 记录**谁**正持有锁（`MovementLockAttack` / `MovementLockLandRoll`），
+ * 用一个 `TSet<FName>` 记录**谁**正持有锁（`MovementLockAttack` / `MovementLockLandRoll` /
+ * `MovementLockSlide`），
  * 再用第二个集合 `MovementDisablingHolders` 记录其中**要求禁用移动组件**的那部分
  * （硬锁）。四条不变式：
  *
@@ -104,6 +108,12 @@ private:
             meta = (AllowPrivateAccess = "true"))
   TObjectPtr<UBlinkComponent> BlinkComponent;
 
+  // 滑行组件（滑铲）：起手 / 收手在蓝图侧（`Server_StartSlide` / `Server_StopSlide`），
+  // 这里只负责「滑行期间的移动门控」——落到 `MovementLockSlide` 的**软锁**上。
+  UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Slide",
+            meta = (AllowPrivateAccess = "true"))
+  TObjectPtr<USlideComponent> SlideComponent;
+
   // 禁用移动前的移动模式，硬锁全部释放后用来恢复（对应「启动移动」操作）。
   // 只在本机本地读写，不复制：恢复的判断依据是 CharacterMovement
   // 自己复制的移动模式，所以两端各自维护一份本地缓存即可。
@@ -145,6 +155,9 @@ private:
   // 那种静默走偏很难查，所以统一从这里取。
   static const FName MovementLockAttack;
   static const FName MovementLockLandRoll;
+  // 滑行也是软锁：它的位移由组件每帧写速度推进，硬锁的 `StopMovementImmediately()` +
+  // `DisableMovement()` 会把速度清零、并在 MOVE_None 下丢弃根运动 = 滑行当场失效。
+  static const FName MovementLockSlide;
 
   // 移动锁持有者的一行快照（日志用），空集合返回 "无"
   FString DescribeMovementLockHolders() const;
@@ -191,6 +204,16 @@ protected:
   UFUNCTION()
   void HandleLandRollFinished();
 
+  // 滑行开始：落**软锁**（与翻滚同理：滑行的位移是组件自己每帧写的速度，
+  // 禁用移动组件会把它当场清掉）。落锁同时会复位加速状态，这也是滑行需要的顺序——
+  // 组件是在这个广播**之后**才写自己的移动参数，所以它快照到的一定是复位后的基准值。
+  UFUNCTION()
+  void HandleSlideStarted();
+
+  // 滑行结束：软锁释放
+  UFUNCTION()
+  void HandleSlideFinished();
+
 public:
   // Sets default values for this character's properties
   APlayerCharacter();
@@ -218,6 +241,12 @@ public:
   // 闪现组件：`Server_Blink` / `Server_BlinkForward` / `BlinkForward` 都在它身上
   UFUNCTION(BlueprintPure, Category = "Blink", meta = (BlueprintThreadSafe))
   UBlinkComponent *GetBlinkComponent() const { return BlinkComponent.Get(); }
+
+  // 滑行组件：`Server_StartSlide` / `Server_StopSlide` / `StartSlide` / `StopSlide`
+  // 与几个查询（`IsSlideAvailable` / `GetSlideAlpha` …）都在它身上。
+  // 蓝图里的起手 / 收手就该连这里。
+  UFUNCTION(BlueprintPure, Category = "Slide", meta = (BlueprintThreadSafe))
+  USlideComponent *GetSlideComponent() const { return SlideComponent.Get(); }
 
   // ===== 移动锁（供能力组件 / 它们的所有者调用）=====
 

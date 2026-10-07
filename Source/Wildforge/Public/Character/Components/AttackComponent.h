@@ -317,7 +317,12 @@ public:
   //
   // 参数直接把「播哪一段」带过去，客户端**不读**复制的下标来决定播什么：
   // RPC 与属性复制谁先到不保证，靠读下标会让客户端偶尔播错段。
-  // 客户端调用本 RPC 会被 `Multicast_Implementation` 里的权威门禁拒绝（日志可见）。
+  //
+  // ⚠️ 这两个 `_Implementation` **不能加「非权威端就忽略」的门禁**：Multicast 在每个端
+  // 都会执行，客户端那一次是**正常接收**；门禁会让客户端永远看不到攻击动画与特效。
+  // 引擎规则：Multicast 在服务器返回 `Local | Remote`，在客户端只返回 `Local` 且不再转发
+  // （`Actor.cpp:5500-5519`；被标成 `BlueprintAuthorityOnly` 才是 Absorbed，:5429-5432），
+  // 所以「客户端自己调用」只作用于本机，没有刷屏风险。实现里只做表现、不写玩法状态。
 
   UFUNCTION(NetMulticast, Reliable, BlueprintCallable, Category = "Attack|RPC")
   void Multicast_PlayAttackMontage(int32 InMontageIndex, int32 InSectionIndex,

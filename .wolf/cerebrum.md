@@ -217,6 +217,45 @@
   再 `ClearAccumulatedForces()`（`CharacterMovementComponent.cpp:2716-2734`）。所以 `DisableMovement()` 是
   「连动画自带的位移一起关掉」，只适合不需要位移的动作（攻击）。需要位移的动作（翻滚 / 位移技）不要碰移动
   组件；`StopMovementImmediately()` 也会把跑动惯性清零，边跑边滚会变成急停 + 原地滚。见 bug-029。
+- **`UCharacterMovementComponent` 在 UE 5.7 不复制任何移动参数**：头文件里 `MaxWalkSpeed` /
+  `MaxWalkSpeedCrouched` / `GroundFriction` / `BrakingDecelerationWalking` / `MaxAcceleration`
+  都**没有** `Replicated` 标记，cpp 里也**没有** `GetLifetimeReplicatedProps`（本机 grep 实测）。
+  所以「服务器改 `MaxWalkSpeed`、客户端自动跟随」在本引擎**不成立**（UE4 时代那条
+  `DOREPLIFETIME_CONDITION(..., MaxWalkSpeed, COND_SkipOwner)` 在 5.7 已不存在）——
+  客户端仍按自己的值做本地预测（`GetMaxSpeed()` 直接读 `MaxWalkSpeed`，`CalcVelocity` 调用点
+  `CharacterMovementComponent.cpp:3796`），与服务器的差异只能靠 `ClientAdjustPosition` 纠正。
+  要改速度 / 摩擦这类参数又不想橡皮筋，必须在**自主代理上也写同一份**（`IsLocallyControlled()` 那一侧）。
+  可行的最小做法（`USprintBoostComponent` 的实现）：把权威值放进自己的复制属性
+  （`ReplicatedMaxWalkSpeed{,Crouched}`，`COND_OwnerOnly` 只发拥有者），拥有者在 `OnRep_*` 里
+  立刻写进自己的移动组件、再用 Tick 兜底核对。它不会和服务器打架——服务器从不读客户端那份。
+  见 bug-031。
+- **客户端预测的容差小得反直觉：√3 ≈ 1.73 cm**。`AGameNetworkManager::ExceedsAllowablePositionError`
+  判的是 `(LocDiff | LocDiff) > MAXPOSITIONERRORSQUARED`（`GameNetworkManager.cpp:166-169`），
+  默认 `MAXPOSITIONERRORSQUARED = 3.0f`（同文件 :29）。客户端预测之所以敢用这么小的容差，是因为
+  「同样的输入 + 同样的参数 = 逐帧可复现的同一个位置」；**一旦参数不同，速度差 × 时间就会瞬间越线**：
+  500 cm/s 的差只要 3.5 ms。这条数字是「预测参数必须两端一致」的量化理由，也是排查
+  「为什么一直有纠正」时该先算的那个数。
+- **速度曲线（渐变类）的预测只能做到「同一条曲线、差一个 RTT/2」**：客户端拿到的是服务器
+  RTT/2 之前的值，斜率 = (目标 − 起始) / 时长，默认 500/1.5 ≈ 333 cm/s² → RTT 50 ms 时约 8 cm/s
+  的跟踪误差 = 每 ~0.2 s 一次 2 cm 级纠正。要零残差必须让服务器**按 move 包里的时间戳**重放
+  （自定义 `UCharacterMovementComponent` 子类，在 `MoveAutonomous` 前按 `ClientTimeStamp` 设置速度）。
+  本项目判定不值得（要换掉 `ACharacter` 的移动组件类，波及所有蓝图角色）。
+  绝对不要为了「本地手感」让客户端自己推进曲线或自己提前结束——那只会把相位差放大成持续偏差。
+- **不改 `MaxWalkSpeed` 也能做出高于步行上限的可控速度曲线**：`ApplyVelocityBraking` 在
+  `Friction == 0 && BrakingDeceleration == 0` 时**直接 return**（`CharacterMovementComponent.cpp:4310-4316`），
+  速度不会被移动组件吃掉；而 `CalcVelocity` 对**已经超速**的速度取
+  `NewMaxInputSpeed = Velocity.Size()`（`:3863-3865`），所以 900 的滑行速度不会因为
+  `MaxWalkSpeed == 600` 被夹回去。做法：`GroundFriction` / `BrakingDecelerationWalking` 置 0，
+  每帧只把水平速度**往下夹**到自己的曲线值。转向强度由 `MaxAcceleration` 独家控制
+  （`ScaleInputAcceleration` = `GetMaxAcceleration() * InputAcceleration`，`:8018`；置 0 = 输入完全不产生加速度）。
+- **「本端进度」不能用复制的服务器时间戳减本端世界时间**：两端 `World->GetTimeSeconds()` 起点不同
+  （客户端从自己的关卡加载算起），`本端 Now - 服务器时间戳` 是垃圾值。表现同步（Multicast / 复制）到达时
+  **各端自己记一份本端起算时间**再算进度，UI 与速度曲线才在每端都成立
+  （`USlideComponent::RuntimeState.LocalSlideStartTime`）。
+- **不要在自己的 Tick 里 `SetComponentTickEnabled(false)`**：它会走到
+  `FTickTaskLevel::RemoveTickFunction` / `AddTickFunction` **改 tick 列表**
+  （`TickTaskManager.cpp:2434-2456`），而「滑行 / 蓄力这类动作的收尾」恰好常常发生在自己的 Tick 里。
+  要么常开 Tick + 开头早退（`USlideComponent` 的做法），要么用延后手段（`SetComponentTickEnabledAsync`）。
 
 ## Do-Not-Repeat
 
@@ -239,6 +278,8 @@
    见 bug-029。
 - [2026-10-07] **不要在 `NetMulticast` 的 `_Implementation` 里写「非权威端就忽略/报错」的门禁**：每个端
    都会执行它，客户端那一份正是**正常接收**（`Actor.cpp:5500-5519`），加门禁等于客户端永远看不到表现。
+   （这条规则当时只改了翻滚，加速 / 闪现 / 攻击特效三处漏了 —— 见 bug-033，说明「立了规则」不等于
+   「存量代码都合规」，改一个组件的同类代码时要顺手 grep 一遍其他组件的同名模式。）
    同理，**生命周期广播不要拿 `COND_OwnerOnly` 的复制属性当判据**（模拟代理永远收不到、永远是 false），
    要用一份各端自己维护的、不复制的表现标志，并让 Started / Finished 严格配对（表现没起来就一个都不广播，
    否则订阅者「只落锁、没人解锁」）。见 bug-030。
@@ -328,6 +369,26 @@
   判定会静默失效（不是报错，是「判定结果永远是没输入」）。服务器读 `Acceleration`
   （`GetCurrentAcceleration()`），并且**不要用它的长度当输入强度**——长度被引擎填成 1，不是玩家推的力度。
   见 bug-026。
+- [2026-10-07] **不要再假设「移动参数（`MaxWalkSpeed` / `GroundFriction` / `MaxAcceleration`）会复制」**：
+  UE 5.7 的 `UCharacterMovementComponent` 一个都不复制（见 Key Learnings / bug-031）。改这些参数的组件
+  必须自己把同一份值写到**本地控制的自主代理**上，否则客户端预测与服务器不一致 = 橡皮筋。
+- [2026-10-07] **不要让客户端自己推进或自己提前结束权威速度曲线**：客户端的 `MaxWalkSpeed` 是
+  服务器复制下来的镜像值（`USprintBoostComponent::bMirrorSpeedOnOwningClient` / `OnRep_*` +
+  Tick 兜底），本地算一套、或本地按方向门控提前收掉，都只会让它与服务器不一致 = 自造偏差。
+  曲线、方向门控、结束条件**只在权威端跑**。见 bug-031。
+- [2026-10-07] **不要给同一个状态留两份同名字段（一份复制的、一份私有的权威副本）**：
+  私有那份在客户端永远是初始值，而复制那份若没人写也永远是 false/0，两者一起就把
+  「客户端读到的状态」变成假值（`IsSpeedBoostActive()` 恒 false、`GetSpeedBoostAlpha()` 恒 0）。
+  「加速中」这类状态只保留**复制的那个 UPROPERTY** 一份，权威端也写它。见 bug-032。
+- [2026-10-07] **不要让第二个组件去「快照-改写-还原」`MaxWalkSpeed`**：`USprintBoostComponent` 已经把它
+  当成独占资源（`CaptureBaseMaxSpeed` / `ResetMaxSpeed`），两方各存一份快照就会出现
+  「另一方中途复位 → 这一方收尾时把过期值写回去」→ 角色永久带着错误速度（bug-027 的翻版）。
+  新的位移类能力（滑行）改为「零摩擦 + 自己夹速度 + 只用 `MaxAcceleration` 调转向」，一个 `MaxWalkSpeed` 都不碰；
+  真要改速度，走 `USprintBoostComponent` 的公开 API（`SetBaseMaxSpeed` 等）而不是直接写字段。
+- [2026-10-07] **不要在自己的 Tick 里 `SetComponentTickEnabled(false)`**（会改 tick 列表，
+  `TickTaskManager.cpp:2434-2456`）：需要逐帧推进的组件用「常开 Tick + 开头早退」，不要动态开关。
+- [2026-10-07] **「本端进度 / 曲线」不要用复制的服务器时间戳算**：各端 World 时间起点不同，
+  收到表现同步时自己记一份本端起算时间（`USlideComponent::RuntimeState.LocalSlideStartTime`）。
 
 ## Decision Log
 
@@ -403,8 +464,8 @@
   能力自己的事，放基类会让**每个**派生类都背一遍组件的开销与复制通道。
   **代价（用户已知情并选择）**：旧蓝图节点（BP_ThirdPersonCharacter 里的 `Server_StartSpeedBoost` /
   `Server_StopSpeedBoost`）需要手动重连到 `GetSprintBoostComponent()`，本次**没有**写 CoreRedirects。
-  player 类现在同时持有 5 个组件，访问器是 `GetInventory` / `GetAttackComponent` /
-  `GetLandRollComponent` / `GetSprintBoostComponent` / `GetBlinkComponent`。
+  player 类现在同时持有 6 个组件，访问器是 `GetInventory` / `GetAttackComponent` /
+  `GetLandRollComponent` / `GetSprintBoostComponent` / `GetBlinkComponent` / `GetSlideComponent`。
 - [2026-10-07] **加速 / 闪现的可选蒙太奇做成「允许为空」的合法状态**：内容仓库里没有冲刺与闪现的蒙太奇
   资源（`Content/Characters/Man/Animations/Montage/` 下只有 `LandRollMontage` + 4 个攻击蒙太奇），
   所以新组件的 `SprintMontage` / `BlinkMontage` 默认空，播放时记一条 **INFO**（不是 WARNING——
@@ -454,3 +515,24 @@
 - [2026-10-07] **表现同步的 Multicast 一律不在 `_Implementation` 里加权威门禁**（翻滚的特效与蒙太奇都按这条
   改）：Multicast 在每个端都会执行，客户端那一次是正常接收，门禁只会让客户端永远看不到表现。要在实现里做
   区分，只能区分「这个端该做什么」（权威端写状态、非权威端只播表现），不能区分「是谁调用的」。
+- [2026-10-07] **滑行（`USlideComponent`）的位移模型刻意绕开 `MaxWalkSpeed`**：用「`GroundFriction` /
+  `BrakingDecelerationWalking` 置 0（引擎据此跳过刹车，`CharacterMovementComponent.cpp:4310-4316`）
+  + 起手一个冲量 + 每帧把水平速度往下夹到自己算的曲线」，转向只给一点 `MaxAcceleration`。
+  理由：`MaxWalkSpeed` 已被 `USprintBoostComponent` 独占（见 Do-Not-Repeat），而滑行需要「动量优先、
+  可被撞墙自然打断」的速度曲线，这套模型同时在**权威端与本地控制的自主代理**上跑（本地预测镜像，
+  因为移动参数不复制，见 bug-031）。结束时机（时长 / 速度 / 离地）**只由权威端 Tick 判**，
+  客户端等 `Multicast_EndSlide`，避免 RPC 延迟里的「我这端已经结束、服务器还在滑」。
+- [2026-10-07] **滑行不订阅 `OnMontageEnded`，蒙太奇为空是合法状态**：结束条件是速度曲线 / 时长 / 离地，
+  不是动画播完（与 `USprintBoostComponent` 同类，而与必须靠动画收尾的 `ULandRollComponent` 相反）。
+  因此 Started / Finished 的配对**不看蒙太奇是否播起来**，只看 `bSlidePresentationActive`——
+  照抄翻滚那条「表现没起来就不广播」的规则会让没配蒙太奇时整个能力失效。
+  `OnSlideStarted` 在 `Multicast_BeginSlide` 里**先于**移动参数改写广播：让订阅者（角色类）的软锁 /
+  加速复位先发生，否则收尾时会把它复位掉的旧值当成自己的快照写回去。
+- [2026-10-07] **bug-031 的修法选「自己复制 + 拥有者镜像」，不选「自定义移动组件子类」**：
+  `USprintBoostComponent` 用 `ReplicatedMaxWalkSpeed{,Crouched}`（`COND_OwnerOnly`）把权威速度发给
+  拥有者，拥有者在 `OnRep_*` 里写自己的移动组件，Tick 再兜底核对一次（值一致时只是两次浮点比较）。
+  考虑过并否决的两条路：① override `UCharacterMovementComponent::GetMaxSpeed()` 读复制值——那是
+  「更正确」的做法（Lyra 就是走 GAS 属性 + 自定义移动组件），但要换掉 `ACharacter` 的移动组件类，
+  波及所有蓝图角色的组件引用与 `FindComponentByClass` 调用点，收益不抵代价；② 让客户端按自己的时钟
+  跑同一套曲线——相位差（RTT/2）与时钟起点差异会让它比镜像值更差，而且一旦本地提前结束就变成持续偏差。
+  保留 `bMirrorSpeedOnOwningClient=false` 只是为了双人 PIE 里做对照（关掉就能看到纠正次数暴涨）。

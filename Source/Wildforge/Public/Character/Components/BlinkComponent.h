@@ -186,6 +186,10 @@ public:
   // ===== 表现同步（服务器 -> 所有端）=====
   // 引擎默认**不复制蒙太奇播放**，所以想让客户端也看到闪现动画必须显式 Multicast。
   // 参数只带「落点」与「是否成功」——客户端不读任何权威状态来决定演什么。
+  //
+  // ⚠️ 两个 `Multicast_*` 的 `_Implementation` **不能加「非权威端就忽略」的门禁**：
+  //    客户端执行的那一次就是「收到服务器的表现同步」，门禁会让客户端永远看不到表现
+  //    （引擎规则：Multicast 在客户端 callspace = Local 且不再转发，`Actor.cpp:5500-5519`）。
 
   UFUNCTION(NetMulticast, Reliable, BlueprintCallable, Category = "Blink|RPC")
   void Multicast_PlayBlinkMontage(FVector InLandingLocation);

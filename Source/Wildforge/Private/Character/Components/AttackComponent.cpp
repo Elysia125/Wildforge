@@ -400,12 +400,14 @@ void UAttackComponent::Multicast_PlayAttackMontage_Implementation(
 }
 
 void UAttackComponent::Multicast_PlayAttackEffects_Implementation() {
-  // Multicast 会被复制到所有端，所以客户端理论上也能反过来调用它（发包合法）。
-  // 这里加门禁：只允许服务器发起表现同步，避免客户端拿它刷屏。
-  if (!IsAuthoritativeForActorComponent(this)) {
-    WFLOG_ERROR("Multicast_PlayAttackEffects 被非权威端调用，已忽略。");
-    return;
-  }
+  // ⚠️ 这里**刻意不加权威门禁**（曾经是「非权威端就记 ERROR 并 return」）：
+  //    Multicast 在每个端都会执行，客户端那一次是**正常接收**，门禁会让攻击特效
+  //    （打击感 / 音效 / 粒子）只在服务器上播。
+  //    引擎规则（Actor.cpp:5500-5519）：Multicast 在客户端只返回 Local，不会再转发，
+  //    所以「客户端调用刷屏」不成立。与翻滚组件 `Multicast_PlayLandRollEffects` 一致。
+  WFLOG_INFO("[攻击] 广播攻击表现（PlayAttackEffects 蓝图事件，本端权威=%d）。宿主 %s",
+             IsAuthoritativeForActorComponent(this) ? 1 : 0,
+             GetOwner() ? *GetOwner()->GetName() : TEXT("None"));
   PlayAttackEffects();
 }
 
