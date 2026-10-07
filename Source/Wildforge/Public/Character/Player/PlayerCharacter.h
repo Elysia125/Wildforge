@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 
 #include "../BaseCharacter.h"
+#include "Character/Components/AttackComponent.h"
 #include "ItemSystem/Components/PlayerInventory.h"
 
 #include "PlayerCharacter.generated.h"
@@ -18,6 +19,10 @@ class WILDFORGE_API APlayerCharacter : public ABaseCharacter {
 private:
   UPROPERTY(BlueprintGetter = GetInventory, Category = "Items")
   TObjectPtr<UPlayerInventory> Inventory;
+
+protected:
+  UPROPERTY(EditAnywhere, Category = "Items")
+  TObjectPtr<UAttackComponent> AttackComponent;
 
 public:
   // Sets default values for this character's properties

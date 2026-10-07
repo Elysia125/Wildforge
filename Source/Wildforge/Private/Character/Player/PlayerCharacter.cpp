@@ -5,4 +5,5 @@
 APlayerCharacter::APlayerCharacter() : ABaseCharacter() {
   Inventory = CreateDefaultSubobject<UPlayerInventory>(TEXT("Inventory"));
   Inventory->InitializeContainer(30);
+  AttackComponent = CreateDefaultSubobject<UAttackComponent>(TEXT("AttackComponent"));
 }

@@ -18,10 +18,28 @@
 		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/PerModuleInline.gen.cpp.obj"
 	},
 	{
+		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/AnimNotify/AnimNotifyAttackHit.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/AnimNotifyAttackHit.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/AnimNotifyAttackHit.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/AnimNotify/AnimNotifyCombo.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/AnimNotifyCombo.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/AnimNotifyCombo.cpp.obj"
+	},
+	{
 		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/BaseCharacter.cpp",
 		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/BaseCharacter.cpp.obj.rsp\" ",
 		"directory": "D:/UE/UE_5.7/Engine/Source",
 		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/BaseCharacter.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/AttackComponent.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/AttackComponent.cpp.obj"
 	},
 	{
 		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/CharacterAttributes.cpp",
