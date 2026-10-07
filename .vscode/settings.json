@@ -4,12 +4,12 @@
     "clangd.arguments": [
         "--compile-commands-dir=${workspaceFolder}",
         "--background-index",              // 启用后台索引，加速后续检索
-        "-j=16",                           // 索引使用的线程数，建议设为 CPU 核心数
+        "-j=4",                            // 索引线程数；UE 每个 TU 都要吃大量内存，压到 4 防止提交量爆表被 UBA 杀编译进程
         "--completion-style=detailed",     // 补全显示详细信息
         "--header-insertion=never",        // 关键：禁用自动引入头文件（UE的代码风格由模块管理，自动include很容易乱）
         "--function-arg-placeholders=true",
         "--fallback-style=llvm",
-        "--pch-storage=memory"             // 加快速度，放内存
+        "--pch-storage=disk"                // PCH 落盘而非常驻内存；本机物理内存仅 ~32GB，放内存会让 clangd 提交量涨到 25GB+
     ],
     "[cpp]": {
     "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",

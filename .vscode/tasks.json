@@ -29,7 +29,8 @@
                 "-Mode=GenerateClangDatabase",
                 "-Project=${workspaceFolder}/Wildforge.uproject",
                 "-Target=WildforgeEditor Win64 Development",
-                "-OutputDir=${workspaceFolder}"
+                "-OutputDir=${workspaceFolder}",
+                "-MaxParallelActions=4"
             ],
             "options": {
                 "env": {

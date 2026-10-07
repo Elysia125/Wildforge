@@ -11,7 +11,9 @@
 - **重要的强制约束不要写在这里**（本文件靠"AI 主动去读"才生效）——写
   `CLAUDE.md`（跨成员、入库）或 `CLAUDE.LOCAL.md`（本机专属、不入 git），
   它们会被 harness 每轮自动注入。完整的分流约定见 `CLAUDE.md` 的「上下文文件分工」。
-- ⚠️ 下面的 `## Do-Not-Repeat` 标题被 `.wolf/hooks/pre-write.js` 硬编码用于提取告警模式，
+- ⚠️ 下面的 `- **本机构建报 "UbaSessionServer ... Low on memory(x/y). Kill threshold is z" 不是 UBA 故障**：x/y 是「系统提交量(commit charge) / 提交上限(物理内存+页面文件)」，不是物理内存占用；阈值 95% 来自 `UbaScheduler.h` 的 `memStartKillPercent`（z = 0.95×y）。排查先看各进程的 commit（PowerShell `PrivateMemorySize64`），本机常是 clangd 占用过高。
+
+## Do-Not-Repeat` 标题被 `.wolf/hooks/pre-write.js` 硬编码用于提取告警模式，
   **不可改名、不可搬家**；格式相关的改动前先看 hook 实现。
 ## User Preferences
 
@@ -34,7 +36,9 @@
   先确认是有意删除，是多此一举就撤回。
 - [2026-10-06] **"信息该写到哪个文件"的分流约定已成文**（用户要求）：完整因果 → `buglog.json`；
   提炼后的禁令（一两行 + `见 bug-NNN`）→ 本文件 `## Do-Not-Repeat`；跨会话机制/约定 →
-  `## Key Learnings`；架构取舍 → `## Decision Log`；会话流水 → `memory.md`；
+  `## Key Learnings`；架构取舍 → `- [2026-10-07] 本机内存紧张（物理 ~32GB / 提交上限 ~67GB）：**不要**把 clangd 配成 `--pch-storage=memory` + `-j=16`——单进程提交量会到 25GB+，让 UBA 内存看门狗在构建时杀编译进程（见 bug-020）。改用 `--pch-storage=disk` + 较小的 `-j`。
+
+## Decision Log`；会话流水 → `memory.md`；
   **强制约束 → `CLAUDE.md` / `CLAUDE.LOCAL.md`**。表格见 `CLAUDE.md` 的「上下文文件分工」。
 
 ## Key Learnings
@@ -149,6 +153,19 @@
 - **判定 `.uasset` 里某属性是否为非默认值**：按字节把文件读成 ASCII 看属性名在不在名字表里——只有被序列化的
   （非默认的）tagged property 才会把属性名写进名字表；对照组（IA_Jump 的 `ActuationThreshold` 是默认值、
   名字表里查不到）能确认这个方法有效。ripgrep 会静默跳过二进制 .uasset，见 Do-Not-Repeat。
+- **引擎默认「不复制蒙太奇播放」**：`ACharacter` 只复制 RootMotion 那一段的状态（`FRepRootMotionMontage`），
+  普通 `Montage_Play` 不会同步到客户端；引擎源码里搜不到 `RepAnimMontageInfo`（那是 GAS 的东西，本项目未启用
+  GAS）。所以「只在服务器 Montage_Play」= 客户端看不到攻击动画，且**客户端的 OnMontageEnded 永不触发**，
+  依赖它的清理逻辑（恢复移动、复位状态）在客户端全部失效。要在客户端播动画必须自己 `NetMulticast`。
+- **`PerformDamageTrace` 这类攻击判定的解耦做法：不自己扣血，只发伤害**。扫掠（`SweepMultiByChannel`）拿到
+  `TArray<FHitResult>` 后逐个 `UGameplayStatics::ApplyDamage`，攻击方只依赖 `AActor` 基类；受击方自己实现
+  `TakeDamage` 或绑蓝图 `AnyDamage`，`CanBeDamaged() == false` 的目标静默跳过。**组件无需知道被打的是什么**
+  （新增受击者类型不用改攻击代码）；`ApplyPointDamage`/GameplayEffect 是同一管线的升级形态。
+- **复制的「反应式下标」不能在异步回调里反查当前物体**：服务器 `AttackMontageIndex++` 与客户端收到复制
+  不保证同帧，`OnMontageEnded` 里用下标查表会错配成「下一段」而丢掉结束事件。正确做法是**复制「当前在播的
+  对象」本身**（本项目 `ActiveAttackMontage`），让判定与下标推进解耦。
+- **`UAnimMontage` 的长度在 UE 5.7 要用 `GetPlayLength()`**：`SequenceLength` 既是 `protected` 又已
+  `UE_DEPRECATED`，直接读编译不过（见 bug-019）。
 
 ## Do-Not-Repeat
 
@@ -207,6 +224,24 @@
 - [2026-10-07] **不要**把 Enhanced Input 的 `Completed` 当「按键松开」信号：Hold 触发器勾了 Is One Shot、或 Tap
   触发器按超时，都会在手没松时发 Completed。要么取消 One Shot（并把 Tap 的 `Triggered` 当点按），要么自己用
   阈值定时器 + 真正去查按键状态。见 bug-018。
+- [2026-10-07] **不要在客户端会跑到的地方直接写玩法状态**（动画通知 / UI 回调 / Tick 都在客户端跑）：
+  `AnimNotifyCombo` 曾直接 `AttackComp->bCanCombo = true`，改的是本地副本、服务器那份始终 false，联机下连击
+  静默失效。这类写入一律走 `Server_*` RPC。**加新的动画通知 / 客户端回调时先问：这行改的是玩法状态吗？**
+  见 bug-019。（同类误用已第三次：bug-007 拖拽 `SwapSlots`、bug-008 整理按钮、bug-019 连击窗口。）
+- [2026-10-07] **连击的节流单位是「连击窗口」，不是「蒙太奇段」**：不要加「这一段只收一次
+  输入 / 必须松开再按」这类标志来防连点——起手那次输入之后，整段蒙太奇期间都不会有新的
+  按下事件来复位它，于是窗口一开所有点击全被拒，连击永远接不上（实测一次窗口连拒 4 次）。
+  窗口每段都会被 `UAnimNotify_Combo` 重开，本身就是「一次机会」；接招后把 `bCanCombo` 置
+  false 即可。只留 `ComboMinInterval` 防篡改客户端在同一窗口刷包。见 bug-022。
+- [2026-10-07] **不要用整文件 write 去重构已有类**（本项目已踩一次：`bCanAttack` 在重写
+  `AttackComponent` 时被静默丢掉，用户自己发现的）：编译器不会提醒丢了没被引用的成员，蓝图里已连的引脚
+  也只在打开资产时才报错。要重写就先把原文件的 UPROPERTY/UFUNCTION 清单列出来，逐项核对在新版里是否
+  仍然存在（保留 or 明确说明删除理由）。见 bug-020。- [2026-10-07] **不要把连击做成「等本段动画播完再接下一段」**（用户明确纠正过两次）：连击通知就在蒙太奇
+  播放中途发出，窗口一开点击就该**立刻切播下一段**。同理不要用「本段正在播」当拒绝输入的理由
+  （曾用 `bAttackMontageInProgress` 在最前面 return，把连击全挡掉，见 bug-019）；防连点要用
+  「每段只收一次输入、必须松开再按」这种显式标记，而不是把整段时间锁死。- [2026-10-07] **不要**假定「蒙太奇会在所有端播」：引擎默认只复制 RootMotion（本项目未启用 GAS），
+  只在服务器 `Montage_Play` 的话客户端看不到动画、`OnMontageEnded` 不触发，挂在结束回调上的收尾逻辑
+  （恢复移动等）在客户端全部失效。要同步表现必须自己 `NetMulticast`，见 bug-019。
 
 ## Decision Log
 
@@ -262,3 +297,16 @@
   「状态 -> 外观」里用，外部直接戳会在下一次容器广播 / Slate 重建时被状态覆盖。
   **数量只有一个来源：`FItemInformation::ItemQuality`**（不再有 `CurrentQuantity`，也没了
   `SetItemData` 的第二个参数；蓝图钩子 `OnItemDataSet` 也只收结构体）。
+- [2026-10-07] **攻击系统按「玩法状态 / 表现」分层定权威边界**（`UAttackComponent`，见 bug-019）：
+  玩法状态（选段下标、连击窗口、`bIsAttacking`、命中结算）全部服务器写；表现（蒙太奇播放、特效）用
+  `NetMulticast` 同步到所有端。客户端只能 `Server_Attack` / `Server_NotifyComboWindow`。
+  两个通知（`OnAttackStarted` / `OnAttackFinished`）刻意做成「每端各自本地广播」——订阅者（如
+  `APlayerCharacter` 禁止/恢复移动）能就地立即响应，不必等状态复制往返；代价是必须在 Multicast 里广播
+  （而不是只在服务器），否则客户端收不到。**禁止移动/恢复移动必须每端各自做**：移动模式是本地瞬时状态，
+  等服务器复制会抖。
+- **连击 = 「窗口开着时点击，立刻切播下一段动画」，不要做成「排队等本段播完」**（用户纠正过两次）：
+  连击通知（`UAnimNotify_Combo`）就是在蒙太奇**播放中途**发的，把它当成「等动画播完再接」等于永远接不上。
+  正确做法是窗口内点击直接 `Montage_PlayWithBlendIn` 切下一段（淡入时长用上一段已播时长，0.05~0.2s），
+  `bIsAttacking` 保持 true 所以移动锁不解；切段时引擎会触发上一段的 `OnMontageEnded(bInterrupted=true)`，
+  要用 `bAdvancingCombo` 标记把它与「攻击链真的结束」区分开。**连击不受 `AttackCooldown` 约束**——那是管
+  「两次起手之间」的，拿它卡窗口会让开得早的窗口被无声拒绝；连击只留 `ComboMinInterval` 做防刷包节流。
