@@ -42,6 +42,17 @@
 - [2026-10-07] 用户对自己设计的玩法约束很确定（如「趴下之后不能加速」）。他否定某个方向（「和 X 没关系」）时
   就接受、把 X 移出假设集，但**仍要用日志/源码核实**——同一次排查里日志反而证明了趴下状态确实能触发加速
   （`StartSpeedBoost` 基准=150→目标 1200，此时趴下=1）：**设计意图 ≠ 当前实现**，两者分开讲，别顺着意图改方向。见 bug-043。
+- [2026-10-08] 用户对「配置」的要求是**三件事同时成立**：① 改完不用重新编译、也不用重新打包；
+  ② 只能由服务器读；③ 值由服务器下发给客户端。设计任何配置类都按这个信任边界走——客户端本地
+  的 ini 属于「玩家可改的文件」，绝不能当作玩法数值的来源。
+- [2026-10-08] 选方案时用户直接选了**全量接入**（六个能力组件一次性接完）而不是先接一两个试点，
+  与「一次给最优解」偏好一致：别提议「先小范围试」，除非确实有必须先验证的技术风险。
+- [2026-10-08] **配置要按「归属」拆开，不许挤进一个类**：任何配置项都应归属到它真正服务的那个
+  组件/系统，由**单独的类（或结构体）**管理——「不要把所有组件、所有地方的配置值全部都挤到一起，
+  可读性高一点」。所以：一个组件的调参只出现在它自己的配置类里（本项目即
+  `Character/Settings/<X>ComponentSettings.h`，一类一个 Project Settings 页 / 一个 ini 节），
+  不要为了「集中管理」把它们塞进 `UWildforgeGameplaySettings` 这种大杂烩。落笔前先想清楚
+  「这个值到底属于谁」；跨组件共用的值（如背包容量）放到**宿主**的配置类里，不要复制两份。
 
 ## Key Learnings
 
@@ -292,6 +303,30 @@
   类默认值不起作用，而且不报任何错（静默失效）。要把硬编码值做成「策划可改」，消费点必须挪到属性
   初始化之后（`PostInitializeComponents` / `BeginPlay`）。客户端实例会跑同一个构造函数，所以搬家时
   别忘了加 `HasAuthority()` 判据——否则客户端调 `BlueprintAuthorityOnly` 函数会被权威门禁记 ERROR。
+- **`COND_InitialOnly` 是本项目「静态调参」的标准复制条件**：`CoreNetTypes.h:22` 的注释就是
+  「This property will only attempt to send on the initial bunch」，`RepLayout.cpp:1442` 在 `!bIsInitial`
+  时直接跳过；`DOREPLIFETIME_CONDITION` 的 static_assert 只拦 `COND_NetGroup`（`Net/UnrealNetwork.h:277-283`），
+  所以它是合法参数。出生束在客户端**先于** `AActor::PostNetInit` 应用（`Actor.h:2956-2957`
+  「Always called immediately after spawning and reading in replicated properties」）⇒ 想要一个
+  「必已收到这些值」的客户端钩子，就用 `PostNetInit`（`APlayerCharacter` 的调参验证日志挂在这里）。
+- **`UDeveloperSettings` + `UCLASS(Config = Game, DefaultConfig)` 落在 Project Settings > Project > Game**
+  （容器 "Project"、分类 "Game"，`DeveloperSettings.cpp:18-63`），序列化进 `Config/DefaultGame.ini`（入库）；
+  每台机器的覆盖层是 `Saved/Config/<Platform>/Game.ini`（`ConfigContext.cpp:1007` 载入层级、`:1029` 合并），
+  **不进 git**。`GetDefault<UXXX>()` 拿到的就是 CDO ⇒ 改 ini 后重启进程即生效，不用重编译、不用重新打包
+  ——这是 DataAsset 做不到的（DataAsset 改了要重新打包）。
+- **客户端的进程里也有同一份 ini 和同一个 CDO，所以「只有服务器读」是代码纪律而非引擎约束**：
+  打包后每个玩家本地都有游戏目录，ini 是玩家可编辑的文件；一旦客户端侧代码用 `Get()` 的值去驱动玩法
+  （速度 / 冷却 / 伤害），改自己那份 ini 就等于开挂。⇒ 任何 `Settings->X` 的**写**都必须过
+  `IsAuthoritativeForActorComponent(this)`，客户端只认复制下来的那份值。
+- **配置类按归属拆分：一个组件/区域一个 `UDeveloperSettings` 子类**（本项目在
+  `Public/Character/Settings/` 下），**纯 header、没有 .cpp**——`GENERATED_BODY()` + 类内内联
+  `static const UX *Get() { return GetDefault<UX>(); }` 就够了。`meta = (DisplayName = "…")` 同时是
+  Project Settings 里的页名和该类的 ini 节名（`[/Script/Wildforge.<类名>]`，`GetSectionText()` 默认取它）
+  ⇒ 拆成几个类就是几个互不干扰的 ini 节。字段用**短名不加前缀**（前缀由「属于哪个类」承担）。
+- **`UDeveloperSettings` 的字段改名会静默丢配置**：ini 键名就是属性名，改名之后旧 ini 里的键
+  既不会报错也不会生效（被当作未知键忽略），现象是「改了名以后打包服务器上的调参全部回到默认值」。
+  改字段名时要同步改服务器上的 `Saved/Config/<Platform>/Game.ini`。**改类名同理**——ini 节名是
+  `[/Script/Wildforge.<类名>]`，拆类/改名都会让旧节整节失效（旧键留在文件里但不被读取）。
 
 ## Do-Not-Repeat
 
@@ -442,6 +477,20 @@
 - [2026-10-07] **不要用 `Root Motion From Everything` 做联机项目的位移来源**：引擎自己的枚举注释就写着
   「not suitable for network multiplayer setups」——服务器与客户端各自本地播动画、相位不同步，提取出来的位移
   会在两端分叉，等于把 bug-029 的橡皮筋请回来。速度驱动的位移交给移动组件（本项目爬行＝`ProneMaxWalkSpeed`）。见 bug-043。
+- [2026-10-08] **配置类的字段名和消费点要一次对齐**：新建/改某个 `<X>Settings` 时，
+  每个 `bOverride_X` + `X` 都必须同时与组件里的 `Settings->bOverride_X` / `Settings->X` 对上。
+  UHT 与 ini 都不校验键名，编译器只拦「这个名字根本不存在」，而**名字像但不是同一个**
+  （当时的 `bOverride_StopMovementOnStart` vs `bOverride_LandRollStopMovementOnStart`）在两边都是新写的时候
+  极易发生——那次的根源是「同一个类里塞了多个组件的配置，只好靠前缀区分，而前缀漏了一处」；
+  现在改成一类一组配置、短名不加前缀，**同一类里不再有前缀问题**，但「消费方是不是引用了正确的那个类」
+  成了新的检查点（改 include / 类名时 `grep -rn "Settings->"` 与**对应那个**头文件的声明逐项对照）。见 bug-052。
+- [2026-10-08] **不要在客户端侧用 ini 的值改组件字段**：客户端读的是**玩家本地那份 ini**
+  （可被改），拿它去改速度/冷却就是让客户端说了算，而且两端会分叉。组件里的
+  `ApplyGameplaySettingsOverrides()` 一律以 `IsAuthoritativeForActorComponent(this)` 开头，
+  客户端那份值只来自 `COND_InitialOnly` 复制。
+- [2026-10-08] **在一个 `.cpp` 里改动多处时不要靠「行号记忆」定位**：本会话里 `SlideComponent.cpp`
+  的 `COND_OwnerOnly` 行（`SlideCooldown`）与新增的 `COND_InitialOnly` 行相邻，插错位置会让
+  同一个属性注册两次（UHT 不报错、运行期行为诡异）。加复制注册时先 `grep -n DOREPLIFETIME` 看全貌。
 
 ## Decision Log
 
@@ -615,3 +664,24 @@
   （`InitializeGrid` 的 `InSlotsPerRow <= 0` = 沿用设计器值，调用方不再传 5）、连击切段淡入 →
   `UAttackComponent::ComboBlendInMinTime/MaxTime`。注意 RPC `_Validate` 里的上限（10000 / 60s / 100000）
   **不属于**这一类：那是协议可信边界，留在实现旁边。
+- [2026-10-08] **调参三层落地：组件 `UPROPERTY`（类默认值 = 基线 + 兜底）→ ini（`UWildforgeGameplaySettings`，
+  改完不重编译/不重打包）→ `COND_InitialOnly` 复制（客户端拿到同一份）**。选 ini 而不是 DataAsset：
+  打包后的服务器上直接手改 `Saved/Config/<Platform>/Game.ini` + 重启即可调参，DataAsset 得重新打包。
+  配套约定：只有权威端读 ini（客户端只认复制值）、不做运行时热重载（避免「同一次联机里新老角色数值不同」
+  这种难查状态）、ini 值在消费点再夹一次（手写文本绕过了面板 Clamp）。
+- [2026-10-08] **配置字段用 `bOverride_X`（`InlineEditConditionToggle`）+ 值，不用哨兵值**：
+  bool 无哨兵值可用（-1 那套对 bool 无解），而「未勾选 = 不覆盖」在编辑器里一眼可见；
+  代价是属性数量翻倍（40 项 → 80 个 UPROPERTY），换来的是二义性为零。未勾选时组件保留自己的
+  类默认值，勾选后 ini 值在服务器生效并复制下来。
+- [2026-10-08] **配置按归属拆成多个 `UDeveloperSettings` 子类（一类一页/一节），字段用短名不加前缀**：
+  最初是全项目一个大 `UWildforgeGameplaySettings`（40 项 + 前缀防重名），用户否掉了这种「都挤到一起」
+  的写法——可读性差、改一个组件要在一屏里找自己的那几项、每组还得靠前缀区分（bug-052 就出在这）。
+  现在改成 `Character/Settings/<X>ComponentSettings.h` 一个组件一个类，Project Settings 里每个组件
+  一个独立页、`DefaultGame.ini` 里一个独立节，字段名回到 `Cooldown` / `MontagePlayRate` 这种最短形态；
+  代价是「同名不同义」由类的边界承担，读代码时必须先看是哪个 `Settings`（所以 include 一定要对）。
+  仍然**不用嵌套 `USTRUCT`**：结构在 ini 里的序列化格式不如扁平属性确定可读。
+- [2026-10-08] **调参项的复制条件用 `COND_InitialOnly`（而不是 OwnerOnly / SimulatedOnly）**：
+  这些值在角色整个生命周期不变、且**每个端**都要读（动画 / 表现 / UI / 预测），
+  只发 owner 会让旁观者用错值。附带修好一处旧问题：`UBlinkComponent::BlinkCooldown` 原先**没有任何
+  复制通道**，客户端 `IsBlinkReady()` 读的是类默认值（ini 一改就两端不一致），现在随出生束下发。
+  背包容量不需要复制——客户端容量由复制下来的 `Slots` 推导。

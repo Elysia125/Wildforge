@@ -36,6 +36,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnSlideFinished);
  * |---|---|---|---|
  * | 滑行判定与状态推进 `StartSlide()` | 服务器 | ✗ 调不动（Absorbed） | `Server_StartSlide` |
  * | 冷却 / 重入 / 总开关 / 起滑速度判定 | 服务器 | ✗ | 在 `StartSlide()` 内部完成 |
+ * | 调参（`SlideDuration`/`SlideEndSpeed`/摩擦…） | 服务器读 ini 后写入 | 只读（复制下来） | 类默认值兜底 + `COND_InitialOnly` |
  * | 状态 `bIsSliding` / `LastSlideTime` / `SlideCooldown` / `SlideCount` | 服务器写 | 只读（复制下来） | `DOREPLIFETIME_CONDITION(COND_OwnerOnly)` |
  * | **结束时机**（时长 / 速度 / 离地） | 服务器判 | ✗（等 Multicast 通知） | `TickAuthoritySlide()` → `Multicast_EndSlide` |
  * | 蒙太奇播放 | 服务器发起 | 跟随（但不写玩法状态） | `Multicast_BeginSlide(段名)` |
@@ -132,7 +133,13 @@ public:
   // `GroundFriction` / `MaxAcceleration` 留在滑行值上，角色会永久「踩着冰」。
   virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-  // ===== 可配置参数（类默认值，随 Actor 生成同步，不参与运行时复制）=====
+  // ===== 可配置参数（类默认值 = 基线 + 兜底；ini 可覆盖，随复制下发）=====
+  // 这一节全部带 `Replicated`（`COND_InitialOnly`，出生束里带一次）：
+  //   * 权威端在 BeginPlay 用 USlideComponentSettings 的 ini 覆盖写进它们；
+  //   * 客户端**必须**拿到同一份值——滑行是两端各自跑同一条曲线 / 写同一套移动参数的
+  //     能力（见类注释的「为什么自主代理也要本地镜像」），值不一致就是 bug-029 那种橡皮筋。
+  // 没勾 override 时值就是这里的类默认值（每个类可以不一样）。
+  // ⚠️ 客户端不要在本端写这些字段。
 
   // 能不能滑行的总开关（眩晕 / 死亡 / 缴械等状态把它关掉）。
   // 关闭时 `StartSlide()` 直接拒绝；**已经滑到一半**时把它关掉也会在下一帧收尾。
@@ -140,57 +147,57 @@ public:
   bool bCanSlide = true;
 
   // 滑行时长（秒）：速度曲线在这段时间内从起始速度衰减到 `SlideEndSpeed`。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Slide",
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Slide",
             meta = (ClampMin = "0.01", UIMin = "0.01", ForceUnits = "s"))
   float SlideDuration = 1.0f;
 
   // 速度曲线的**左端下限**（cm/s）。起手时取 `max(当前水平速度, SlideStartSpeed)`，
   // 所以它只保证「至少这么快」——冲刺中起滑不会被减速（动量优先）。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Slide",
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Slide",
             meta = (ClampMin = "0", UIMin = "0", ForceUnits = "cm/s"))
   float SlideStartSpeed = 900.0f;
 
   // 速度曲线的**右端**（cm/s）：`SlideDuration` 走完时的目标速度。
   // 它高于 `SlideMinSpeedToContinue` 时，滑行才会走满时长后自然结束。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Slide",
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Slide",
             meta = (ClampMin = "0", UIMin = "0", ForceUnits = "cm/s"))
   float SlideEndSpeed = 300.0f;
 
   // 速度被夹到曲线上的**最大下降速率**（cm/s²）。用来避免「带着外部高速（击飞 / 爆炸）
   // 起滑」时被曲线一刀切成低速：超速部分按这个速率削，削到曲线值为止。
   // 0 = 不限制（立刻夹到曲线值）。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Slide|Advanced",
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Slide|Advanced",
             meta = (ClampMin = "0", UIMin = "0"))
   float SlideMaxSpeedDecelRate = 1500.0f;
 
   // 低于这个水平速度就提前结束滑行（撞墙 / 上坡 / 被夹住）。0 = 不检查。
   //
   // ⚠️ 它要**小于** `SlideEndSpeed`，否则滑行会在中途就被这条规则截断。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Slide",
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Slide",
             meta = (ClampMin = "0", UIMin = "0", ForceUnits = "cm/s"))
   float SlideMinSpeedToContinue = 150.0f;
 
   // 速度检查的宽限时间（秒）：起滑后的这一小段时间内不看最低速度，
   // 免得「站着起滑 + 首帧速度还没写进移动组件」被立刻判成速度过低。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Slide|Advanced",
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Slide|Advanced",
             meta = (ClampMin = "0", UIMin = "0", ForceUnits = "s"))
   float SlideMinSpeedGraceTime = 0.15f;
 
   // 起滑速度要求（cm/s）：当前水平速度低于它就拒绝本次滑行。
   // 0 = 站着也能滑（配合 `SlideStartSpeed` 就是一个「滑铲冲刺」）；
   // 设成 300 之类就变成「必须跑起来才能滑」。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Slide",
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Slide",
             meta = (ClampMin = "0", UIMin = "0", ForceUnits = "cm/s"))
   float MinSpeedToStartSlide = 0.0f;
 
   // 滑行期间是否允许有限转向（靠 `SlideMaxAcceleration` 给一点输入加速度）。
   // 关掉 = 纯直线滑行（把 `MaxAcceleration` 置 0，输入完全不产生加速度）。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Slide|Steering")
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Slide|Steering")
   bool bAllowSteering = true;
 
   // 滑行期间的 `MaxAcceleration`：转向的**唯一**强度来源（不是速度上限）。
   // 越大越灵活，默认 300 大约是一秒能偏转几十度。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Slide|Steering",
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Slide|Steering",
             meta = (ClampMin = "0", UIMin = "0",
                     EditCondition = "bAllowSteering"))
   float SlideMaxAcceleration = 300.0f;
@@ -198,18 +205,18 @@ public:
   // 滑行期间的地面摩擦（默认 0 = 完全不减速，减速只由速度曲线负责）。
   // ⚠️ 它与 `SlideBrakingDeceleration` **同时为 0** 时引擎才会跳过刹车计算
   // （`ApplyVelocityBraking` 的早退，见类注释），只置 0 一个仍然会被另一个减速。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Slide|Advanced",
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Slide|Advanced",
             meta = (ClampMin = "0", UIMin = "0"))
   float SlideGroundFriction = 0.0f;
 
   // 滑行期间的步行刹车减速度（默认 0，理由同上）。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Slide|Advanced",
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Slide|Advanced",
             meta = (ClampMin = "0", UIMin = "0"))
   float SlideBrakingDeceleration = 0.0f;
 
   // 离地（跳跃 / 掉下平台 / 被顶起）就结束滑行。位移模型（贴地滑）只在地面成立。
   // 想在矮台阶上「飞过去」可以关掉：曲线在空中的夹紧照常生效，只是没有摩擦可言。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Slide|Advanced")
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Slide|Advanced")
   bool bEndSlideWhenAirborne = true;
 
   // 冷却（秒）：两次滑行开始时间的最小间隔。0 = 不限制。
@@ -236,7 +243,7 @@ public:
   TObjectPtr<UAnimMontage> SlideMontage;
 
   // 蒙太奇播放速率倍率（1 = 原速）。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Slide|Anim",
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Slide|Anim",
             meta = (ClampMin = "0.01", UIMin = "0.01"))
   float MontagePlayRate = 1.0f;
 
@@ -245,7 +252,7 @@ public:
   FName SlideSectionName = NAME_None;
 
   // 收尾时停掉蒙太奇的淡出时长（秒）：滑行结束时动画要平滑接回移动状态。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Slide|Anim",
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Slide|Anim",
             meta = (ClampMin = "0", UIMin = "0", ForceUnits = "s"))
   float MontageStopBlendOutTime = 0.15f;
 
@@ -411,6 +418,11 @@ public:
   void Server_StopSlide();
 
 protected:
+  // 读取 USlideComponentSettings 的 ini 覆盖并写进本组件。
+  // **只在权威端执行**；客户端的值由 `COND_InitialOnly` 属性复制下来（本组件尤其依赖这点：
+  // 客户端要用同一套曲线与移动参数做本地预测）。无覆盖时是安全空操作。
+  void ApplyGameplaySettingsOverrides();
+
   // Called every frame
   //
   // 本组件**始终开着 Tick**，靠开头的 `bSlidePresentationActive` 早退（不在滑行时就是一次

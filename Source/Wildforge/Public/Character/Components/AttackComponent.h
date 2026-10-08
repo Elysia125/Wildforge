@@ -30,7 +30,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAttackStarted);
  * |---|---|---|---|
  * | 起手 / 选段 / 连击排队与判定 `Attack()` | 服务器 | ✗ 调不动（Absorbed） | `Server_Attack` / `RequestAttack` |
  * | 伤害判定 `PerformDamageTrace()` | 服务器 | ✗ | 由动画通知在服务器触发 |
- * | 攻击参数（`AttackDamage`/`AttackRange`…） | 服务器 | 只读 | 类默认值随 Actor 生成同步 |
+ * | 调参（`AttackDamage`/`AttackRange`…） | 服务器读 ini 后写入 | 只读（复制下来） | 类默认值兜底 + `COND_InitialOnly` |
  * | 攻击状态 `bIsAttacking` / 连击窗口 / 选段下标 / 在播蒙太奇 | 服务器写 | 只读（复制下来） | `DOREPLIFETIME_CONDITION(COND_SimulatedOnly)` |
  * | 蒙太奇播放 | 服务器发起 | 跟随（但不写状态） | `Multicast_PlayAttackMontage(段位)` |
  * | 特效 `PlayAttackEffects()` | 服务器发起 | 跟随 | `Multicast_PlayAttackEffects` |
@@ -82,9 +82,14 @@ public:
 
   virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-  // ===== 可配置参数（类默认值，不参与运行时复制）=====
-  // 服务器与客户端各自持有同一份设计器默认值，所以不需要为它们写复制通道；
-  // 想运行时改这些参数，请走复制属性或 GameplayEffect。
+  // ===== 可配置参数（类默认值 = 基线 + 兜底；ini 可覆盖，随复制下发）=====
+  // 这一节现在带 `Replicated`（`COND_InitialOnly`：出生束里带一次，之后零开销）：
+  //   * **权威端**在 BeginPlay 用 UAttackComponentSettings 的 ini 覆盖写进它们
+  //     （只有显式勾了 `bOverride_XXX` 的项才写，见 ApplyGameplaySettingsOverrides）；
+  //   * 客户端不读 ini，靠这条复制通道拿到服务器那份值——两端必须一致，
+  //     否则客户端预测用的参数与服务器不同步（bug-029 / bug-031 那一类橡皮筋）。
+  // 没勾 override 时值就是这里的类默认值，**每个类（Boss / 小怪）可以不一样**。
+  // ⚠️ 客户端不要在本端写这些字段：写了不会同步回服务器，只会让自己与服务端不一致。
 
   // 能不能攻击的总开关（眩晕 / 缴械 / 死亡等状态把它关掉）。
   // 服务器侧的门：`Attack()` 第一件事就是查它，关掉时起手与连击都不生效。
@@ -93,7 +98,7 @@ public:
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack")
   bool bCanAttack = true;
 
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack")
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Attack")
   float AttackCooldown = 0.5f;
 
   // 连击接招的最小间隔（秒）：两个连击段起始时间的最小距离。
@@ -102,7 +107,7 @@ public:
   // 连招」；正常手感由连击通知在动画里的位置决定，所以这个值要**明显小于**两面
   // 窗口之间的间隔（作者把连击通知摆在哪一帧），否则会把正常连击也拒掉。
   // 实测参考：连击通知大约在第 0.7s 处，取 0.15 很安全。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack",
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Attack",
             meta = (ClampMin = "0", UIMin = "0"))
   float ComboMinInterval = 0.15f;
 
@@ -110,15 +115,15 @@ public:
   // [ComboBlendInMinTime, ComboBlendInMaxTime]。硬切会看到抽帧，所以至少给一点淡入；
   // 上限防止连击窗口摆得靠后时淡入过长、动作发肉（实测参考：窗口约在第 0.7s 处，
   // 夹在 0.05~0.2s 之间手感最好）。这是**表现参数**，两端各自用同一份类默认值。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack",
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Attack",
             meta = (ClampMin = "0", UIMin = "0", ForceUnits = "s"))
   float ComboBlendInMinTime = 0.05f;
 
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack",
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Attack",
             meta = (ClampMin = "0", UIMin = "0", ForceUnits = "s"))
   float ComboBlendInMaxTime = 0.2f;
 
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack")
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Attack")
   float AttackDamage = 10.0f;
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack")
@@ -127,17 +132,17 @@ public:
   // ===== 伤害检测参数（服务器权威：检测只在服务器跑，客户端改了也没用）=====
 
   // 检测射程（cm）：从角色胸口沿朝向往前扫这么远
-  UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack|Damage",
+  UPROPERTY(EditAnywhere, BlueprintReadOnly, Replicated, Category = "Attack|Damage",
             meta = (ClampMin = "0", UIMin = "0", ForceUnits = "cm"))
   float AttackRange = 200.0f;
 
   // 检测半径（cm）：0 = 细线段（第一人称近战手感更精准）；> 0 = 球形扫掠
-  UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack|Damage",
+  UPROPERTY(EditAnywhere, BlueprintReadOnly, Replicated, Category = "Attack|Damage",
             meta = (ClampMin = "0", UIMin = "0", ForceUnits = "cm"))
   float AttackTraceRadius = 0.0f;
 
   // 检测起点相对角色原点的 Z 偏移（cm）：原点在胶囊体中心，胸口大约 +30
-  UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack|Damage")
+  UPROPERTY(EditAnywhere, BlueprintReadOnly, Replicated, Category = "Attack|Damage")
   float AttackTraceHeightOffset = 30.0f;
 
   // 检测用的碰撞通道。默认 `ECC_Visibility` 与引擎的视线检测一致：
@@ -209,6 +214,11 @@ public:
 protected:
   // Called when the game starts
   virtual void BeginPlay() override;
+
+  // 读取 UAttackComponentSettings 的 ini 覆盖并写进本组件。
+  // **只在权威端执行**（客户端那份值由上面那些 `COND_InitialOnly` 属性复制下来）；
+  // 没有勾任何 override 时是安全空操作，只打一条「用类默认值」的日志。
+  void ApplyGameplaySettingsOverrides();
 
   // 把指定蒙太奇的指定 Section 播出来（服务器权威入口，带门禁）。
   // **只负责播放**：不改段位下标、不广播（广播与下标推进由调用方负责），

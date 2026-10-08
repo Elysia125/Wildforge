@@ -60,6 +60,20 @@ Wildforge 是一个 **Unreal Engine 5.7** 的第一人称游戏（源自 First P
 - `UItemContainerGrid`（`ItemSystem/UI/`）——`UniformGridPanel` + `ScrollBox`，订阅 `OnContainerChanged`，保持控件数量等于容量，并根据物品数据刷新格子。
 - `UInventorySlotWidget`（`ItemSystem/UI/`）——单个格子；`BindWidget` 名称至关重要（必须与 UMG 中的名称完全一致）。
 
+**配置层**（`Character/Settings/`）
+- **一个组件/一个区域一个 `UDeveloperSettings` 子类**，纯 header（类内内联 `static const UX *Get()`，无 .cpp）：
+  `UAttackComponentSettings` / `USprintBoostComponentSettings` / `USlideComponentSettings` / `ULandRollComponentSettings` /
+  `UBlinkComponentSettings` / `UCrawlingComponentSettings` / `UPlayerCharacterSettings`（背包容量这类**角色自身**的值放这里）。
+  各自 `meta = (DisplayName = "…")` ⇒ Project Settings > Project > Game 下**一页一类**，
+  各自落到 `Config/DefaultGame.ini` 的 `[/Script/Wildforge.<类名>]` 节（入库）；
+  打包后的服务器可在 `Saved/Config/<Platform>/Game.ini` 覆盖（不入 git）。
+- 字段用**短名不加前缀**（`Cooldown` / `MontagePlayRate` / `MaxDistance`…），归属由「属于哪个类」承担——
+  不要把多组件的配置挤进同一个类再靠前缀区分。每项写成 `bOverride_X`（勾选 = 覆盖，`InlineEditConditionToggle`）+ 值的成对属性。
+- **只有权威端读 ini**，客户端的那份值由各组件的 `COND_InitialOnly` 复制下发。
+- 各组件的 `ApplyGameplaySettingsOverrides()`（权威端 `BeginPlay` 调用）在组件本地做覆盖、夹紧与 `[配置]` 日志；
+  `APlayerCharacter::PostNetInit()` 在客户端打印同一批生效值，用于与服务器日志对照。
+- 与 `UItemSystemSettings`（物品表路径）同属一类，都在 Project Settings > Project > Game。
+
 ## 约定与坑
 
 - `FItemInformation::ItemQuality` 在整个容器和 UI 中**兼作堆叠数量**（结构体没有单独的数量字段）。
@@ -88,6 +102,9 @@ Wildforge 是一个 **Unreal Engine 5.7** 的第一人称游戏（源自 First P
 - `cerebrum.md` 的作用是**索引与提炼**，不是事件日志：同一个 bug 不要在两处各写一遍因果。
 - `.wolf/cerebrum.md` 与 `.wolf/anatomy.md` 的结构分别被 `.wolf/hooks/pre-write.js`
   和 `.wolf/hooks/post-write.js` 按固定格式解析，**改标题/改格式前先看 hook 实现**。
+- `anatomy.md` 只认两种行：`## <路径/主题>` 与 `- \`文件名\` — 描述 (~N tok)`
+  （`shared.js` 的 `parseAnatomy`/`serializeAnatomy`）。**其它行（说明段落、引用块、注释）
+  在 hook 下次重写文件时会被静默丢弃**——要留存的约定写进 `cerebrum.md` 或本文件，不要写进 `anatomy.md`。
 
 ## 强制约束
 
@@ -119,3 +136,20 @@ Wildforge 是一个 **Unreal Engine 5.7** 的第一人称游戏（源自 First P
    - 新增权威修改函数时，照抄 `UItemContainer.cpp` 顶部 `WF_CONTAINER_AUTHORITY_GUARD(RetVal)` 的门禁模式
      （非权威端记一条 `WFLOG_ERROR` 并安全返回），让同类误用立刻可见而不是静默失效。
   5. **编写代码时请添加详细的日志，而不是一条日志不写。**
+6. **可调数值一律走配置类（ini），不要硬编码，也不要让客户端读它。**
+   **配置项必须归属到它服务的那一个组件/区域自己的类里**（`Public/Character/Settings/<X>ComponentSettings.h`，
+   一类一页/一节），**不要**新建或往任何「全项目共用」的大配置类里塞——见 `.wolf/cerebrum.md` 的 Decision Log。
+   新增一个可调数值的固定动作（四步，缺一项就是静默失效）：
+   1. 在**它所属的那个**配置类里加一对属性：`bOverride_X`（`meta = (InlineEditConditionToggle)`）
+      + `X`（`meta = (EditCondition = "bOverride_X", ClampMin = ...)`）。字段用短名，不加组件前缀。
+   2. 在消费它的组件头文件里给对应 `UPROPERTY` 加 `Replicated`，并在 `GetLifetimeReplicatedProps`
+      里注册 `DOREPLIFETIME_CONDITION(..., X, COND_InitialOnly)`（这些值是角色生命周期内不变的静态调参，
+      且**每个端**都要读，所以不用 `COND_OwnerOnly`）。注册前先 `grep -n DOREPLIFETIME` 确认该属性没被注册过。
+   3. 在组件的 `ApplyGameplaySettingsOverrides()` 里读（**必须**以 `IsAuthoritativeForActorComponent(this)`
+      开头）、夹紧（镜像头文件的 `ClampMin`，ini 是手写文本绕过了面板 Clamp）、记一条 `[配置]` 日志；
+      该方法由该组件的 `BeginPlay` 调用。
+   4. **消费方引用的类与字段名必须逐字对上**：`grep -rn "Settings->" Source/Wildforge/Private/` 的结果要与
+      **对应那个**配置头文件的声明逐项对照（改名 / 换 include 后尤其要做）。ini 的键名就是属性名，
+      UHT 与 ini 都不校验，改名会让旧 ini 静默失效（见 bug-052）；类名同理（ini 节名带类名）。
+   - **客户端不得用 ini 的值驱动玩法**：客户端本地那份 ini 是玩家可改的文件，用它改速度/冷却/伤害＝让客户端说了算。
+     客户端只认复制下来的值；组件里禁止出现「无权威门禁就读 `Settings->X` 并写字段」的代码。

@@ -29,7 +29,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnBlinkPerformed,
  * |---|---|---|---|
  * | 位移本身 `BlinkForward()` | 服务器 | ✗ 调不动（Absorbed） | `Server_Blink` / `Server_BlinkForward` |
  * | 距离上限收敛 / 落点合法性 | 服务器 | ✗ | 在权威函数内部完成 |
- * | `MaxBlinkDistance` 等参数 | 服务器 | 只读 | 类默认值随 Actor 生成同步 |
+ * | 调参（`MaxBlinkDistance`/`BlinkCooldown`…） | 服务器读 ini 后写入 | 只读（复制下来） | 类默认值兜底 + `COND_InitialOnly` |
  * | `LastBlinkTime` / `BlinkCount` | 服务器写 | 只读（复制下来） | `DOREPLIFETIME_CONDITION(COND_OwnerOnly)` |
  * | 蒙太奇（可选）/ 特效 | 服务器发起 | 跟随 | `Multicast_PlayBlinkMontage` / `Multicast_PlayBlinkEffects` |
  *
@@ -58,7 +58,14 @@ public:
   virtual void GetLifetimeReplicatedProps(
       TArray<FLifetimeProperty> &OutLifetimeProps) const override;
 
-  // ===== 可配置参数（类默认值，随 Actor 生成同步，不参与运行时复制）=====
+  // ===== 可配置参数（类默认值 = 基线 + 兜底；带 `Replicated` 的可被 ini 覆盖）=====
+  // 带 `Replicated`（`COND_InitialOnly`，出生束里带一次）的那几项会被
+  // UBlinkComponentSettings 的 ini 覆盖：权威端在 BeginPlay 写入，客户端靠复制拿到
+  // 同一份值（客户端不读 ini）。没勾 override 就是这里的类默认值。
+  // ⚠️ 客户端不要在本端写这些字段。
+  //
+  // 特别注意 `BlinkCooldown`：它以前没有复制通道，客户端 `IsBlinkReady()` 只能读到
+  // 类默认值（ini 改了冷却后两端不一致）。现在它随出生束复制，两端才真正同源。
 
   // 闪现的总开关（眩晕 / 缴械 / 死亡 / 落地硬直等状态把它关掉）
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Blink")
@@ -67,18 +74,18 @@ public:
   // 闪现允许的最大距离（cm）。
   // **服务器侧的上限**：`Server_BlinkForward` 传了更大的值也只会被收敛到它；
   // `Server_Blink` 直接用它当请求距离。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Blink",
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Blink",
             meta = (ClampMin = "0", UIMin = "0", ForceUnits = "cm"))
   float MaxBlinkDistance = 1200.0f;
 
   // 两次闪现之间的最小间隔（秒），0 = 不限制。
   // 校验在服务器侧做，防止被篡改的客户端刷包连闪。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Blink",
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Blink",
             meta = (ClampMin = "0", UIMin = "0", ForceUnits = "s"))
   float BlinkCooldown = 0.0f;
 
   // 闪现后是否保留原有水平速度（true = 手感更连续；false = 落地急停，防「闪完继续滑」）
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Blink")
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Blink")
   bool bKeepVelocityAfterBlink = false;
 
   // 扫描用的碰撞通道。默认 `ECC_Visibility` 与引擎的视线检测一致。
@@ -96,7 +103,7 @@ public:
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Blink|Anim")
   TObjectPtr<UAnimMontage> BlinkMontage;
 
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Blink|Anim",
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Blink|Anim",
             meta = (ClampMin = "0.01", UIMin = "0.01"))
   float BlinkMontagePlayRate = 1.0f;
 
@@ -218,4 +225,14 @@ public:
             Category = "Blink|RPC")
   void Server_BlinkForward(float Distance, float MaxDistance = 1200.0f,
                            bool bKeepVelocity = false);
+
+protected:
+  // 本组件原先没有 BeginPlay，这里补一个：唯一职责就是应用 ini 覆盖
+  // （必须在任何 `Server_Blink` 到来之前完成，否则首批请求会按旧值判定）。
+  virtual void BeginPlay() override;
+
+  // 读取 UBlinkComponentSettings 的 ini 覆盖并写进本组件。
+  // **只在权威端执行**（客户端那份值由 `COND_InitialOnly` 属性复制下来）。
+  // 无覆盖时是安全空操作。
+  void ApplyGameplaySettingsOverrides();
 };

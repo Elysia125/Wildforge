@@ -5,6 +5,7 @@
 #include "Animation/AnimInstance.h"
 #include "CollisionQueryParams.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Character/Settings/AttackComponentSettings.h"
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/DamageType.h"
@@ -54,13 +55,109 @@ void UAttackComponent::GetLifetimeReplicatedProps(
   DOREPLIFETIME_CONDITION(UAttackComponent, LastAttackTime, COND_SimulatedOnly);
   DOREPLIFETIME_CONDITION(UAttackComponent, ActiveAttackMontage,
                           COND_SimulatedOnly);
+
+  // 调参（类默认值 = 基线，可被 UAttackComponentSettings 的 ini 覆盖）。
+  //
+  // `COND_InitialOnly` = 「只在出生束里发一次」。这是刻意的：
+  //   * 这些值在角色生命周期内**不会变**（改了 ini 要重启进程 / 重新生成角色），
+  //     用 `COND_None` 每帧比对的代价虽然小，但没有任何意义；
+  //   * 客户端必须在**动手之前**就拿到服务器那份值（它是权威端的判定依据），
+  //     出生束正好在客户端 BeginPlay 之前落地（`AActor::PostNetInit` 是「初始属性
+  //     应用完毕」的钩子，见 PlayerCharacter 里那条对照日志）；
+  //   * 发往**所有**连接（不带 OwnerOnly / SimulatedOnly）：模拟代理也要这份值
+  //     （动画蓝图 / 表现会读它），而且它是静态数据，一次性的几十字节不值得再分条件。
+  //
+  // ⚠️ 不要改成 `COND_OwnerOnly`：模拟端（其他玩家）上的攻击表现同样按这套参数跑。
+  DOREPLIFETIME_CONDITION(UAttackComponent, AttackCooldown, COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(UAttackComponent, ComboMinInterval, COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(UAttackComponent, ComboBlendInMinTime,
+                          COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(UAttackComponent, ComboBlendInMaxTime,
+                          COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(UAttackComponent, AttackDamage, COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(UAttackComponent, AttackRange, COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(UAttackComponent, AttackTraceRadius,
+                          COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(UAttackComponent, AttackTraceHeightOffset,
+                          COND_InitialOnly);
 }
 
 // Called when the game starts
 void UAttackComponent::BeginPlay() {
   Super::BeginPlay();
 
-  // ...
+  // ini 覆盖必须在任何消费点之前应用：服务器写进去的值会随出生束复制给客户端，
+  // 客户端那份（本地 ini 若有）不会被读（见 AttackComponentSettings.h 的类注释）。
+  ApplyGameplaySettingsOverrides();
+}
+
+void UAttackComponent::ApplyGameplaySettingsOverrides() {
+  // 只有权威端读 ini：客户端拿服务器复制下来的值。
+  // 用 IsAuthoritativeForActorComponent 而不是 HasAuthority()（后者是 AActor 的方法，
+  // 组件上不存在，写了直接 C3861）。
+  if (!IsAuthoritativeForActorComponent(this)) {
+    return;
+  }
+
+  const UAttackComponentSettings *Settings =
+      UAttackComponentSettings::Get();
+  if (Settings == nullptr) {
+    WFLOG_ERROR("[配置] 攻击组件取不到 UAttackComponentSettings（CDO 为空），"
+                "本次不应用任何 ini 覆盖。宿主 %s",
+                GetOwner() ? *GetOwner()->GetName() : TEXT("None"));
+    return;
+  }
+
+  // 逐项判断「ini 里显式勾了 override 才写」，没勾的保持类默认值。
+  // 夹紧的下限与组件上 meta 的 ClampMin 一致：ini 是手写文本，不保证不越界。
+  int32 Applied = 0;
+  if (Settings->bOverride_Cooldown) {
+    AttackCooldown = FMath::Max(0.0f, Settings->Cooldown);
+    ++Applied;
+  }
+  if (Settings->bOverride_ComboMinInterval) {
+    ComboMinInterval = FMath::Max(0.0f, Settings->ComboMinInterval);
+    ++Applied;
+  }
+  if (Settings->bOverride_ComboBlendInMinTime) {
+    ComboBlendInMinTime = FMath::Max(0.0f, Settings->ComboBlendInMinTime);
+    ++Applied;
+  }
+  if (Settings->bOverride_ComboBlendInMaxTime) {
+    ComboBlendInMaxTime = FMath::Max(0.0f, Settings->ComboBlendInMaxTime);
+    ++Applied;
+  }
+  if (Settings->bOverride_Damage) {
+    AttackDamage = FMath::Max(0.0f, Settings->Damage);
+    ++Applied;
+  }
+  if (Settings->bOverride_Range) {
+    AttackRange = FMath::Max(0.0f, Settings->Range);
+    ++Applied;
+  }
+  if (Settings->bOverride_TraceRadius) {
+    AttackTraceRadius = FMath::Max(0.0f, Settings->TraceRadius);
+    ++Applied;
+  }
+  if (Settings->bOverride_TraceHeightOffset) {
+    // 这一项**不夹紧**：它是相对胶囊体中心的 Z 偏移，负数（比如打小腿）是合法配置。
+    AttackTraceHeightOffset = Settings->TraceHeightOffset;
+    ++Applied;
+  }
+
+  // 日志打的是**生效后的值**（不是 ini 里那份），所以夹紧效果在这里也看得见；
+  // 与客户端 PostNetInit 那条对照，就能确认「服务器读 ini → 客户端拿到同一份值」。
+  const FString Source =
+      (Applied > 0)
+          ? FString::Printf(TEXT("应用了 %d 项 ini 覆盖"), Applied)
+          : FString(TEXT("没有 ini 覆盖（全部用类默认值）"));
+  WFLOG_INFO("[配置] 攻击组件（宿主 %s，权威端）：%s；生效值 冷却=%.2fs "
+             "连击节流=%.2fs 淡入=%.2f~%.2fs 伤害=%.1f 射程=%.0f 半径=%.0f "
+             "高度偏移=%.0f。",
+             GetOwner() ? *GetOwner()->GetName() : TEXT("None"), *Source,
+             AttackCooldown, ComboMinInterval, ComboBlendInMinTime,
+             ComboBlendInMaxTime, AttackDamage, AttackRange, AttackTraceRadius,
+             AttackTraceHeightOffset);
 }
 
 void UAttackComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) {

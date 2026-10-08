@@ -73,6 +73,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCrawlTransitionFinished,
  * | 姿态 `bIsProne` | 服务器写 | 只读（复制下来） | `DOREPLIFETIME`（**不带 condition**，见下） |
  * | `bCrawlTransitionActive` / `LastCrawlTransitionTime` / `CrawlCooldown` / `CrawlTransitionCount` / `ActiveCrawlMontage` | 服务器写 | 只读（复制下来） | `DOREPLIFETIME_CONDITION(COND_OwnerOnly)` |
  * | 爬行速度 | 服务器写 | 跟随（镜像） | `USprintBoostComponent::SetBaseMaxSpeed`（见下） |
+ * | 调参（`ProneMaxWalkSpeed`/阈值/播速…） | 服务器读 ini 后写入 | 只读（复制下来） | 类默认值兜底 + `COND_InitialOnly`（`CrawlCooldown` 沿用原有通道） |
  * | 蒙太奇播放 | 服务器发起 | 跟随（但不写玩法状态） | `Multicast_PlayCrawlMontage(动作类型)` |
  * | 生命周期广播 `OnCrawlTransitionStarted/Finished` | 每端各自本地 | 每端各自本地（不复制） | 本端 `bCrawlPresentationActive` |
  * | 特效 `PlayCrawlEffects()` | 服务器发起 | 跟随 | `Multicast_PlayCrawlEffects` |
@@ -150,7 +151,11 @@ public:
   // 销毁时清兜底定时器 + 退订动画委托 + 还原基准速度
   virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-  // ===== 可配置参数（类默认值，随 Actor 生成同步，不参与运行时复制）=====
+  // ===== 可配置参数（类默认值 = 基线 + 兜底；带 `Replicated` 的可被 ini 覆盖）=====
+  // 带 `Replicated`（`COND_InitialOnly`，出生束里带一次）的那几项会被
+  // UCrawlingComponentSettings 的 ini 覆盖：权威端在 BeginPlay 写入，客户端靠复制拿到
+  // 同一份值（客户端不读 ini）。没勾 override 就是这里的类默认值。
+  // ⚠️ 客户端不要在本端写这些字段。
 
   // 站着趴下：从站立进入趴下时播的蒙太奇
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crawling|Anim")
@@ -166,7 +171,7 @@ public:
   TObjectPtr<UAnimMontage> ProneToStandMontage;
 
   // 蒙太奇播放速率倍率（1 = 原速）
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crawling|Anim",
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Crawling|Anim",
             meta = (ClampMin = "0.01", UIMin = "0.01"))
   float MontagePlayRate = 1.0f;
 
@@ -185,7 +190,8 @@ public:
   // 为什么默认开：过渡动作的收尾通常已经「到位」了（人已经躺下 / 已经站起来），
   // 等 `OnMontageEnded` 才解锁会让玩家在「动画看着已经结束了」之后还被锁半秒。
   // 关掉它就只在蒙太奇真正播完 / 被打断时才收尾（更保守：适合起身动作不可打断的设计）。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crawling|Advanced")
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated,
+            Category = "Crawling|Advanced")
   bool bFinishOnBlendOut = true;
 
   // 判定「奔跑中趴下」的水平速度阈值（cm/s）。只有配了 `ProneFromRunMontage` 才参与判定。
@@ -193,8 +199,8 @@ public:
   // ⚠️ 读的是**服务器上的 `Velocity`**：自主代理的速度由客户端 move 包驱动，
   // 服务器上也是真值；**不要**用 last input vector —— 它只由客户端累加，
   // 服务器上恒为零向量（见 bug-026）。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crawling|Advanced",
-            meta = (ClampMin = "0", UIMin = "0"))
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated,
+            Category = "Crawling|Advanced", meta = (ClampMin = "0", UIMin = "0"))
   float RunTransitionSpeedThreshold = 300.0f;
 
   // ===== 玩法参数（服务器权威判定用，客户端改了也没用）=====
@@ -208,7 +214,7 @@ public:
 
   // 趴下时的爬行最大速度（cm/s）：进入趴下时写入，起立结束时精确还原成趴下前的值。
   // 必须 > 0：0 是「角色不能动」的合法速度值，写进去会把角色钉在原地（见 bug-027）。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crawling",
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Crawling",
             meta = (ClampMin = "1", UIMin = "1"))
   float ProneMaxWalkSpeed = 150.0f;
 
@@ -382,6 +388,11 @@ public:
   void Server_ToggleProne();
 
 protected:
+  // 读取 UCrawlingComponentSettings 的 ini 覆盖并写进本组件。
+  // **只在权威端执行**（客户端那份值由 `COND_InitialOnly` 属性复制下来）。
+  // 无覆盖时是安全空操作。
+  void ApplyGameplaySettingsOverrides();
+
   // 蒙太奇结束回调。
   //
   // 所有端都会触发（蒙太奇被 Multicast 同步到每个端），但收尾的语义在服务器与客户端

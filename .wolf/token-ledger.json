@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-10-05T10:52:46.081Z",
   "lifetime": {
-    "total_tokens_estimated": 49963,
-    "total_reads": 28,
-    "total_writes": 38,
-    "total_sessions": 7,
-    "anatomy_hits": 20,
-    "anatomy_misses": 8,
-    "repeated_reads_blocked": 6,
-    "estimated_savings_vs_bare_cli": 22656
+    "total_tokens_estimated": 123225,
+    "total_reads": 43,
+    "total_writes": 104,
+    "total_sessions": 12,
+    "anatomy_hits": 34,
+    "anatomy_misses": 9,
+    "repeated_reads_blocked": 8,
+    "estimated_savings_vs_bare_cli": 32286
   },
   "sessions": [
     {
@@ -468,6 +468,460 @@
         "writes_count": 8,
         "repeated_reads_blocked": 2,
         "anatomy_lookups": 11
+      }
+    },
+    {
+      "id": "session-2026-10-08-2154",
+      "started": "2026-10-08T13:54:50.737Z",
+      "ended": "2026-10-08T13:59:28.611Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/LandRollComponent.cpp",
+          "tokens_estimated": 4200,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/BlinkComponent.h",
+          "tokens_estimated": 1800,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/BlinkComponent.cpp",
+          "tokens_estimated": 2400,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/CrawlingComponent.h",
+          "tokens_estimated": 4821,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/CrawlingComponent.cpp",
+          "tokens_estimated": 9593,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+          "tokens_estimated": 5172,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 3415,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/LandRollComponent.cpp",
+          "tokens_estimated": 28,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/LandRollComponent.cpp",
+          "tokens_estimated": 241,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/LandRollComponent.cpp",
+          "tokens_estimated": 41,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/LandRollComponent.cpp",
+          "tokens_estimated": 496,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/BlinkComponent.h",
+          "tokens_estimated": 30,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/BlinkComponent.h",
+          "tokens_estimated": 104,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/BlinkComponent.h",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/BlinkComponent.h",
+          "tokens_estimated": 50,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/BlinkComponent.h",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/BlinkComponent.h",
+          "tokens_estimated": 50,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/BlinkComponent.h",
+          "tokens_estimated": 154,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/BlinkComponent.cpp",
+          "tokens_estimated": 28,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/BlinkComponent.cpp",
+          "tokens_estimated": 750,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/CrawlingComponent.h",
+          "tokens_estimated": 55,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/CrawlingComponent.h",
+          "tokens_estimated": 72,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/CrawlingComponent.h",
+          "tokens_estimated": 50,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/CrawlingComponent.h",
+          "tokens_estimated": 39,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/CrawlingComponent.h",
+          "tokens_estimated": 53,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/CrawlingComponent.h",
+          "tokens_estimated": 48,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/CrawlingComponent.h",
+          "tokens_estimated": 54,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/CrawlingComponent.cpp",
+          "tokens_estimated": 28,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/CrawlingComponent.cpp",
+          "tokens_estimated": 784,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/CrawlingComponent.cpp",
+          "tokens_estimated": 55,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 95,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 127,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+          "tokens_estimated": 31,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+          "tokens_estimated": 477,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+          "tokens_estimated": 444,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Core/Settings/WildforgeGameplaySettings.h",
+          "tokens_estimated": 16,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Core/Settings/WildforgeGameplaySettings.h",
+          "tokens_estimated": 22,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/CLAUDE.md",
+          "tokens_estimated": 180,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/CLAUDE.md",
+          "tokens_estimated": 283,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/CLAUDE.local.md",
+          "tokens_estimated": 259,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 31401,
+        "output_tokens_estimated": 5230,
+        "reads_count": 7,
+        "writes_count": 33,
+        "repeated_reads_blocked": 1,
+        "anatomy_lookups": 7
+      }
+    },
+    {
+      "id": "session-2026-10-08-2154",
+      "started": "2026-10-08T13:54:50.737Z",
+      "ended": "2026-10-08T14:03:52.366Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/LandRollComponent.cpp",
+          "tokens_estimated": 4200,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/BlinkComponent.h",
+          "tokens_estimated": 1800,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/BlinkComponent.cpp",
+          "tokens_estimated": 2400,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/CrawlingComponent.h",
+          "tokens_estimated": 4821,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/CrawlingComponent.cpp",
+          "tokens_estimated": 9593,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+          "tokens_estimated": 5172,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 3415,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Source/Editor/PropertyEditor/Public/NumericPropertyParams.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/LandRollComponent.cpp",
+          "tokens_estimated": 28,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/LandRollComponent.cpp",
+          "tokens_estimated": 241,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/LandRollComponent.cpp",
+          "tokens_estimated": 41,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/LandRollComponent.cpp",
+          "tokens_estimated": 496,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/BlinkComponent.h",
+          "tokens_estimated": 30,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/BlinkComponent.h",
+          "tokens_estimated": 104,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/BlinkComponent.h",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/BlinkComponent.h",
+          "tokens_estimated": 50,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/BlinkComponent.h",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/BlinkComponent.h",
+          "tokens_estimated": 50,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/BlinkComponent.h",
+          "tokens_estimated": 154,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/BlinkComponent.cpp",
+          "tokens_estimated": 28,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/BlinkComponent.cpp",
+          "tokens_estimated": 750,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/CrawlingComponent.h",
+          "tokens_estimated": 55,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/CrawlingComponent.h",
+          "tokens_estimated": 72,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/CrawlingComponent.h",
+          "tokens_estimated": 50,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/CrawlingComponent.h",
+          "tokens_estimated": 39,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/CrawlingComponent.h",
+          "tokens_estimated": 53,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/CrawlingComponent.h",
+          "tokens_estimated": 48,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/CrawlingComponent.h",
+          "tokens_estimated": 54,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/CrawlingComponent.cpp",
+          "tokens_estimated": 28,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/CrawlingComponent.cpp",
+          "tokens_estimated": 784,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/CrawlingComponent.cpp",
+          "tokens_estimated": 55,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 95,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 127,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+          "tokens_estimated": 31,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+          "tokens_estimated": 477,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+          "tokens_estimated": 444,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Core/Settings/WildforgeGameplaySettings.h",
+          "tokens_estimated": 16,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Core/Settings/WildforgeGameplaySettings.h",
+          "tokens_estimated": 22,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/CLAUDE.md",
+          "tokens_estimated": 180,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/CLAUDE.md",
+          "tokens_estimated": 283,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/CLAUDE.local.md",
+          "tokens_estimated": 259,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 31401,
+        "output_tokens_estimated": 5230,
+        "reads_count": 8,
+        "writes_count": 33,
+        "repeated_reads_blocked": 1,
+        "anatomy_lookups": 7
       }
     }
   ],

@@ -35,6 +35,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnLandRollFinished);
  * |---|---|---|---|
  * | 翻滚判定与状态推进 `LandRoll()` | 服务器 | ✗ 调不动（Absorbed） | `Server_LandRoll` |
  * | 冷却 / 重入 / 总开关判定 | 服务器 | ✗ | 在 `LandRoll()` 内部完成 |
+ * | 调参（`LandRollCooldown`/播速/BlendOut 解锁…） | 服务器读 ini 后写入 | 只读（复制下来） | 类默认值兜底 + `COND_InitialOnly`（冷却项沿用原有通道） |
  * | 状态 `bIsRolling` / `LastLandRollTime` | 服务器写 | 只读（复制下来） | `DOREPLIFETIME_CONDITION(COND_OwnerOnly)` |
  * | 蒙太奇播放 | 服务器发起 | 跟随（但不写玩法状态） | `Multicast_PlayLandRollMontage(段名)` |
  * | 生命周期广播 `OnLandRollStarted/Finished` | 每端各自本地 | 每端各自本地（不复制） | `bRollPresentationActive` |
@@ -100,7 +101,11 @@ public:
   // 销毁时清掉兜底定时器与动画委托：next-tick 之外的回调也可能打到半销毁对象上
   virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-  // ===== 可配置参数（类默认值，随 Actor 生成同步，不参与运行时复制）=====
+  // ===== 可配置参数（类默认值 = 基线 + 兜底；带 `Replicated` 的可被 ini 覆盖）=====
+  // 带 `Replicated`（`COND_InitialOnly`，出生束里带一次）的那几项会被
+  // ULandRollComponentSettings 的 ini 覆盖：权威端在 BeginPlay 写入，客户端靠复制拿到
+  // 同一份值（客户端不读 ini）。没勾 override 就是这里的类默认值。
+  // ⚠️ 客户端不要在本端写这些字段。
 
   // 翻滚蒙太奇。**留空 = 翻滚状态仍然会推进，只是没有动画**（会记一条 WARNING）。
   // 内容仓库里的资源是 /Game/Characters/Man/Animations/Montage/LandRollMontage。
@@ -109,7 +114,7 @@ public:
 
   // 蒙太奇播放速率倍率（1 = 原速）。翻滚通常要比走跑快一点才「利落」，
   // 默认 1.5 是原先就有的取值。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LandRoll|Anim",
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "LandRoll|Anim",
             meta = (ClampMin = "0.01", UIMin = "0.01"))
   float MontagePlayRate = 1.5f;
 
@@ -123,10 +128,10 @@ public:
   // 等 OnMontageEnded 才解锁会让玩家在「动画看着已经站好了」之后还被锁半秒。
   // 在 BlendOut 解锁能让移动立刻接上。
   // 关掉它就只在蒙太奇真正播完 / 被打断时才解锁（更保守，适合起身动作不可打断的设计）。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LandRoll|Advanced")
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "LandRoll|Advanced")
   bool bFinishOnBlendOut = true;
 
-  // ===== 玩法参数（服务器权威判定用，客户端改了也没用）=====
+  // ===== 玩法参数（服务器权威判定用；带 `Replicated` 的同样可被 ini 覆盖）=====
 
   // 能不能翻滚的总开关（眩晕 / 缴械 / 死亡等状态把它关掉）
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LandRoll")
@@ -135,7 +140,7 @@ public:
   // 翻滚后是否把速度清零。
   // 只有在翻滚靠**自己位移**（比如蓝图里给一段位移曲线 / Launch）而不是 RootMotion
   // 驱动时才需要打开；用 RootMotion 的话速度本来就由动画接管，清零反而会让动作发飘。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LandRoll|Advanced")
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "LandRoll|Advanced")
   bool bStopMovementOnStart = false;
 
   // ===== 状态（服务器写、拥有者客户端只读）=====
@@ -278,6 +283,11 @@ public:
   void Server_LandRoll();
 
 protected:
+  // 读取 ULandRollComponentSettings 的 ini 覆盖并写进本组件。
+  // **只在权威端执行**（客户端那份值由 `COND_InitialOnly` 属性复制下来）。
+  // 无覆盖时是安全空操作。
+  void ApplyGameplaySettingsOverrides();
+
   // 蒙太奇结束回调。
   //
   // 所有端都会触发（蒙太奇被 Multicast 同步到每个端），但状态收尾的语义在服务器与

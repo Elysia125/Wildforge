@@ -938,6 +938,159 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-07T14:26:33.608Z"
+    },
+    {
+      "id": "bug-046",
+      "timestamp": "2026-10-08T13:52:45.213Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Public/Character/Components/AttackComponent.h",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 3→8 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "h"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-08T13:52:45.213Z"
+    },
+    {
+      "id": "bug-047",
+      "timestamp": "2026-10-08T13:53:07.156Z",
+      "error_message": "Wrong reference: Actor should be ini",
+      "file": "Source/Wildforge/Public/Character/Components/AttackComponent.h",
+      "root_cause": "Used \"Actor\" instead of \"ini\"",
+      "fix": "Changed Actor → ini",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "h"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-08T13:53:07.156Z"
+    },
+    {
+      "id": "bug-048",
+      "timestamp": "2026-10-08T13:55:14.937Z",
+      "error_message": "Wrong reference: Actor should be BlinkCooldown",
+      "file": "Source/Wildforge/Public/Character/Components/BlinkComponent.h",
+      "root_cause": "Used \"Actor\" instead of \"BlinkCooldown\"",
+      "fix": "Changed Actor → BlinkCooldown",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "h"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-08T13:55:14.937Z"
+    },
+    {
+      "id": "bug-049",
+      "timestamp": "2026-10-08T13:56:23.381Z",
+      "error_message": "Incorrect value in code",
+      "file": "Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+      "root_cause": "Had \"GameFramework/CharacterMovementComponent.h\"",
+      "fix": "Changed to \"Core/Settings/WildforgeGameplaySettings.h\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-08T13:56:23.381Z"
+    },
+    {
+      "id": "bug-050",
+      "timestamp": "2026-10-08T13:56:25.716Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 15→40 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-08T13:56:25.716Z"
+    },
+    {
+      "id": "bug-051",
+      "timestamp": "2026-10-08T13:56:43.592Z",
+      "error_message": "Wrong reference: bOverride_StopMovementOnStart should be bOverride_LandRollStopMovementOnStart",
+      "file": "Source/Wildforge/Public/Core/Settings/WildforgeGameplaySettings.h",
+      "root_cause": "Used \"bOverride_StopMovementOnStart\" instead of \"bOverride_LandRollStopMovementOnStart\"",
+      "fix": "Changed bOverride_StopMovementOnStart → bOverride_LandRollStopMovementOnStart",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "h"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-08T13:56:43.592Z"
+    },
+    {
+      "id": "bug-052",
+      "timestamp": "2026-10-08T13:56:44.101Z",
+      "error_message": "配置类字段名与消费点对不上：UWildforgeGameplaySettings 声明的是 bOverride_StopMovementOnStart，而 ULandRollComponent::ApplyGameplaySettingsOverrides 引用的是 Settings->bOverride_LandRollStopMovementOnStart（编译期会报未解析成员；本次在编译前用 grep 对照字段名时发现，未真的让构建失败）",
+      "file": "Source/Wildforge/Public/Core/Settings/WildforgeGameplaySettings.h",
+      "root_cause": "手工把组件的调参项搬到配置类时，同一组配置的命名规则没统一：值字段叫 bLandRollStopMovementOnStart（带前缀）、它的 override 开关却写成了不带前缀的 bOverride_StopMovementOnStart，而同组另一个开关是 bOverride_LandRollFinishOnBlendOut（带前缀）。UHT/ini 都不校验 ini 键名，只有编译器会拦「名字根本不存在」，『名字像但不是同一个』这种不一致在编写期极易发生（两边都是新写的代码，没有既存 ini 会暴露它）。",
+      "fix": "把声明与 meta 的 EditCondition 一起改成 bOverride_LandRollStopMovementOnStart，与该组的 bOverride_LandRollFinishOnBlendOut / bLandRollStopMovementOnStart 对齐；并确立规则：配置类字段落笔后用 `grep -rn \"Settings->\" Source/Wildforge/Private/` 与头文件声明逐项对照一遍（见 cerebrum 的 Do-Not-Repeat）",
+      "tags": [
+        "config",
+        "naming",
+        "wildforge-gameplay-settings",
+        "near-miss",
+        "auto-detected",
+        "wrong-value",
+        "h"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-08T13:56:44.101Z"
+    },
+    {
+      "id": "bug-053",
+      "timestamp": "2026-10-08T22:30:00",
+      "error_message": "用户否掉单一配置类的设计：不要把所有组件、所有地方的配置值全部都挤到一起，每一个组件、每一个地方的配置值应该交由单独的结构体或者单独的类来管理，可读性高一点",
+      "file": "Source/Wildforge/Public/Core/Settings/WildforgeGameplaySettings.h（已删除），拆分为 Source/Wildforge/Public/Character/Settings/*.h 共 7 个",
+      "root_cause": "最初把全项目 40 项可调数值（攻击/加速/滑行/翻滚/闪现/趴下/背包容量）放进同一个 UWildforgeGameplaySettings，并靠字段前缀（Slide*、LandRoll*、Crawl*）区分归属。后果：Project Settings 里只有一页 80 个属性，改一个组件要在一屏里找自己的几项；前缀是唯一的归属线索，漏写/写错前缀就是 bug-052 那类静默失配；新增组件时没有一个天然的落笔位置",
+      "fix": "拆成每组件/每区域一个 UDeveloperSettings 子类（纯 header，类内内联 Get()，无 .cpp）：AttackComponentSettings / SprintBoostComponentSettings / SlideComponentSettings / LandRollComponentSettings / BlinkComponentSettings / CrawlingComponentSettings / PlayerCharacterSettings，均放在 Public/Character/Settings/，各自 meta=(DisplayName=…) 独立成 Project Settings 一页 + DefaultGame.ini 一个 [/Script/Wildforge.<类名>] 节；字段改回短名（Cooldown / MontagePlayRate / MaxDistance…），归属由类承担。7 个消费方（6 组件 cpp + PlayerCharacter cpp、各自头文件）用锚定 Settings-> 前缀的 sed 批量改名，再逐文件对照新头文件声明核验（两组清单逐项相等），最后 UHT + 全量编译通过",
+      "tags": [
+        "config",
+        "refactor",
+        "design-correction",
+        "developer-settings",
+        "wildforge-gameplay-settings",
+        "readability"
+      ],
+      "related_bugs": [
+        "bug-052"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-08T22:30:00"
+    },
+    {
+      "id": "bug-054",
+      "timestamp": "2026-10-08T14:19:33.204Z",
+      "error_message": "Significant refactor of ",
+      "file": "CLAUDE.md",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 8→13 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-08T14:19:33.204Z"
     }
   ]
 }

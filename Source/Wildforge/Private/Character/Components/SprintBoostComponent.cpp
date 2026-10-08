@@ -4,6 +4,7 @@
 
 #include "Animation/AnimInstance.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Character/Settings/SprintBoostComponentSettings.h"
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -76,10 +77,31 @@ void USprintBoostComponent::GetLifetimeReplicatedProps(
                           COND_OwnerOnly);
   DOREPLIFETIME_CONDITION(USprintBoostComponent, ReplicatedMaxWalkSpeedCrouched,
                           COND_OwnerOnly);
+
+  // 调参（类默认值 = 基线，可被 USprintBoostComponentSettings 的 ini 覆盖）。
+  //
+  // `COND_InitialOnly` = 只在出生束里发一次：这些值在角色生命周期内不会变
+  // （改了 ini 要重启进程 / 重新生成角色），发一次足够，之后零开销。
+  //
+  // 为什么**不**用上面的 `COND_OwnerOnly`：方向门控的查询函数
+  // （`IsSprintInputDirectionForward()` / `GetSprintInputForwardAngle()`）在
+  // **所有端**都会被蓝图（UI、动画蓝图）调用，模拟端也得拿到同一份角度阈值，
+  // 否则「这端显示可以冲刺、那端显示不行」。静态数据、一次性几十字节，不值得再分条件。
+  DOREPLIFETIME_CONDITION(USprintBoostComponent, DefaultBoostDuration,
+                          COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(USprintBoostComponent, bSprintOnlyForward,
+                          COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(USprintBoostComponent, MaxForwardSprintAngle,
+                          COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(USprintBoostComponent, SprintMontagePlayRate,
+                          COND_InitialOnly);
 }
 
 void USprintBoostComponent::BeginPlay() {
   Super::BeginPlay();
+
+  // ini 覆盖要先应用（权威端），再干别的：下面的镜像同步与日志都按「最终生效的值」跑。
+  ApplyGameplaySettingsOverrides();
 
   // 这里刻意**不**抓基准速度：客户端上的 MaxWalkSpeed 要等复制到位才是有效值，
   // 在 BeginPlay 抓会把默认值（甚至是 0）记成基准，之后 ResetMaxSpeed 就还原不回去了。
@@ -118,6 +140,52 @@ void USprintBoostComponent::BeginPlay() {
           ? *FString::Printf(TEXT("开（复制值 %.2f/%.2f）"), ReplicatedMaxWalkSpeed,
                              ReplicatedMaxWalkSpeedCrouched)
           : TEXT("关（客户端不会跟随权威速度，只用于对照实验）"));
+}
+
+void USprintBoostComponent::ApplyGameplaySettingsOverrides() {
+  // 只有权威端读 ini：客户端拿服务器复制下来的值（见 SprintBoostComponentSettings.h）。
+  // 组件里不能用 HasAuthority()（AActor 的方法，写了直接 C3861）。
+  if (!IsAuthoritativeForActorComponent(this)) {
+    return;
+  }
+
+  const USprintBoostComponentSettings *Settings =
+      USprintBoostComponentSettings::Get();
+  if (Settings == nullptr) {
+    WFLOG_ERROR("[配置] 加速组件取不到 USprintBoostComponentSettings（CDO 为空），"
+                "本次不应用任何 ini 覆盖。宿主 %s",
+                GetOwner() ? *GetOwner()->GetName() : TEXT("None"));
+    return;
+  }
+
+  // 夹紧的下限与组件 meta 里的 ClampMin / ClampMax 一致：ini 是手写文本，不保证不越界。
+  int32 Applied = 0;
+  if (Settings->bOverride_DefaultBoostDuration) {
+    DefaultBoostDuration = FMath::Max(0.01f, Settings->DefaultBoostDuration);
+    ++Applied;
+  }
+  if (Settings->bOverride_SprintOnlyForward) {
+    bSprintOnlyForward = Settings->bSprintOnlyForward;
+    ++Applied;
+  }
+  if (Settings->bOverride_MaxForwardSprintAngle) {
+    MaxForwardSprintAngle =
+        FMath::Clamp(Settings->MaxForwardSprintAngle, 0.0f, 180.0f);
+    ++Applied;
+  }
+  if (Settings->bOverride_MontagePlayRate) {
+    SprintMontagePlayRate = FMath::Max(0.01f, Settings->MontagePlayRate);
+    ++Applied;
+  }
+
+  const FString Source = (Applied > 0)
+                             ? FString::Printf(TEXT("应用了 %d 项 ini 覆盖"), Applied)
+                             : FString(TEXT("没有 ini 覆盖（全部用类默认值）"));
+  WFLOG_INFO("[配置] 加速组件（宿主 %s，权威端）：%s；生效值 默认时长=%.2fs "
+             "只向前才加速=%d 最大夹角=%.1f 蒙太奇播速=%.2f。",
+             GetOwner() ? *GetOwner()->GetName() : TEXT("None"), *Source,
+             DefaultBoostDuration, bSprintOnlyForward ? 1 : 0,
+             MaxForwardSprintAngle, SprintMontagePlayRate);
 }
 
 void USprintBoostComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) {

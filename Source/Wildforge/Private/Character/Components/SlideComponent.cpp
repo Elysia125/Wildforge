@@ -4,6 +4,7 @@
 
 #include "Animation/AnimInstance.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Character/Settings/SlideComponentSettings.h"
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -68,10 +69,49 @@ void USlideComponent::GetLifetimeReplicatedProps(
   DOREPLIFETIME_CONDITION(USlideComponent, SlideCooldown, COND_OwnerOnly);
   DOREPLIFETIME_CONDITION(USlideComponent, SlideCount, COND_OwnerOnly);
   DOREPLIFETIME_CONDITION(USlideComponent, ActiveSlideMontage, COND_OwnerOnly);
+
+  // 调参（类默认值 = 基线，可被 USlideComponentSettings 的 ini 覆盖）。
+  //
+  // `COND_InitialOnly` = 只在出生束里发一次：这些值在角色生命周期内不会变，
+  // 发一次足够、之后零开销；出生束在客户端 BeginPlay 之前落地，所以本端的
+  // 「滑行专用移动参数 + 速度曲线」从第一帧起就是用服务器那份值在跑。
+  //
+  // ⚠️ 这一节**必须**复制，不能省：滑行是两端各自跑同一条曲线、各自写同一套移动参数
+  //    的能力（见类注释「为什么自主代理也要本地镜像」）。ini 一改，客户端若还按自己的
+  //    类默认值预测，就是 bug-029 那种「每秒被 ClientAdjustPosition 拽回一次」的橡皮筋。
+  //
+  // 注意 `SlideCooldown` 不在下面：它原本就有复制通道（上面的 COND_OwnerOnly），
+  // ini 覆盖它时走的还是那条。
+  DOREPLIFETIME_CONDITION(USlideComponent, SlideDuration, COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(USlideComponent, SlideStartSpeed, COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(USlideComponent, SlideEndSpeed, COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(USlideComponent, SlideMaxSpeedDecelRate,
+                          COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(USlideComponent, SlideMinSpeedToContinue,
+                          COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(USlideComponent, SlideMinSpeedGraceTime,
+                          COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(USlideComponent, MinSpeedToStartSlide,
+                          COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(USlideComponent, bAllowSteering, COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(USlideComponent, SlideMaxAcceleration,
+                          COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(USlideComponent, SlideGroundFriction,
+                          COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(USlideComponent, SlideBrakingDeceleration,
+                          COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(USlideComponent, bEndSlideWhenAirborne,
+                          COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(USlideComponent, MontagePlayRate, COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(USlideComponent, MontageStopBlendOutTime,
+                          COND_InitialOnly);
 }
 
 void USlideComponent::BeginPlay() {
   Super::BeginPlay();
+
+  // ini 覆盖要先应用（权威端）：下面的「组件就绪」日志按最终生效值打印。
+  ApplyGameplaySettingsOverrides();
 
   const AActor *Owner = GetOwner();
   const FString Who = Owner ? Owner->GetName() : TEXT("None");
@@ -102,6 +142,100 @@ void USlideComponent::BeginPlay() {
              SlideSectionName.IsNone() ? TEXT("None")
                                        : *SlideSectionName.ToString(),
              MontageStopBlendOutTime, bCanSlide ? 1 : 0);
+}
+
+void USlideComponent::ApplyGameplaySettingsOverrides() {
+  // 只有权威端读 ini（客户端拿复制下来的值，见 SlideComponentSettings.h 的类注释）。
+  // 组件里不能用 HasAuthority()（AActor 的方法，写了直接 C3861）。
+  if (!IsAuthoritativeForActorComponent(this)) {
+    return;
+  }
+
+  const USlideComponentSettings *Settings =
+      USlideComponentSettings::Get();
+  if (Settings == nullptr) {
+    WFLOG_ERROR("[配置] 滑行组件取不到 USlideComponentSettings（CDO 为空），"
+                "本次不应用任何 ini 覆盖。宿主 %s",
+                GetOwner() ? *GetOwner()->GetName() : TEXT("None"));
+    return;
+  }
+
+  // 夹紧的下限与组件 meta 的 ClampMin 一致：ini 是手写文本，不保证不越界
+  // （`SlideDuration` 还是曲线进度公式的除数，填 0 会算出无穷大的进度）。
+  int32 Applied = 0;
+  if (Settings->bOverride_Duration) {
+    SlideDuration = FMath::Max(0.01f, Settings->Duration);
+    ++Applied;
+  }
+  if (Settings->bOverride_StartSpeed) {
+    SlideStartSpeed = FMath::Max(0.0f, Settings->StartSpeed);
+    ++Applied;
+  }
+  if (Settings->bOverride_EndSpeed) {
+    SlideEndSpeed = FMath::Max(0.0f, Settings->EndSpeed);
+    ++Applied;
+  }
+  if (Settings->bOverride_MaxSpeedDecelRate) {
+    SlideMaxSpeedDecelRate = FMath::Max(0.0f, Settings->MaxSpeedDecelRate);
+    ++Applied;
+  }
+  if (Settings->bOverride_MinSpeedToContinue) {
+    SlideMinSpeedToContinue =
+        FMath::Max(0.0f, Settings->MinSpeedToContinue);
+    ++Applied;
+  }
+  if (Settings->bOverride_MinSpeedGraceTime) {
+    SlideMinSpeedGraceTime = FMath::Max(0.0f, Settings->MinSpeedGraceTime);
+    ++Applied;
+  }
+  if (Settings->bOverride_MinSpeedToStartSlide) {
+    MinSpeedToStartSlide = FMath::Max(0.0f, Settings->MinSpeedToStartSlide);
+    ++Applied;
+  }
+  if (Settings->bOverride_AllowSteering) {
+    bAllowSteering = Settings->bAllowSteering;
+    ++Applied;
+  }
+  if (Settings->bOverride_MaxAcceleration) {
+    SlideMaxAcceleration = FMath::Max(0.0f, Settings->MaxAcceleration);
+    ++Applied;
+  }
+  if (Settings->bOverride_GroundFriction) {
+    SlideGroundFriction = FMath::Max(0.0f, Settings->GroundFriction);
+    ++Applied;
+  }
+  if (Settings->bOverride_BrakingDeceleration) {
+    SlideBrakingDeceleration =
+        FMath::Max(0.0f, Settings->BrakingDeceleration);
+    ++Applied;
+  }
+  if (Settings->bOverride_EndSlideWhenAirborne) {
+    bEndSlideWhenAirborne = Settings->bEndSlideWhenAirborne;
+    ++Applied;
+  }
+  if (Settings->bOverride_MontagePlayRate) {
+    MontagePlayRate = FMath::Max(0.01f, Settings->MontagePlayRate);
+    ++Applied;
+  }
+  if (Settings->bOverride_MontageStopBlendOutTime) {
+    MontageStopBlendOutTime = FMath::Max(0.0f, Settings->MontageStopBlendOutTime);
+    ++Applied;
+  }
+
+  const FString Source = (Applied > 0)
+                             ? FString::Printf(TEXT("应用了 %d 项 ini 覆盖"), Applied)
+                             : FString(TEXT("没有 ini 覆盖（全部用类默认值）"));
+  WFLOG_INFO("[配置] 滑行组件（宿主 %s，权威端）：%s；生效值 时长=%.2fs "
+             "起速=%.0f 末速=%.0f 最低速度=%.0f(宽限 %.2fs) 起滑要求=%.0f "
+             "转向=%d(加速度 %.0f) 摩擦=%.2f 刹车=%.2f 离地结束=%d "
+             "蒙太奇播速=%.2f 淡出=%.2fs。",
+             GetOwner() ? *GetOwner()->GetName() : TEXT("None"), *Source,
+             SlideDuration, SlideStartSpeed, SlideEndSpeed,
+             SlideMinSpeedToContinue, SlideMinSpeedGraceTime,
+             MinSpeedToStartSlide, bAllowSteering ? 1 : 0, SlideMaxAcceleration,
+             SlideGroundFriction, SlideBrakingDeceleration,
+             bEndSlideWhenAirborne ? 1 : 0, MontagePlayRate,
+             MontageStopBlendOutTime);
 }
 
 void USlideComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) {

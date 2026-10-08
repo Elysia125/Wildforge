@@ -5,6 +5,7 @@
 #include "Animation/AnimInstance.h"
 #include "Character/Components/SprintBoostComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Character/Settings/CrawlingComponentSettings.h"
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -98,10 +99,86 @@ void UCrawlingComponent::GetLifetimeReplicatedProps(
                           COND_OwnerOnly);
   DOREPLIFETIME_CONDITION(UCrawlingComponent, ActiveCrawlMontage,
                           COND_OwnerOnly);
+
+  // ===== 下面是「调参项」：不随游戏进程变化，只在出生束里发一次 =====
+  //
+  // 权威来源是 UCrawlingComponentSettings（ini）；没有 ini 覆盖时就是类默认值，
+  // 总之在 BeginPlay 就定下来、整个生命周期不变，用 COND_InitialOnly 最省流量。
+  //
+  // ⚠️ 不用 COND_OwnerOnly：过渡判定的阈值、蒙太奇播速在**每个端**的表现逻辑里都要读，
+  // 只发给 owner 会让旁观者用错值。
+  // （`CrawlCooldown` 不在下面：它原本就有复制通道，沿用上面的 COND_OwnerOnly
+  //  —— 它的消费者只有拥有者客户端的 UI。）
+  DOREPLIFETIME_CONDITION(UCrawlingComponent, ProneMaxWalkSpeed,
+                          COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(UCrawlingComponent, RunTransitionSpeedThreshold,
+                          COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(UCrawlingComponent, MontagePlayRate,
+                          COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(UCrawlingComponent, bFinishOnBlendOut,
+                          COND_InitialOnly);
+}
+
+void UCrawlingComponent::ApplyGameplaySettingsOverrides() {
+  // 只有权威端读 ini：客户端的这份值靠 `COND_InitialOnly` 属性复制拿到。
+  if (!IsAuthoritativeForActorComponent(this)) {
+    return;
+  }
+
+  const UCrawlingComponentSettings *Settings =
+      UCrawlingComponentSettings::Get();
+  if (Settings == nullptr) {
+    WFLOG_ERROR("[配置] 趴下组件取不到 UCrawlingComponentSettings（CDO 为空），本次"
+                "不应用任何 ini 覆盖，全部退回类默认值。宿主 %s",
+                *GetNameSafe(GetOwner()));
+    return;
+  }
+
+  int32 Applied = 0;
+
+  // 数值下限与头文件里的 meta ClampMin 保持一致（ini 是手写文本，编辑器面板的
+  // Clamp 拦不住手填的值）。
+  if (Settings->bOverride_ProneMaxWalkSpeed) {
+    // ⚠️ 下限是 1 而不是 0：0 是「角色被钉死」的合法速度值，写进去会永久定身
+    // （bug-027 的教训）。
+    ProneMaxWalkSpeed = FMath::Max(1.0f, Settings->ProneMaxWalkSpeed);
+    ++Applied;
+  }
+  if (Settings->bOverride_RunTransitionSpeedThreshold) {
+    RunTransitionSpeedThreshold =
+        FMath::Max(0.0f, Settings->RunTransitionSpeedThreshold);
+    ++Applied;
+  }
+  if (Settings->bOverride_Cooldown) {
+    CrawlCooldown = FMath::Max(0.0f, Settings->Cooldown);
+    ++Applied;
+  }
+  if (Settings->bOverride_FinishOnBlendOut) {
+    bFinishOnBlendOut = Settings->bFinishOnBlendOut;
+    ++Applied;
+  }
+  if (Settings->bOverride_MontagePlayRate) {
+    // 播速是除数（蒙太奇时长 / 播速算超时），必须 > 0。
+    MontagePlayRate = FMath::Max(0.01f, Settings->MontagePlayRate);
+    ++Applied;
+  }
+
+  const FString Source =
+      (Applied > 0) ? FString::Printf(TEXT("应用了 %d 项 ini 覆盖"), Applied)
+                    : FString(TEXT("没有 ini 覆盖（全部用类默认值）"));
+  WFLOG_INFO("[配置] 趴下组件（宿主 %s，权威端）：%s；生效值 爬行速度=%.0f "
+             "奔跑阈值=%.0f 冷却=%.2fs BlendOut提前收尾=%d 蒙太奇播速=%.2f。",
+             *GetNameSafe(GetOwner()), *Source, ProneMaxWalkSpeed,
+             RunTransitionSpeedThreshold, CrawlCooldown,
+             bFinishOnBlendOut ? 1 : 0, MontagePlayRate);
 }
 
 void UCrawlingComponent::BeginPlay() {
   Super::BeginPlay();
+
+  // ini 覆盖要先应用（权威端）：下面「组件就绪」的日志与之后任何一次
+  // Server_EnterProne 都按最终生效值执行。
+  ApplyGameplaySettingsOverrides();
 
   // 动画回调在这里先订阅一次，之后每次过渡只换蒙太奇、不重复 AddDynamic。
   // 订阅在**所有端**都要做：客户端也要靠 OnMontageEnded 收尾（否则客户端

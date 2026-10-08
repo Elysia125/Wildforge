@@ -4,6 +4,7 @@
 
 #include "Animation/AnimInstance.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Character/Settings/LandRollComponentSettings.h"
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -61,10 +62,30 @@ void ULandRollComponent::GetLifetimeReplicatedProps(
   DOREPLIFETIME_CONDITION(ULandRollComponent, LandRollCount, COND_OwnerOnly);
   DOREPLIFETIME_CONDITION(ULandRollComponent, ActiveLandRollMontage,
                           COND_OwnerOnly);
+
+  // ===== 下面是「调参项」：不随游戏进程变化，只在出生束里发一次 =====
+  //
+  // 这些值的权威来源是 ULandRollComponentSettings（ini）；没有 ini 覆盖时就是
+  // 类默认值，总之在 BeginPlay 就定下来了，之后整个生命周期都不变，所以用
+  // COND_InitialOnly 最省流量。
+  //
+  // ⚠️ 不用 COND_OwnerOnly：蒙太奇播速、BlendOut 解锁这些在**所有端**的动画/表现
+  // 逻辑里都要读（见 PlayLandRollMontageInternal / OnLandRollMontageBlendingOut），
+  // 只发给 owner 会让旁观者用错值。
+  // ⚠️ 客户端不要在本端写这些字段：权威端 BeginPlay 里已经写好并复制下来了。
+  DOREPLIFETIME_CONDITION(ULandRollComponent, MontagePlayRate,
+                          COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(ULandRollComponent, bFinishOnBlendOut,
+                          COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(ULandRollComponent, bStopMovementOnStart,
+                          COND_InitialOnly);
 }
 
 void ULandRollComponent::BeginPlay() {
   Super::BeginPlay();
+
+  // ini 覆盖要先应用（权威端）：下面的「组件就绪」日志按最终生效值打印。
+  ApplyGameplaySettingsOverrides();
 
   // 动画回调在这里统一订阅一次，之后每次翻滚只换蒙太奇、不重复 AddDynamic。
   // 订阅在**所有端**都要做：客户端也要靠 OnMontageEnded 收尾（否则客户端
@@ -112,6 +133,53 @@ void ULandRollComponent::BeginPlay() {
              IsAuthoritativeForActorComponent(this) ? 1 : 0, LandRollCooldown,
              LandRollMontage ? *LandRollMontage->GetName() : TEXT("None"),
              MontagePlayRate, bFinishOnBlendOut ? 1 : 0, bCanLandRoll ? 1 : 0);
+}
+
+void ULandRollComponent::ApplyGameplaySettingsOverrides() {
+  // 只有权威端读 ini：客户端的这份值靠 `COND_InitialOnly` 属性复制拿到，
+  // 本端执行（或误执行）只会把客户端自己算的值写进组件，造成两端不一致。
+  if (!IsAuthoritativeForActorComponent(this)) {
+    return;
+  }
+
+  const ULandRollComponentSettings *Settings =
+      ULandRollComponentSettings::Get();
+  if (Settings == nullptr) {
+    WFLOG_ERROR("[配置] 翻滚组件取不到 ULandRollComponentSettings（CDO 为空），本次"
+                "不应用任何 ini 覆盖，全部退回类默认值。宿主 %s",
+                *GetNameSafe(GetOwner()));
+    return;
+  }
+
+  int32 Applied = 0;
+
+  // 数值下限与头文件里的 meta ClampMin 保持一致：ini 是手写文本，
+  // 编辑器面板的 Clamp 拦不住手填的值，这里补一道。
+  if (Settings->bOverride_Cooldown) {
+    LandRollCooldown = FMath::Max(0.0f, Settings->Cooldown);
+    ++Applied;
+  }
+  if (Settings->bOverride_MontagePlayRate) {
+    // 播速是除数（蒙太奇时长 / 播速算超时），必须 > 0。
+    MontagePlayRate = FMath::Max(0.01f, Settings->MontagePlayRate);
+    ++Applied;
+  }
+  if (Settings->bOverride_FinishOnBlendOut) {
+    bFinishOnBlendOut = Settings->bFinishOnBlendOut;
+    ++Applied;
+  }
+  if (Settings->bOverride_StopMovementOnStart) {
+    bStopMovementOnStart = Settings->bStopMovementOnStart;
+    ++Applied;
+  }
+
+  const FString Source = (Applied > 0)
+                             ? FString::Printf(TEXT("应用了 %d 项 ini 覆盖"), Applied)
+                             : FString(TEXT("没有 ini 覆盖（全部用类默认值）"));
+  WFLOG_INFO("[配置] 翻滚组件（宿主 %s，权威端）：%s；生效值 冷却=%.2fs "
+             "播速=%.2f BlendOut提前解锁=%d 起手清零速度=%d。",
+             *GetNameSafe(GetOwner()), *Source, LandRollCooldown, MontagePlayRate,
+             bFinishOnBlendOut ? 1 : 0, bStopMovementOnStart ? 1 : 0);
 }
 
 void ULandRollComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) {

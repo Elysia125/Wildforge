@@ -41,6 +41,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnSprintBoostStopped);
  * | 加速曲线推进 `StartSpeedBoost()` | 服务器 | ✗ 调不动（Absorbed） | `Server_StartSpeedBoost` |
  * | 复位 `ResetMaxSpeed()` | 服务器 | ✗ | `Server_StopSpeedBoost` |
  * | 基准速度改写 `SetBaseMaxSpeed()` | 服务器 | ✗ | 服务器蓝图 / 装备系统 |
+ * | 调参（`DefaultBoostDuration`/`MaxForwardSprintAngle`…） | 服务器读 ini 后写入 | 只读（复制下来） | 类默认值兜底 + `COND_InitialOnly` |
  * | **`MaxWalkSpeed` / `MaxWalkSpeedCrouched`** | 服务器写自己那份 | **在本地那份上写同一份值（镜像）** | `ReplicatedMaxWalkSpeed{,Crouched}` + `OnRep_*` |
  * | `bBoostActive` / `BoostAlpha` / `LastTargetSpeed` | 服务器写 | 只读（复制下来） | `DOREPLIFETIME_CONDITION(COND_OwnerOnly)` |
  * | 蒙太奇播放（可选） / 表现特效 | 服务器发起 | 跟随 | `Multicast_PlaySprintMontage` / `Multicast_PlaySprintEffects` |
@@ -121,7 +122,11 @@ public:
   // 销毁时清掉定时器：next-tick 链的回调挂着 `this`，组件没了还挂着会打到半销毁对象上。
   virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-  // ===== 可配置参数（类默认值，随 Actor 生成同步，不参与运行时复制）=====
+  // ===== 可配置参数（类默认值 = 基线 + 兜底；ini 可覆盖，随复制下发）=====
+  // 带 `Replicated`（`COND_InitialOnly`，出生束里带一次）的那几项会被
+  // USprintBoostComponentSettings 的 ini 覆盖：权威端在 BeginPlay 写入，客户端靠复制拿到
+  // 同一份值（客户端不读 ini）。没勾 override 就是这里的类默认值。
+  // ⚠️ 客户端不要在本端写这些字段；方向门控 / UI 查询在客户端读的正是这一份值。
 
   // 加速的总开关（眩晕 / 缴械 / 死亡 / 重伤等把角色锁住的状态把它关掉）。
   // 关闭时 `StartSpeedBoost()` 直接拒绝，并让已经在跑的加速立刻收尾——
@@ -131,7 +136,7 @@ public:
 
   // 从起始速度线性升到目标速度需要的总时间（秒）。
   // 只作为 `StartSpeedBoost()` 未显式传参时的默认值（函数参数优先）。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SprintBoost",
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "SprintBoost",
             meta = (ClampMin = "0.01", UIMin = "0.01", ForceUnits = "s"))
   float DefaultBoostDuration = 1.5f;
 
@@ -176,13 +181,13 @@ public:
   //    满足」仍可读 `IsSprintInputDirectionForward()`（读的是客户端的本地输入，只做 UI）。
   //
   // 默认 true：默认行为就是「向前才加速」，关掉即恢复旧行为（按住 Shift 就加速）。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SprintBoost|Direction")
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "SprintBoost|Direction")
   bool bSprintOnlyForward = true;
 
   // 「算作向前」的最大夹角（度）。0 = 只能严格正前方（过于苛刻，不建议）；
   // 180 = 等于关掉方向判定。给一点余量是必须的——输入是模拟量（手柄摇杆），
   // 而且在拐角/绕行时手指不会精确压在前方，60 度是个手感还行的起点。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SprintBoost|Direction",
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "SprintBoost|Direction",
             meta = (ClampMin = "0", ClampMax = "180", UIMin = "0", UIMax = "180",
                     EditCondition = "bSprintOnlyForward"))
   float MaxForwardSprintAngle = 60.0f;
@@ -208,7 +213,7 @@ public:
   TObjectPtr<UAnimMontage> SprintMontage;
 
   // 蒙太奇播放速率倍率（1 = 原速）。只影响这个可选表现，不影响速度曲线。
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SprintBoost|Anim",
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "SprintBoost|Anim",
             meta = (ClampMin = "0.01", UIMin = "0.01"))
   float SprintMontagePlayRate = 1.0f;
 
@@ -438,6 +443,11 @@ public:
 protected:
   // Called when the game starts
   virtual void BeginPlay() override;
+
+  // 读取 USprintBoostComponentSettings 的 ini 覆盖并写进本组件。
+  // **只在权威端执行**（客户端那份值由 `COND_InitialOnly` 属性复制下来——
+  // 本组件的方向门控 / UI 查询在客户端读的正是这一份）。无覆盖时是安全空操作。
+  void ApplyGameplaySettingsOverrides();
 
   // Called every frame。**所有端都开着**，第一行就按「权威端 / 非本地控制 / 开关」
   // 早退：真正干活的只有「本地控制的自主代理」那一个端，且只在镜像值与本地值不一致时

@@ -2,6 +2,7 @@
 
 #include "Character/Player/PlayerCharacter.h"
 
+#include "Character/Settings/PlayerCharacterSettings.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Utils/WildforgeLog.h"
 
@@ -163,20 +164,45 @@ void APlayerCharacter::BeginPlay() {
   //   2) 客户端不需要、也不该初始化：Slots 是复制过来的（COND_OwnerOnly），客户端在
   //      OnRep_Slots 里用 RebuildDerivedState 重建派生状态；而在客户端调
   //      InitializeContainer（BlueprintAuthorityOnly）会被权威门禁记一条 ERROR。
+  // 容量有三个来源，优先级从低到高：
+  //   C++ 默认值（30） < 蓝图类默认值（InventoryCapacity） < UPlayerCharacterSettings
+  //   的 ini 覆盖（只有勾了 bOverride_InventoryCapacity 才生效）。
+  // ini 是唯一「改完不用重新编译」的那一层，也是**只有服务器读**的那一层；
+  // 客户端的容量由复制下来的 Slots 推导（RebuildDerivedState），天然与服务器一致。
+  int32 EffectiveCapacity = InventoryCapacity;
+  if (HasAuthority()) {
+    const UPlayerCharacterSettings *Settings =
+        UPlayerCharacterSettings::Get();
+    if (Settings == nullptr) {
+      WFLOG_ERROR("[配置] %s 取不到 UPlayerCharacterSettings（CDO 为空），背包容量"
+                  "退回类默认值 %d。",
+                  *Who, InventoryCapacity);
+    } else if (Settings->bOverride_InventoryCapacity) {
+      // 下限与 meta ClampMin 一致：0 格容器会让所有 AddItem 都失败
+      // （ini 是手写文本，编辑器面板的 Clamp 拦不住手填的值）。
+      EffectiveCapacity = FMath::Max(1, Settings->InventoryCapacity);
+      WFLOG_INFO("[配置] %s 背包容量被 ini 覆盖：类默认值 %d -> 生效 %d。", *Who,
+                 InventoryCapacity, EffectiveCapacity);
+    } else {
+      WFLOG_INFO("[配置] %s 背包容量没有 ini 覆盖，用类默认值 %d。", *Who,
+                 InventoryCapacity);
+    }
+  }
+
   if (Inventory == nullptr) {
     WFLOG_WARNING("[背包] %s 没有 Inventory 组件，背包不可用。", *Who);
   } else if (!HasAuthority()) {
     WFLOG_INFO("[背包] %s 是客户端，不初始化背包：等服务器把 Slots 复制过来后由 "
                "RebuildDerivedState 重建（容量以服务器为准）。",
                *Who);
-  } else if (InventoryCapacity > 0) {
-    Inventory->InitializeContainer(InventoryCapacity);
-    WFLOG_INFO("[背包] %s 初始化背包容器：容量 %d 格（InventoryCapacity，可在蓝图类"
-               "默认值里改）。",
-               *Who, InventoryCapacity);
+  } else if (EffectiveCapacity > 0) {
+    Inventory->InitializeContainer(EffectiveCapacity);
+    WFLOG_INFO("[背包] %s 初始化背包容器：容量 %d 格（来源见上一条 [配置] 日志："
+               "ini 覆盖或蓝图类默认值 InventoryCapacity）。",
+               *Who, EffectiveCapacity);
   } else {
-    WFLOG_WARNING("[背包] %s 的 InventoryCapacity = %d（必须 > 0），背包不会被初始化。",
-                  *Who, InventoryCapacity);
+    WFLOG_WARNING("[背包] %s 的容量 = %d（必须 > 0），背包不会被初始化。", *Who,
+                  EffectiveCapacity);
   }
 
   WFLOG_INFO("[移动门控] %s BeginPlay 完成：本端权威=%d，初始移动模式=%d，"
@@ -192,6 +218,40 @@ void APlayerCharacter::BeginPlay() {
              LandRollComponent ? 1 : 0, SlideComponent ? 1 : 0,
              CrawlingComponent ? 1 : 0, SprintBoostComponent ? 1 : 0,
              BlinkComponent ? 1 : 0);
+}
+
+void APlayerCharacter::PostNetInit() {
+  Super::PostNetInit();
+
+  // 走到这里说明**客户端**已经把出生束（初始属性批）应用完了
+  // （`AActor::PostNetInit` 的约定：「Always called immediately after spawning and
+  // reading in replicated properties」，Actor.h:2956）。各能力组件的调参项
+  // （`COND_InitialOnly`）就在这一批里，所以下面打印出来的就是客户端真正拿到的生效值。
+  //
+  // 用途：与服务端各组件 BeginPlay 的 [配置] 日志逐项对照，即可确认
+  // 「服务器读 ini → 复制给客户端」这条链路没断（联机调参排查就靠这两组日志）。
+  // 这里**只读不写**：客户端不得在本端改这些字段，改了就是两端不一致。
+  const FString Who = GetName();
+  WFLOG_INFO("[配置] %s 客户端收到出生束（本端权威=%d），各组件生效值如下：",
+             *Who, HasAuthority() ? 1 : 0);
+  WFLOG_INFO("[配置]   攻击：%s",
+             AttackComponent ? *AttackComponent->GetAttackStateDebugString()
+                             : TEXT("组件缺失"));
+  WFLOG_INFO("[配置]   加速：%s",
+             SprintBoostComponent ? *SprintBoostComponent->GetSprintBoostDebugString()
+                                  : TEXT("组件缺失"));
+  WFLOG_INFO("[配置]   滑行：%s",
+             SlideComponent ? *SlideComponent->GetSlideDebugString()
+                            : TEXT("组件缺失"));
+  WFLOG_INFO("[配置]   翻滚：%s",
+             LandRollComponent ? *LandRollComponent->GetLandRollDebugString()
+                               : TEXT("组件缺失"));
+  WFLOG_INFO("[配置]   闪现：%s",
+             BlinkComponent ? *BlinkComponent->GetBlinkDebugString()
+                            : TEXT("组件缺失"));
+  WFLOG_INFO("[配置]   趴下：%s",
+             CrawlingComponent ? *CrawlingComponent->GetCrawlDebugString()
+                               : TEXT("组件缺失"));
 }
 
 void APlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason) {

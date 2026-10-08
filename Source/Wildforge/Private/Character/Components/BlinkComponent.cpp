@@ -7,6 +7,7 @@
 #include "CollisionShape.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Character/Settings/BlinkComponentSettings.h"
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -42,6 +43,76 @@ void UBlinkComponent::GetLifetimeReplicatedProps(
   // ⚠️ 不要改成 COND_SimulatedOnly——那个条件不会发给自主代理（本地玩家自己）。
   DOREPLIFETIME_CONDITION(UBlinkComponent, LastBlinkTime, COND_OwnerOnly);
   DOREPLIFETIME_CONDITION(UBlinkComponent, BlinkCount, COND_OwnerOnly);
+
+  // ===== 下面是「调参项」：不随游戏进程变化，只在出生束里发一次 =====
+  //
+  // 权威来源是 UBlinkComponentSettings（ini）；没有 ini 覆盖时就是类默认值，
+  // 总之在 BeginPlay 就定下来、整个生命周期不变，用 COND_InitialOnly 最省流量。
+  //
+  // ⚠️ 不用 COND_OwnerOnly：MaxBlinkDistance / 播速这些在**客户端**的表现与预测
+  // 里也要读（Multicast_PlayBlinkMontage 在各端都跑），只发给 owner 会让旁观者用错值。
+  // ⚠️ `BlinkCooldown` 以前完全没复制通道，客户端 `IsBlinkReady()` 读的是类默认值；
+  // 现在它随出生束下发，两端的冷却判定才真正同源。
+  DOREPLIFETIME_CONDITION(UBlinkComponent, MaxBlinkDistance,
+                          COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(UBlinkComponent, BlinkCooldown, COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(UBlinkComponent, bKeepVelocityAfterBlink,
+                          COND_InitialOnly);
+  DOREPLIFETIME_CONDITION(UBlinkComponent, BlinkMontagePlayRate,
+                          COND_InitialOnly);
+}
+
+void UBlinkComponent::BeginPlay() {
+  Super::BeginPlay();
+
+  // ini 覆盖要先应用（权威端）：下面任何一次 Server_Blink 都会按新值判定。
+  ApplyGameplaySettingsOverrides();
+}
+
+void UBlinkComponent::ApplyGameplaySettingsOverrides() {
+  // 只有权威端读 ini：客户端的这份值靠 `COND_InitialOnly` 属性复制拿到。
+  if (!IsAuthoritativeForActorComponent(this)) {
+    return;
+  }
+
+  const UBlinkComponentSettings *Settings =
+      UBlinkComponentSettings::Get();
+  if (Settings == nullptr) {
+    WFLOG_ERROR("[配置] 闪现组件取不到 UBlinkComponentSettings（CDO 为空），本次"
+                "不应用任何 ini 覆盖，全部退回类默认值。宿主 %s",
+                *GetNameSafe(GetOwner()));
+    return;
+  }
+
+  int32 Applied = 0;
+
+  // 数值下限与头文件里的 meta ClampMin 保持一致（ini 是手写文本，编辑器面板的
+  // Clamp 拦不住手填的值）。
+  if (Settings->bOverride_MaxDistance) {
+    MaxBlinkDistance = FMath::Max(0.0f, Settings->MaxDistance);
+    ++Applied;
+  }
+  if (Settings->bOverride_Cooldown) {
+    BlinkCooldown = FMath::Max(0.0f, Settings->Cooldown);
+    ++Applied;
+  }
+  if (Settings->bOverride_KeepVelocity) {
+    bKeepVelocityAfterBlink = Settings->bKeepVelocity;
+    ++Applied;
+  }
+  if (Settings->bOverride_MontagePlayRate) {
+    BlinkMontagePlayRate =
+        FMath::Max(0.01f, Settings->MontagePlayRate);
+    ++Applied;
+  }
+
+  const FString Source =
+      (Applied > 0) ? FString::Printf(TEXT("应用了 %d 项 ini 覆盖"), Applied)
+                    : FString(TEXT("没有 ini 覆盖（全部用类默认值）"));
+  WFLOG_INFO("[配置] 闪现组件（宿主 %s，权威端）：%s；生效值 最大距离=%.0fcm "
+             "冷却=%.2fs 保留速度=%d 蒙太奇播速=%.2f。",
+             *GetNameSafe(GetOwner()), *Source, MaxBlinkDistance, BlinkCooldown,
+             bKeepVelocityAfterBlink ? 1 : 0, BlinkMontagePlayRate);
 }
 
 bool UBlinkComponent::IsBlinkReady() const {

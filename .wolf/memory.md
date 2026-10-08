@@ -237,3 +237,138 @@
 | 22:27 | 编译验证：GenerateClangDatabase 刷新 UHT（4 files written）+ 关掉编辑器状态下的全量构建 | UHT / UBT | Result: Succeeded（13 actions，4 个改动 .cpp 全编 + Link UnrealEditor-Wildforge.dll） | ~8k |
 | 22:28 | 文档同步：anatomy.md 修复被 post-write hook 覆盖掉的 7 条描述并写入改动；cerebrum Key Learnings 记「蓝图类默认值覆盖在 C++ 构造函数之后才应用」+ Decision Log 记「调参数值不放进 GameMode」的归属结论 | .wolf/anatomy.md, .wolf/cerebrum.md | 已更新 | ~12k |
 | 22:28 | Session end: 8 writes across 7 files (ItemContainerGrid.h, ItemContainerGrid.cpp, InventoryUserWidget.cpp, AttackComponent.h, AttackComponent.cpp) | 11 reads | ~26918 tok |
+
+## Session: 2026-10-08 21:25
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-08 21:25
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:34 | 设计咨询：能力调参该不该走配置文件 + 是否「服务器读、复制给客户端」。结论：ini(UDeveloperSettings) 是唯一"改完不用重编译也不用重打包"的载体（ConfigContext.cpp:1007 分层合并；打包后改 Saved/Config/<平台>/Game.ini）；玩法数值应由服务器读、用 COND_InitialOnly（CoreNetTypes.h:22 / RepLayout.cpp:1442）推给客户端，客户端保留 UPROPERTY 兜底；例外=UI 本地/校验上限/诊断常量；另需区分「全局一份(ini)」与「每类一份(类默认值)」 | 只读（引擎源码取证），未改代码 | 已给三层方案 + 待用户选落地范围与覆盖语义 | ~40k |
+
+## Session: 2026-10-08 21:34
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:52 | Created Source/Wildforge/Public/Core/Settings/WildforgeGameplaySettings.h | — | ~5393 |
+| 21:52 | Created Source/Wildforge/Private/Core/Settings/WildforgeGameplaySettings.cpp | — | ~116 |
+| 21:52 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | 3→8 lines | ~122 |
+| 21:52 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | 2→2 lines | ~30 |
+| 21:52 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | 3→3 lines | ~44 |
+| 21:52 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | 10→10 lines | ~128 |
+| 21:52 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | 3→3 lines | ~49 |
+| 21:52 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | 3→3 lines | ~50 |
+| 21:52 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | 2→2 lines | ~34 |
+| 21:52 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | 3→8 lines | ~74 |
+| 21:52 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | 4→5 lines | ~52 |
+| 21:52 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | expanded (+25 lines) | ~395 |
+| 21:52 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | added 10 condition(s) | ~720 |
+| 21:53 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | inline fix | ~26 |
+| 21:53 | Edited Source/Wildforge/Public/Character/Components/SprintBoostComponent.h | 1→2 lines | ~47 |
+| 21:53 | Edited Source/Wildforge/Public/Character/Components/SprintBoostComponent.h | 1→5 lines | ~71 |
+| 21:53 | Edited Source/Wildforge/Public/Character/Components/SprintBoostComponent.h | 3→3 lines | ~52 |
+| 21:53 | Edited Source/Wildforge/Public/Character/Components/SprintBoostComponent.h | 2→2 lines | ~34 |
+| 21:53 | Edited Source/Wildforge/Public/Character/Components/SprintBoostComponent.h | 4→4 lines | ~73 |
+| 21:53 | Edited Source/Wildforge/Public/Character/Components/SprintBoostComponent.h | 3→3 lines | ~49 |
+| 21:53 | Edited Source/Wildforge/Public/Character/Components/SprintBoostComponent.h | 3→8 lines | ~73 |
+| 21:53 | Edited Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp | 3→4 lines | ~43 |
+| 21:53 | Edited Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp | expanded (+18 lines) | ~258 |
+| 21:53 | Edited Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp | modified BeginPlay() | ~54 |
+| 21:53 | Edited Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp | added 6 condition(s) | ~490 |
+| 21:53 | Edited Source/Wildforge/Public/Character/Components/SlideComponent.h | 1→2 lines | ~45 |
+| 21:53 | Edited Source/Wildforge/Public/Character/Components/SlideComponent.h | expanded (+6 lines) | ~92 |
+| 21:53 | Edited Source/Wildforge/Public/Character/Components/SlideComponent.h | 3→3 lines | ~49 |
+| 21:53 | Edited Source/Wildforge/Public/Character/Components/SlideComponent.h | 3→3 lines | ~49 |
+| 21:53 | Edited Source/Wildforge/Public/Character/Components/SlideComponent.h | 3→3 lines | ~48 |
+| 21:53 | Edited Source/Wildforge/Public/Character/Components/SlideComponent.h | 3→3 lines | ~48 |
+| 21:53 | Edited Source/Wildforge/Public/Character/Components/SlideComponent.h | 3→3 lines | ~51 |
+| 21:53 | Edited Source/Wildforge/Public/Character/Components/SlideComponent.h | 3→3 lines | ~52 |
+| 21:53 | Edited Source/Wildforge/Public/Character/Components/SlideComponent.h | 3→3 lines | ~50 |
+| 21:53 | Edited Source/Wildforge/Public/Character/Components/SlideComponent.h | 2→2 lines | ~31 |
+| 21:53 | Edited Source/Wildforge/Public/Character/Components/SlideComponent.h | 4→4 lines | ~62 |
+| 21:53 | Edited Source/Wildforge/Public/Character/Components/SlideComponent.h | 3→3 lines | ~46 |
+| 21:53 | Edited Source/Wildforge/Public/Character/Components/SlideComponent.h | 3→3 lines | ~48 |
+| 21:53 | Edited Source/Wildforge/Public/Character/Components/SlideComponent.h | 2→2 lines | ~33 |
+| 21:53 | Edited Source/Wildforge/Public/Character/Components/SlideComponent.h | 3→3 lines | ~46 |
+| 21:53 | Edited Source/Wildforge/Public/Character/Components/SlideComponent.h | 3→3 lines | ~51 |
+| 21:53 | Edited Source/Wildforge/Public/Character/Components/SlideComponent.h | 4→9 lines | ~78 |
+| 21:54 | Edited Source/Wildforge/Private/Character/Components/SlideComponent.cpp | 3→4 lines | ~43 |
+| 21:54 | Edited Source/Wildforge/Private/Character/Components/SlideComponent.cpp | expanded (+36 lines) | ~516 |
+| 21:54 | Edited Source/Wildforge/Private/Character/Components/SlideComponent.cpp | modified BeginPlay() | ~47 |
+| 21:54 | Edited Source/Wildforge/Private/Character/Components/SlideComponent.cpp | added 16 condition(s) | ~951 |
+| 21:54 | Edited Source/Wildforge/Public/Character/Components/LandRollComponent.h | 1→2 lines | ~45 |
+| 21:54 | Edited Source/Wildforge/Public/Character/Components/LandRollComponent.h | 1→5 lines | ~68 |
+| 21:54 | Edited Source/Wildforge/Public/Character/Components/LandRollComponent.h | 3→3 lines | ~47 |
+| 21:54 | Edited Source/Wildforge/Public/Character/Components/LandRollComponent.h | 2→2 lines | ~33 |
+| 21:54 | Edited Source/Wildforge/Public/Character/Components/LandRollComponent.h | inline fix | ~16 |
+| 21:54 | Edited Source/Wildforge/Public/Character/Components/LandRollComponent.h | 2→2 lines | ~34 |
+| 21:54 | Edited Source/Wildforge/Public/Character/Components/LandRollComponent.h | 2→7 lines | ~50 |
+
+## Session: 2026-10-08 21:54
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:54 | Edited Source/Wildforge/Private/Character/Components/LandRollComponent.cpp | 1→2 lines | ~27 |
+| 21:55 | Edited Source/Wildforge/Private/Character/Components/LandRollComponent.cpp | expanded (+17 lines) | ~225 |
+| 21:55 | Edited Source/Wildforge/Private/Character/Components/LandRollComponent.cpp | modified BeginPlay() | ~38 |
+| 21:55 | Edited Source/Wildforge/Private/Character/Components/LandRollComponent.cpp | added 6 condition(s) | ~463 |
+| 21:55 | Edited Source/Wildforge/Public/Character/Components/BlinkComponent.h | inline fix | ~28 |
+| 21:55 | Edited Source/Wildforge/Public/Character/Components/BlinkComponent.h | expanded (+7 lines) | ~98 |
+| 21:55 | Edited Source/Wildforge/Public/Character/Components/BlinkComponent.h | 3→3 lines | ~49 |
+| 21:55 | Edited Source/Wildforge/Public/Character/Components/BlinkComponent.h | 3→3 lines | ~47 |
+| 21:55 | Edited Source/Wildforge/Public/Character/Components/BlinkComponent.h | 2→2 lines | ~32 |
+| 21:55 | Edited Source/Wildforge/Public/Character/Components/BlinkComponent.h | 3→3 lines | ~47 |
+| 21:55 | Edited Source/Wildforge/Public/Character/Components/BlinkComponent.h | expanded (+10 lines) | ~144 |
+| 21:55 | Edited Source/Wildforge/Private/Character/Components/BlinkComponent.cpp | 1→2 lines | ~27 |
+| 21:55 | Edited Source/Wildforge/Private/Character/Components/BlinkComponent.cpp | added 6 condition(s) | ~700 |
+| 21:55 | Edited Source/Wildforge/Public/Character/Components/CrawlingComponent.h | 1→2 lines | ~52 |
+| 21:55 | Edited Source/Wildforge/Public/Character/Components/CrawlingComponent.h | 1→5 lines | ~68 |
+| 21:55 | Edited Source/Wildforge/Public/Character/Components/CrawlingComponent.h | 3→3 lines | ~47 |
+| 21:55 | Edited Source/Wildforge/Public/Character/Components/CrawlingComponent.h | 2→3 lines | ~36 |
+| 21:55 | Edited Source/Wildforge/Public/Character/Components/CrawlingComponent.h | 3→3 lines | ~50 |
+| 21:55 | Edited Source/Wildforge/Public/Character/Components/CrawlingComponent.h | 3→3 lines | ~45 |
+| 21:55 | Edited Source/Wildforge/Public/Character/Components/CrawlingComponent.h | 2→7 lines | ~50 |
+| 21:55 | Edited Source/Wildforge/Private/Character/Components/CrawlingComponent.cpp | 1→2 lines | ~27 |
+| 21:55 | Edited Source/Wildforge/Private/Character/Components/CrawlingComponent.cpp | added 7 condition(s) | ~731 |
+| 21:55 | Edited Source/Wildforge/Private/Character/Components/CrawlingComponent.cpp | modified BeginPlay() | ~51 |
+| 21:56 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | 3→7 lines | ~89 |
+| 21:56 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | expanded (+6 lines) | ~118 |
+| 21:56 | Edited Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp | 1→2 lines | ~29 |
+| 21:56 | Edited Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp | added 3 condition(s) | ~445 |
+| 21:56 | Edited Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp | modified PostNetInit() | ~415 |
+| 21:56 | Edited Source/Wildforge/Public/Core/Settings/WildforgeGameplaySettings.h | inline fix | ~15 |
+| 21:56 | Edited Source/Wildforge/Public/Core/Settings/WildforgeGameplaySettings.h | "bOverride_StopMovementOnS" → "bOverride_LandRollStopMov" | ~21 |
+| 21:58 | 新建 UWildforgeGameplaySettings（UDeveloperSettings/Config=Game，40 项 bOverride_X + 值，HoverText 写明 ReadOnly-by-client） | Source/Wildforge/Public+Private/Core/Settings/WildforgeGameplaySettings.{h,cpp} | 配置类落地，Project Settings > Project > Game | ~9000 |
+| 21:58 | 六个能力组件全量接入 ini 覆盖：头文件加 Replicated（含注释说明为何不用 OwnerOnly）、cpp 加 COND_InitialOnly 注册 + ApplyGameplaySettingsOverrides（权威门禁 + 夹紧 + [配置] 日志）+ BeginPlay 调用（Blink 是新补 BeginPlay） | Source/Wildforge/{Public,Private}/Character/Components/{Attack,SprintBoost,Slide,LandRoll,Blink,Crawling}Component.{h,cpp} | 服务器读 ini → InitialOnly 复制给客户端 | ~8000 |
+| 21:58 | 背包容量接入三级来源（C++ 默认 < 蓝图类默认 < ini 覆盖）+ 新增 APlayerCharacter::PostNetInit（客户端只读日志：打印六个组件的生效值，用于和服务端 [配置] 日志对照） | Source/Wildforge/{Public,Private}/Character/Player/PlayerCharacter.{h,cpp} | 客户端侧验证钩子就绪 | ~1500 |
+| 21:58 | 验证：UHT（-Mode=GenerateClangDatabase，需 LLVM_PATH=E:/LLVM）+ 完整构建（Build.bat WildforgeEditor Win64 Development -WaitMutex） | Source/Wildforge/** | Result: Succeeded（16 actions，19.5s，DLL 链接通过） | ~2000 |
+| 21:58 | 文档同步：anatomy 修复被 hook 覆写的 14 条条目、cerebrum 补 2 条 Preferences/4 条 Key Learnings/3 条 Do-Not-Repeat/4 条 Decision Log、buglog 的 bug-052 补完整因果 | .wolf/{anatomy.md,cerebrum.md,buglog.json} | 文档同步完成 | ~4000 |
+| 21:59 | Edited CLAUDE.md | expanded (+9 lines) | ~168 |
+| 21:59 | Edited CLAUDE.md | expanded (+14 lines) | ~264 |
+| 21:59 | Edited CLAUDE.local.md | expanded (+12 lines) | ~242 |
+| 21:59 | 新增强制约束：CLAUDE.md 加「配置层」架构小节 + 第 6 条强制约束（可调数值四步接入法：配置类成对属性 → Replicated + COND_InitialOnly → ApplyGameplaySettingsOverrides 夹紧记日志 → 字段名 grep 对照；客户端不得用 ini 驱动玩法） | CLAUDE.md | 跨成员约束入库 | ~1200 |
+| 21:59 | CLAUDE.LOCAL.md 补两条本机命令坑：Git Bash 下路径必须用正斜杠（否则 UBT 报 Unable to find project file）、GenerateClangDatabase 需要在同一行前置 LLVM_PATH=E:/LLVM | CLAUDE.local.md | 本机命令可复制执行 | ~600 |
+| 21:59 | Session end: 33 writes across 10 files (LandRollComponent.cpp, BlinkComponent.h, BlinkComponent.cpp, CrawlingComponent.h, CrawlingComponent.cpp) | 7 reads | ~36631 tok |
+| 22:03 | Session end: 33 writes across 10 files (LandRollComponent.cpp, BlinkComponent.h, BlinkComponent.cpp, CrawlingComponent.h, CrawlingComponent.cpp) | 8 reads | ~36631 tok |
+| 22:15 | Created Source/Wildforge/Public/Character/Settings/AttackComponentSettings.h | — | ~1168 |
+| 22:15 | Created Source/Wildforge/Public/Character/Settings/SprintBoostComponentSettings.h | — | ~729 |
+| 22:15 | Created Source/Wildforge/Public/Character/Settings/SlideComponentSettings.h | — | ~1848 |
+| 22:15 | Created Source/Wildforge/Public/Character/Settings/LandRollComponentSettings.h | — | ~696 |
+| 22:15 | Created Source/Wildforge/Public/Character/Settings/BlinkComponentSettings.h | — | ~680 |
+| 22:15 | Created Source/Wildforge/Public/Character/Settings/CrawlingComponentSettings.h | — | ~828 |
+| 22:15 | Created Source/Wildforge/Public/Character/Settings/PlayerCharacterSettings.h | — | ~392 |
+
+## Session: 2026-10-08 22:17
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:19 | Edited CLAUDE.md | 8→13 lines | ~269 |
+| 22:19 | Edited CLAUDE.md | 14→17 lines | ~314 |
+| 22:19 | Edited CLAUDE.md | 2→5 lines | ~93 |
+| 22:20 | 用户否掉单一配置类（「不要把所有组件、所有地方的配置值全部都挤到一起，每一个组件、每一个地方的配置值应该交由单独的结构体或者单独的类来管理」）→ 拆成 7 个每归属一个的配置类：Attack/SprintBoost/Slide/LandRoll/Blink/Crawling 六个组件各一个 + PlayerCharacterSettings（背包容量），全部 header-only（类内内联 Get()，无 .cpp），各自 meta=(DisplayName) → Project Settings 一页 + DefaultGame.ini 一节，字段改回短名（Cooldown/MontagePlayRate/MaxDistance…） | Source/Wildforge/Public/Character/Settings/*.h(新 7 个) | 7 个新配置类落地 | ~9k |
+| 22:25 | 消费方全量迁移：6 组件 .cpp/.h + PlayerCharacter .cpp/.h，锚定 `Settings->` 前缀做 sed 改名（避免误伤组件自家同名字段），include/类名/日志文案同步；删除旧 Core/Settings/WildforgeGameplaySettings.{h,cpp}；逐文件把 `Settings->X` 清单与新头文件声明清单对照（7 组逐项相等，bug-052 纪律） | Source/Wildforge/{Public,Private}/Character/** | 旧类已删除，无残留引用 | ~7k |
+| 22:30 | 验证：UHT 通过（16 files written，-WarningsAsErrors）→ 全量编译 Result: Succeeded（16 actions / 30s；clangd 两个实例占 15.5GB，UBA 自动把并行降到 2，未触发 bug-039 的低内存重试） | - | 编译器链路全通 | ~3k |
+| 22:35 | 文档同步：anatomy.md 删掉两个 Core/Settings 节、重写 7 条 Settings 条目描述、修正 AttackComponent.h 条目类名；cerebrum.md 加 User Preferences（配置按归属拆分）+ Key Learnings（一类一页一节的机制 / 类名改名同样静默丢 ini）+ Do-Not-Repeat（bug-052 条目改为「消费方引用的是不是正确那个类」）+ Decision Log（扁平加前缀 → 按归属拆类）；buglog 加 bug-053（设计纠正）；CLAUDE.md 配置层小节与强制约束 #6 重写，并记下「anatomy.md 非条目行会被 hook 静默丢弃」 | .wolf/anatomy.md, .wolf/cerebrum.md, .wolf/buglog.json, .wolf/memory.md, CLAUDE.md | 文档与实际实现一致 | ~6k |

@@ -92,6 +92,10 @@ private:
   // 背包容量（格数）。**只在权威端的 BeginPlay 里用来初始化容器**（见 .cpp 的实现注释）。
   // 为什么不在构造函数里读它：蓝图子类（BP_ThirdPersonCharacter）对类默认值的覆盖是在
   // C++ 构造函数跑完之后才应用的，构造函数里读到的永远是这里的 30，策划改了不起作用。
+  //
+  // 这里只是**基线 + 兜底**：UPlayerCharacterSettings 的 ini 可以覆盖它
+  // （勾上 bOverride_InventoryCapacity 才生效，改了不用重新编译）。容量不进复制列表——
+  // 客户端容器容量由复制下来的 Slots 推导，天然与服务器一致。
   UPROPERTY(EditDefaultsOnly, Category = "Items",
             meta = (ClampMin = "1", UIMin = "1"))
   int32 InventoryCapacity = 30;
@@ -207,6 +211,12 @@ private:
 protected:
   // Called when the game starts or when spawned
   virtual void BeginPlay() override;
+
+  // **客户端**读完出生束（初始属性批）之后调一次（`AActor::PostNetInit` 的约定，
+  // 见 Actor.h:2956）。本类覆写它**只为一件事**：把各能力组件在本端读到的生效值
+  // 打进日志，和服务端 BeginPlay 的 [配置] 日志逐项对照，验证
+  // 「服务器读 ini → 复制给客户端」这条链路没断。**只读，不写任何字段。**
+  virtual void PostNetInit() override;
 
   // 组件销毁 / 角色销毁时退订，避免回调打到半销毁对象上
   virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
