@@ -150,7 +150,7 @@
   看起来像 UPARAM 的问题其实不是。正确做法是把输出引用放参数表**第一个**。见 bug-016。
 - **只前置声明的引擎类型要自己 include**：`GameFramework/Character.h` 只写了 `class UCapsuleComponent;`，
   用 `GetCapsuleComponent()->GetScaledCapsuleRadius()` 必须 `#include "Components/CapsuleComponent.h"`
-  ——UBT 靠 SharedPCH 编得过，本项目的只读语法检查路径会报 incomplete type。同 bug-014。
+  ——UBT 靠 SharedPCH 编得过，本项目的只读语法检查路径会报 incomplete type。见 bug-014、bug-077。
 - **`FTimerManager::SetTimer` 的 `InRate <= 0` 是「清掉该句柄上的定时器」，不是「每帧触发」**：
   `TimerManager.h:157` 的文档与 `TimerManager.cpp:617-659` 的实现都是这样（else 分支只 `InOutHandle.Invalidate()`，
   根本不会 AddTimer）。唯一「每帧」的定时器 API 是 `SetTimerForNextTick`（`TimerManager.cpp:662-702`，内部
@@ -353,6 +353,27 @@
   `0x111011101110112` 这类垃圾值——出现这种值即 `this` 指向的内存已被回收复用（对象已死，见 bug-064）。
 
 - [2026-10-11] `FInputActionUnifiedDelegate::BindDelegate` 的动态绑定重载签名是 `(UObject*, const FName)`，不是 `(UObject*, UFunction*)`；有函数名时直接传 `FName`，无需先 `FindFunction`。见 bug-066。
+- [2026-10-11] clangd 有两种**已知假错误**，先别改代码，跑 `CLAUDE.LOCAL.md` 里的 `-Mode=GenerateClangDatabase`
+  刷新一次（实测两种都能清零）：
+  (1) 会话中途新建、clangd 启动后才落盘的 `.h` → 对引用它的 `#include` 报 `file not found`（文件其实在磁盘上）；
+  (2) 用户自己的构建（UBT/UHT 重写 `Intermediate/` 里的 generated.h / PCH）之后，clangd 用过期上下文解析 →
+  `Unknown type name 'FID_<引擎头>_h_<行号>_PROLOG'`、`A type specifier is required for all declarations`、
+  `Call to deleted constructor of '<基类>'`，还会级联出 `.cpp` 里 `Out-of-line definition ... does not match any
+  declaration`。**FID_ 前缀指向引擎文件（如 ToolMenus.h）就是铁证**——错误名里的文件根本不是你写的那个，
+  说明是 clangd 的 `CURRENT_FILE_ID` 残留，不是代码问题。
+- [2026-10-11] **重写父类的 `UFUNCTION` 时，子类声明里不能再写 `UFUNCTION()`**：UHT 直接报
+  `Override of UFUNCTION 'X' in parent 'Y' cannot have a UFUNCTION() declaration above it; it will use the same
+  parameters as the original declaration`（`-WarningsAsErrors` 下即构建失败）；父类那边则必须是 `virtual`。
+  配套：动态委托（`AddDynamic`）执行时按**函数名在实例的实际类**上查找，所以父类绑定、子类重写能被调到——
+  这也正是 `HandleContainerChanged` 改成 virtual 后立刻生效的原因。
+- [2026-10-11] **控制器 `BeginPlay` 早于 Pawn `BeginPlay`**（同一帧 `DispatchBeginPlay` 批次，PlayerController 先被
+  spawn/先被遍历）：BP 在控制器 `ReceiveBeginPlay` 里创建的 UI，构造时 Pawn **存在且已被占有**，但 Pawn 的
+  `BeginPlay` 还没跑 —— 所以「Pawn 上的组件拿得到，组件里的运行期数据是空的」。实证见
+  `Saved/Logs/Wildforge/<日期>/Info.log`：`InitializeGrid: 绑定容器 …` 稳定早于 `[背包] … 初始化背包容器`约 20ms。
+- [2026-10-11] **客户端「Pawn 到位」的官方挂钩是 `AController::OnPossessedPawnChanged`**
+  （`Controller.h:20/62`，`BlueprintAssignable`，注释明确说两端都会广播；客户端走 `SetPawnFromRep`，
+  `Controller.cpp:568`）。客户端本地 PlayerController 的 `BeginPlay` 时 Pawn 往往还没复制过来，
+  这时 `GetOwningPlayerPawn()` 是空 —— 想初始化「挂在 Pawn 上的东西」必须补这一枪，不能只在 `NativeConstruct` 里做一次。
 
 ## Do-Not-Repeat
 
@@ -529,6 +550,24 @@
 - [2026-10-10] **预期内的正常窗口不要逐条打 ERROR**：高频查询路径（如每局开局每个槽位都会调用的
   `GetItemAtSlot`）在预期分支上用函数内 `static bool` 只提示一次 WARNING，只有真损坏才逐条 ERROR——
   否则每局 ~90 条噪声会把真错误淹没（见 bug-065）。
+- [2026-10-11] **改动 `UCLASS()`/`GENERATED_BODY()` 所在行（增删 include、补 `#pragma once`）后必须重跑 UHT**
+  （`-Mode=GenerateClangDatabase`）：UHT 生成的宏名带行号（`FID_<file>_h_<line>_PROLOG`），不重跑时 clangd 会报
+  一串假错误——`Unknown type name 'FID_...'`、`Call to deleted constructor of '<基类>'`、
+  `A type specifier is required for all declarations`（都落在宏展开处，不是真语法错误）。见 bug-014。
+- [2026-10-11] **改完 `.h`/`.cpp` 后要回头检查 `.wolf/anatomy.md` 里该文件的描述**：post-write 钩子每次都会用
+  `extractDescription` 覆盖条目描述，UE 头文件常退化成 `pragma once` 或首行 include（本次 QuickSlotContext.h /
+  QuickBarWidget.h 都被覆盖过）。钩子不处理 `.wolf/` 内的编辑，所以「补回描述」这一步不会被再覆盖。
+- [2026-10-11] **不要把「构造控件时读到的容器容量」当成既定事实**（尤其别拿它当「每行几个」这类参数往下传）：
+  控件由控制器 `BeginPlay` 创建、容器的 `Slots` 却由角色 `BeginPlay` 填，前者在同一批次里更早 ⇒ 读到的
+  必然是 0（客户端还要更晚）。正确姿势是**先把容器交出去**（订阅 `OnContainerChanged`），容量到位时容器会
+  广播，收尾逻辑放在那里做。写「容量为 0 就 return / 就跳过」会把整块初始化静默掉。见 bug-075。
+- [2026-10-11] **依赖「槽位控件已存在」的初始化循环不要写成「数量不够就 break」**：容器未初始化时槽位是 0，
+  这种循环会一个都不做且**没有任何后续时机再来一次**（快捷键全灭就是这样来的）。绑定与数量无关就先绑上，
+  越界在按下时兜底；与数量有关的收尾改成「容器广播时重跑一次」的幂等形式。见 bug-075。
+- [2026-10-11] **配置类里每一项的 `bOverride_X` 必须各自独立判断**：不要用
+  `else if (Settings->bOverride_InventoryCapacity)` 顺手把另一项也覆盖掉——另一项自己的开关就永远读不到
+  （本次 `bOverride_QuickBarCapacity` 就这样成了死属性）。ini 里「值写了但没写 bOverride_*」同样是静默失效。
+  见 bug-076、bug-052。
 
 ## Decision Log
 
@@ -731,3 +770,16 @@
   `InventorySlotDragDropOperation::SourceWidget` 的先例（见 bug-064）。
   配套的两层底线各自独立生效：`EnsureSlotCount` 对目标槽位数做 [0,512] 夹紧（垃圾容量不得驱动
   批量建控件）、`GetItemAtSlot` 做双数组边界检查——「读不到数据」永远好过「按坏数据干活」。
+- [2026-10-11] **槽位控件新增的视觉特性一律按「状态 + 重放」实现，不提供「戳一次控件」的 setter**：
+  `UInventorySlotWidget` 的附加文本（`ButtomExtraText`）加 `SetButtomExtraText` / `CollapseButtomExtraText` 时，
+  内容存进 `ButtomExtraTextContent`（`UPROPERTY(Transient)`），由 `RefreshFromState` → `RefreshButtomExtraText` 重放。
+  「默认折叠」由「空文本 = 折叠」承担（与 `SetTopText`/`SetBottomText` 同一套语义），不在 UMG 设计器里配可见性、
+  也不加额外的 bool；附加文本与容器数据无关，`ClearSlot` 不清它（要清就显式调 `CollapseButtomExtraText`）。
+  理由：Slate 控件会被释放重建、`NativeConstruct` 会重跑，一次性设置的外观必然丢（见 bug-064 一类教训）。
+- [2026-10-11] **快捷栏的初始化改成「容器广播驱动」，不在 `UMainUserWidget` 里拿容量当条件或参数**：
+  `UMainUserWidget::TryInitializeQuickBar()` 只负责把容器交给控件（`InitializeGrid`），
+  「每行个数 = 容量」「补按键标签」都放到 `UQuickBarWidget::HandleContainerChanged()` 里做，
+  因为那时容量才真的到位（权威端 `InitializeContainer` 广播 / 客户端 `OnRep_Slots` 广播）。
+  客户端的「Pawn 还没到」用 `APlayerController::OnPossessedPawnChanged` 补第二枪（见 bug-075）。
+  与前一条 Decision（控件构造早于角色 `BeginPlay` 是预期窗口，不要加初始化顺序 hack）一致：
+  这次也没有去插「谁先跑」的调度，而是让消费方对「未初始化状态」天然免疫。

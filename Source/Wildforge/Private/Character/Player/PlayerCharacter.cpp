@@ -188,20 +188,30 @@ void APlayerCharacter::BeginPlay() {
           "[配置] %s 取不到 UPlayerCharacterSettings（CDO 为空），背包容量"
           "退回类默认值 %d、快速栏容量都退回类默认值 %d。",
           *Who, InventoryCapacity, QuickBarCapacity);
-    } else if (Settings->bOverride_InventoryCapacity) {
+    } else {
+      // 两个容量**各自有各自的覆盖开关**（对应配置类里的 bOverride_InventoryCapacity /
+      // bOverride_QuickBarCapacity）。曾经这里用 `else if (bOverride_InventoryCapacity)`
+      // 一口气改掉两个容量，导致快捷栏自己的开关永远读不到：只看右栏勾选 → 完全无效；
+      // 勾了背包 → 顺手把快捷栏也改了。ini 的键名与属性名一一对应，改错开关就是静默失效。
       // 下限与 meta ClampMin 一致：0 格容器会让所有 AddItem 都失败
       // （ini 是手写文本，编辑器面板的 Clamp 拦不住手填的值）。
-      EffectiveInventoryCapacity = FMath::Max(1, Settings->InventoryCapacity);
-      EffectiveQuickBarCapacity = FMath::Max(1, Settings->QuickBarCapacity);
-      WFLOG_INFO("[配置] %s 背包容量被 ini 覆盖：类默认值 %d -> 生效 %d。",
-                 *Who, InventoryCapacity, EffectiveInventoryCapacity);
-      WFLOG_INFO("[配置] %s 快速栏容量被 ini 覆盖：类默认值 %d -> 生效 %d。",
-                 *Who, QuickBarCapacity, EffectiveQuickBarCapacity);
-    } else {
-      WFLOG_INFO("[配置] %s 背包容量没有 ini 覆盖，用类默认值 %d。", *Who,
-                 InventoryCapacity);
-      WFLOG_INFO("[配置] %s 快速栏容量没有 ini 覆盖，用类默认值 %d。", *Who,
-                 QuickBarCapacity);
+      if (Settings->bOverride_InventoryCapacity) {
+        EffectiveInventoryCapacity = FMath::Max(1, Settings->InventoryCapacity);
+        WFLOG_INFO("[配置] %s 背包容量被 ini 覆盖：类默认值 %d -> 生效 %d。",
+                   *Who, InventoryCapacity, EffectiveInventoryCapacity);
+      } else {
+        WFLOG_INFO("[配置] %s 背包容量没有 ini 覆盖，用类默认值 %d。", *Who,
+                   InventoryCapacity);
+      }
+
+      if (Settings->bOverride_QuickBarCapacity) {
+        EffectiveQuickBarCapacity = FMath::Max(1, Settings->QuickBarCapacity);
+        WFLOG_INFO("[配置] %s 快捷栏容量被 ini 覆盖：类默认值 %d -> 生效 %d。",
+                   *Who, QuickBarCapacity, EffectiveQuickBarCapacity);
+      } else {
+        WFLOG_INFO("[配置] %s 快捷栏容量没有 ini 覆盖，用类默认值 %d。", *Who,
+                   QuickBarCapacity);
+      }
     }
   }
 

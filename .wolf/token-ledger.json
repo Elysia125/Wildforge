@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-10-05T10:52:46.081Z",
   "lifetime": {
-    "total_tokens_estimated": 144550,
-    "total_reads": 58,
-    "total_writes": 141,
-    "total_sessions": 27,
-    "anatomy_hits": 40,
-    "anatomy_misses": 18,
+    "total_tokens_estimated": 155008,
+    "total_reads": 76,
+    "total_writes": 163,
+    "total_sessions": 32,
+    "anatomy_hits": 45,
+    "anatomy_misses": 31,
     "repeated_reads_blocked": 19,
-    "estimated_savings_vs_bare_cli": 50226
+    "estimated_savings_vs_bare_cli": 51226
   },
   "sessions": [
     {
@@ -1264,6 +1264,292 @@
         "reads_count": 5,
         "writes_count": 4,
         "repeated_reads_blocked": 3,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-10-11-1725",
+      "started": "2026-10-11T09:25:54.836Z",
+      "ended": "2026-10-11T09:28:03.523Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Utils/WildforgeLog.h",
+          "tokens_estimated": 1000,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/QuickBarWidget.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/Structs/QuickSlotContext.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/Structs/HotkeyBinding.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp",
+          "tokens_estimated": 23,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp",
+          "tokens_estimated": 24,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp",
+          "tokens_estimated": 16,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp",
+          "tokens_estimated": 37,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 1000,
+        "output_tokens_estimated": 100,
+        "reads_count": 5,
+        "writes_count": 4,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 1
+      }
+    },
+    {
+      "id": "session-2026-10-11-1725",
+      "started": "2026-10-11T09:25:54.836Z",
+      "ended": "2026-10-11T09:31:34.402Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Utils/WildforgeLog.h",
+          "tokens_estimated": 1000,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/QuickBarWidget.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/Structs/QuickSlotContext.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/Structs/HotkeyBinding.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp",
+          "tokens_estimated": 23,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp",
+          "tokens_estimated": 24,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp",
+          "tokens_estimated": 16,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp",
+          "tokens_estimated": 37,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/Structs/QuickSlotContext.h",
+          "tokens_estimated": 43,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/QuickBarWidget.h",
+          "tokens_estimated": 49,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 1000,
+        "output_tokens_estimated": 192,
+        "reads_count": 5,
+        "writes_count": 6,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 1
+      }
+    },
+    {
+      "id": "session-2026-10-11-1725",
+      "started": "2026-10-11T09:25:54.836Z",
+      "ended": "2026-10-11T09:47:40.519Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Utils/WildforgeLog.h",
+          "tokens_estimated": 1000,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/QuickBarWidget.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/Structs/QuickSlotContext.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/Structs/HotkeyBinding.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h",
+          "tokens_estimated": 2400,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 3800,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp",
+          "tokens_estimated": 23,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp",
+          "tokens_estimated": 24,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp",
+          "tokens_estimated": 16,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp",
+          "tokens_estimated": 37,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/Structs/QuickSlotContext.h",
+          "tokens_estimated": 43,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/QuickBarWidget.h",
+          "tokens_estimated": 49,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h",
+          "tokens_estimated": 180,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h",
+          "tokens_estimated": 50,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h",
+          "tokens_estimated": 82,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 364,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 64,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 7200,
+        "output_tokens_estimated": 932,
+        "reads_count": 7,
+        "writes_count": 11,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 3
+      }
+    },
+    {
+      "id": "session-2026-10-11-1904",
+      "started": "2026-10-11T11:04:45.110Z",
+      "ended": "2026-10-11T11:06:21.445Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/InventoryUserWidget.cpp.obj.rsp",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventoryUserWidget.cpp",
+          "tokens_estimated": 34,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 34,
+        "reads_count": 1,
+        "writes_count": 1,
+        "repeated_reads_blocked": 0,
         "anatomy_lookups": 0
       }
     }

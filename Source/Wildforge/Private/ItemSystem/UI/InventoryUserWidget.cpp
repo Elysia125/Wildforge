@@ -5,6 +5,7 @@
 #include "Components/HorizontalBox.h"
 #include "Components/TextBlock.h"
 #include "Components/WidgetSwitcher.h"
+#include "GameFramework/Pawn.h"
 #include "ItemSystem/Components/ItemContainer.h"
 #include "ItemSystem/Components/PlayerInventory.h"
 #include "ItemSystem/UI/ItemContainerGrid.h"

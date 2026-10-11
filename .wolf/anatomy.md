@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-11T04:00:53.872Z
-> Files: 87 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-11T11:05:09.083Z
+> Files: 92 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -23,6 +23,7 @@
 - `wf_wolf_record.js` — fs: eolOf (~992 tok)
 - `wf-crawl-check-msvc.ps1` — 单 TU 真编译级检查（cl.exe /Zs 语法检查），用 UBT 自己生成的 MSVC 形态 obj.rsp + 真实的 MSVC PCH。 (~980 tok)
 - `wf-crawl-check.ps1` — 单 TU 真编译级检查（clang-cl -fsyntax-only），针对本次 UBT 生成的 MSVC 形态 obj.rsp。 (~835 tok)
+- `wf-syntax-check.ps1` — New: probe (~537 tok)
 
 ## Config/
 
@@ -59,7 +60,7 @@
 
 ## Source/Wildforge/Private/Character/Player/
 
-- `PlayerCharacter.cpp` — 玩家角色实现：装配 6 个能力组件 + 移动门控订阅；BeginPlay 解析背包容量（ini 覆盖 > 蓝图类默认值 > 30）后 InitializeContainer；**新增 PostNetInit**（客户端收到出生束后打印各组件生效值，与服务端 [配置] 日志对照） (~6200 tok)
+- `PlayerCharacter.cpp` — 玩家角色：构造函数装配组件、BeginPlay 里订阅移动门控事件并在**权威端**初始化背包/快捷栏容器（背包与快捷栏的容量各自独立判断 bOverride_InventoryCapacity / bOverride_QuickBarCapacity，见 bug-076）、PostNetInit 打印客户端生效值 (~6400 tok)
 
 ## Source/Wildforge/Private/Core/
 
@@ -84,13 +85,14 @@
 ## Source/Wildforge/Private/ItemSystem/UI/
 
 - `InventorySlotDragDropOperation.cpp` — 拖拽操作实现：RestoreSourceWidget() 经弱引用 Pin 到源控件后 SetRenderOpacity(1.f)（失效即跳过） (~150 tok)
-- `InventorySlotWidget.cpp` — 单格实现：InitializeSlot 绑定 (容器,索引) 并退订/重订 + 首次拉取（OwningContainer 为 TWeakObjectPtr，使用点先 Get() 判空，见 bug-064），HandleContainerChanged→RefreshFromContainer（GetItemAtSlot 拉取；本格没变直接返回，空槽不为空才 ClearSlot），UnbindFromContainer 在换绑/NativeDestruct 时退订；显示数据是控件状态（CurrentItem/bHasItemData），RefreshFromState() 是「状态 → 外观」唯一出口（NativeConstruct 也调它，构造/重建都能重放，别再手工 TakeWidget）；SetItemData 只写状态+重画（不要写数量早退，会连图标一起跳过）、ClearSlot 清状态+重画；RefreshSlotStyleColor 首次执行时懒抓设计器 BrushColor 作 NormalSlotColor，未高亮时还原它（别再硬编码默认色，见 bug-015）；NativeOnDragDetected 视觉类为空/指向原生类时退回 GetClass()、只 CreateWidget+InitializeSlot，创建 UInventorySlotDragDropOperation（回填 SourceContainer/SourceSlotIndex/SourceWidget）并半透明；NativeOnDrop 复位源控件显示（SetRenderOpacity，只复位透明度，着色由 Enter/Leave 平衡）→ 同槽/跨容器早退 → 发 Server_MoveOrMerge；DragOver 只接受本系统拖拽、Enter/Leave 高亮（SetHighlight_Implementation 染色） (~3800 tok)
-- `InventoryUserWidget.cpp` — 背包主界面实现：NativeConstruct 取容器 + InitializeInventory（ItemContainer 为弱引用，使用点先 Get()，见 bug-064；调 `InitializeGrid(容器)`——**每行个数不再硬编码 5**，改用网格控件自己的 SlotsPerRow）；Tab 切页 + 高亮/反馈动画；整理按钮走 Server_OrganizeContainer（RPC）；ApplyInitialThemeStyles 应用主题配色与阴影 (~1800 tok)
+- `InventorySlotWidget.cpp` — 单格实现：InitializeSlot 绑定 (容器,索引) 并退订/重订 + 首次拉取（OwningContainer 为 TWeakObjectPtr，使用点先 Get() 判空，见 bug-064），HandleContainerChanged→RefreshFromContainer（GetItemAtSlot 拉取；本格没变直接返回，空槽不为空才 ClearSlot），UnbindFromContainer 在换绑/NativeDestruct 时退订；显示数据是控件状态（CurrentItem/bHasItemData），RefreshFromState() 是「状态 → 外观」唯一出口（NativeConstruct 也调它，构造/重建都能重放，别再手工 TakeWidget；附加文本也在这里重放，所以「默认折叠」由空文本状态承担，不在 UMG 里配）；SetItemData 只写状态+重画（不要写数量早退，会连图标一起跳过）、ClearSlot 清状态+重画；RefreshSlotStyleColor 首次执行时懒抓设计器 BrushColor 作 NormalSlotColor，未高亮时还原它（别再硬编码默认色，见 bug-015）；NativeOnDragDetected 视觉类为空/指向原生类时退回 GetClass()、只 CreateWidget+InitializeSlot，创建 UInventorySlotDragDropOperation（回填 SourceContainer/SourceSlotIndex/SourceWidget）并半透明；NativeOnDrop 复位源控件显示（SetRenderOpacity，只复位透明度，着色由 Enter/Leave 平衡）→ 同槽/跨容器早退 → 发 Server_MoveOrMerge；DragOver 只接受本系统拖拽、Enter/Leave 高亮（SetHighlight_Implementation 染色）；SetButtomExtraText/CollapseButtomExtraText 只改 ButtomExtraTextContent 再走 RefreshButtomExtraText（空文本=折叠；与物品数据无关，ClearSlot 不清它），每条都记 WFLOG_INFO (~4100 tok)
+- `InventoryUserWidget.cpp` — include "ItemSystem/UI/InventoryUserWidget.h" (~1914 tok)
 - `ItemContainerGrid.cpp` — 网格实现：InitializeGrid 里 `InSlotsPerRow <= 0` 表示沿用控件自己的 SlotsPerRow（WBP 设计器里配的列数，调用方硬编码会把它冲掉），统一夹到 >= 1（LayoutSlots 拿它当除数）；NativeConstruct **无条件**以拥有者 Pawn 的实时查找结果重解析容器（不再 `if(!Container)` 跳过——非空≠有效；对继承的失效弱引用记警告，见 bug-064）；HandleContainerChanged 只做结构（容量变化才 EnsureSlotCount+LayoutSlots）；RefreshGrid 为全量入口；EnsureSlotCount 目标数 [0,512] 夹紧后补建时当场 InitializeSlot、移除时先 UnbindFromContainer (~1800 tok)
+- `QuickBarWidget.cpp` — 快捷栏：InitializeGrid（绑快捷键，**不依赖**槽位控件是否已建出）+ HandleContainerChanged 重写（容量到位时把 SlotsPerRow 校正为容量＝单行，再补按键标签）+ RefreshHotkeyLabels（文本没变不写）+ SetupHotkeyBindings/HandleHotkeyTriggered（Enhanced Input 动态建 Action 并在 Owner 上 FindFunction） (~2900 tok)
 
 ## Source/Wildforge/Private/UI/
 
-- `MainUserWidget.cpp` — 主界面 Widget 实现 (~300 tok)
+- `MainUserWidget.cpp` — 主 HUD 控件：NativeConstruct 先试一次 TryInitializeQuickBar（客户端 Pawn 未到就交给 OnPossessedPawnChanged 补第二枪），NativeDestruct 退订；文件头有大段「快捷栏初始化时序」说明（控件由 PlayerController 的 BeginPlay 创建，早于角色 BeginPlay） (~2400 tok)
 
 ## Source/Wildforge/Private/Utils/
 
@@ -158,18 +160,21 @@
 
 ## Source/Wildforge/Public/ItemSystem/Structs/
 
+- `HotkeyBinding.h` — FHotkeyBinding（BlueprintType）：快捷键配置三项——Chord（FInputChord，键+修饰键）、FunctionName（在 Owner Actor 蓝图上 FindFunction 的 UFUNCTION 名）、TriggerEvent（ETriggerEvent，默认 Started）；供 UQuickBarWidget::HotkeyBindings 与 UQuickContainer 共用 (~300 tok)
 - `ItemInfo.h` — FItemInformation（FTableRowBase，需 include Engine/DataTable.h——别靠 SharedPCH，见 bug-014）：ItemID/ItemName/ItemDesc/ItemQuality（兼作堆叠数量）/ItemDamage/IsStackable/MaxStackSize/ItemCurHP/ItemMaxHP/ItemIcon/ItemType/ItemRarity/ItemArmor/ItemClass/UseAmmo/Ammo/AmmoMax (~900 tok)
+- `QuickSlotContext.h` — FQuickSlotContext（BlueprintType）：快捷栏触发时传给蓝图函数的上下文——Item（FItemInformation，按值）+ SlotWidget（UInventorySlotWidget*，仅前向声明）；自身 include ItemInfo.h（2026-10-11 补齐：值成员需完整类型，原先靠包含方 include 顺序，单独解析即报 unknown type name） (~200 tok)
 
 ## Source/Wildforge/Public/ItemSystem/UI/
 
 - `InventorySlotDragDropOperation.h` — 拖拽操作（UDragDropOperation）：SourceSlotIndex/SourceContainerType/ItemInfo/SourceContainer + TWeakObjectPtr<UUserWidget> SourceWidget（弱引用避免源控件被网格刷新销毁后悬空）与 RestoreSourceWidget() 兜底复位，供 NativeOnDrop 判定来源并恢复显示 (~700 tok)
-- `InventorySlotWidget.h` — 单格 Widget。**对外只留「来源」与控件自身状态**：InitializeSlot(容器,索引)/UnbindFromContainer/RefreshFromContainer + GetOwningContainer/GetSlotIndex，SetSelected/SetSlotStyle，以及可被蓝图覆写的 SetHighlight（BlueprintNativeEvent：C++ 默认染色 + HighlightColor）；**SetItemData(只收结构体)/ClearSlot/SetQuantity/SetItemHP/SetTopText/SetBottomText/SetItemIcon/SetItemStyle 都是 private 渲染细节**（数量唯一来源是 Item.ItemQuality，没有 CurrentQuantity）；HandleContainerChanged 处理容器广播；BindWidget TopText/BottomText/QuantityText/ItemHP/SlotStyle/ItemStyle/OverlayRoot/SizeBoxRoot；拖拽回调（NativeDestruct 退订 + 兜底复位不透明度）；状态 CurrentItem/bHasItemData + RefreshFromState()/IsSameAsCurrentData()；染色基准 NormalSlotColor/bNormalSlotColorCached（懒抓设计器值，未高亮时还原它，见 bug-015）；蓝图钩子 OnItemDataSet(结构体)；**OwningContainer 为 TWeakObjectPtr<UItemContainer>（WBP 模板会拷贝普通对象引用，非空≠有效，见 bug-064）** (~2400 tok)
+- `InventorySlotWidget.h` — 单个格子控件：SetButtomExtraText / CollapseButtomExtraText / **GetButtomExtraText**（给外部去重，避免重复写 Slate 与日志）、InitializeSlot / SetHighlight（BlueprintNativeEvent）与一组 NativeOnDrag*/Mouse 回调 (~2300 tok)
 - `InventoryUserWidget.h` — 背包主界面：FInventoryThemeConfig 主题结构体；InitializeInventory/ShowInventoryPage/ShowCraftPage；BindWidget 按钮/Tab/WidgetSwitcher/ItemContainerGrid/动画；主题美化 ApplyInitialThemeStyles；**ItemContainer 为 TWeakObjectPtr（使用点先 Get()，见 bug-064）** (~2200 tok)
-- `ItemContainerGrid.h` — 背包网格 Widget（UniformGridPanel+ScrollBox）：`InitializeGrid(容器, InSlotsPerRow = 0)`——**<=0 表示沿用控件上配置的 SlotsPerRow**（WBP 设计器参数，调用方不再硬编码列数）；RefreshGrid 为全量重建入口；HandleContainerChanged 只处理结构（容量变化才增删槽位/重排）；Bind/UnbindToContainer；EnsureSlotCount（返回数量是否变化）/LayoutSlots；槽位内容由 UInventorySlotWidget 自己拉；**Container 为 TWeakObjectPtr<UItemContainer>（见 bug-064）** (~850 tok)
+- `ItemContainerGrid.h` — 网格基类：InitializeGrid / RefreshGrid / SetSlotsPerRow / GetContainer；HandleContainerChanged 为 **virtual**（子类可补结构变化后的收尾，如快捷栏按键标签）；容器用 TWeakObjectPtr (~860 tok)
+- `QuickBarWidget.h` — 容器结构变化（容量到位 / 增删槽位）后的收尾：先把「每行个数」校正为容量 (~534 tok)
 
 ## Source/Wildforge/Public/UI/
 
-- `MainUserWidget.h` — UMainUserWidget：持有 UInventoryUserWidget 并切换其可见性 (~400 tok)
+- `MainUserWidget.h` — UMainUserWidget：BindWidget 持有 InventoryWidget / QuickBarWidget，ShowInventory（蓝图事件）切换背包可见性；新增 HandlePossessedPawnChanged + TryInitializeQuickBar（快捷栏容器晚绑） (~700 tok)
 
 ## Source/Wildforge/Public/Utils/
 

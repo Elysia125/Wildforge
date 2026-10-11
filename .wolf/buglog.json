@@ -274,7 +274,7 @@
       "error_message": "无 PCH 的编译（clangd / `clang-cl @文件.obj.rsp -fsyntax-only`）在 ItemInfo.h 报 `unknown type name 'FTableRowBase'`：结构体继承了 FTableRowBase 却没 include 定义它的头文件",
       "file": "Source/Wildforge/Public/ItemSystem/Structs/ItemInfo.h",
       "root_cause": "FItemInformation : FTableRowBase，但 ItemInfo.h 只 include 了 ItemMaster.h、三个枚举和 ItemInfo.generated.h。UBT 编译时 SharedPCH 强制包含了 Engine/DataTable.h，所以命令行构建一直编得过；一旦离开 PCH（clangd 的 IntelliSense、本机的无 PCH 编译检查）就立刻暴露——clangd 里这一行一直是红的。",
-      "fix": "ItemInfo.h 补 `#include \"Engine/DataTable.h\"`（IWYU）。注意：补 include 会改变行号，必须重跑一次 UHT 再编译——UHT 生成的宏名带行号（FID_<file>_<line>_GENERATED_BODY），不重跑会报 `a type specifier is required for all declarations`，看起来像语法错误其实是宏对不上。",
+      "fix": "ItemInfo.h 补 `#include \"Engine/DataTable.h\"`（IWYU）。注意：补 include 会改变行号，必须重跑一次 UHT 再编译——UHT 生成的宏名带行号（FID_<file>_<line>_GENERATED_BODY），不重跑会报 `a type specifier is required for all declarations`，看起来像语法错误其实是宏对不上。｜2026-10-11 复现：QuickBarWidget.h 补 #pragma once、改 include 路径后 UCLASS() 行号 11→15，未重跑 UHT 时 clangd 对 QuickBarWidget.h 报 Unknown type name FID_..._h_15_PROLOG + Call to deleted constructor of UItemContainerGrid、对 QuickSlotContext.h 报 A type specifier is required for all declarations（GENERATED_BODY 所在行）；重跑 GenerateClangDatabase（UHT 重写 2 个 generated.h）后诊断全部消失。",
       "tags": [
         "include",
         "iwyu",
@@ -285,8 +285,8 @@
         "build"
       ],
       "related_bugs": [],
-      "occurrences": 1,
-      "last_seen": "2026-10-06T13:40:00"
+      "occurrences": 2,
+      "last_seen": "2026-10-11T17:31:18"
     },
     {
       "id": "bug-015",
@@ -1312,6 +1312,185 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-11T04:00:13.215Z"
+    },
+    {
+      "id": "bug-068",
+      "timestamp": "2026-10-11T09:46:53.744Z",
+      "error_message": "Missing guard clause",
+      "file": "Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+      "root_cause": "No early return/throw for edge case: SlotStyle",
+      "fix": "Added guard clause: if (SlotStyle)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T09:46:53.744Z"
+    },
+    {
+      "id": "bug-069",
+      "timestamp": "2026-10-11T18:15:07",
+      "error_message": "QuickBarWidget.cpp: error C2664: \"void UInventorySlotWidget::SetButtomExtraText(const FText &)\": 无法将参数 1 从 \"FString\"（另一处是 \"const wchar_t [7]\"）转换为 \"const FText &\"",
+      "file": "Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp",
+      "root_cause": "调用点把 FString（InputChordToString 的返回值）和 TEXT(\"<None>\") 直接传给了收 const FText& 的函数。FText 没有从 FString/const TCHAR* 的隐式转换——FText::FromString 是显式工厂；UI 蓝图 API 用 FText 是对的，错在调用点。",
+      "fix": "两个调用点显式包 FText::FromString(...)：SetButtomExtraText(FText::FromString(TEXT(\"<None>\"))) 与 SetButtomExtraText(FText::FromString(InputChordToString(HotkeyBindings[i].Chord)))（Utils/HotkeyUtils.h 的 InputChordToString 返回 FString）。",
+      "tags": [
+        "compile-error",
+        "c2664",
+        "ftext",
+        "fstring",
+        "ui",
+        "quickbar"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T18:15:07"
+    },
+    {
+      "id": "bug-070",
+      "timestamp": "2026-10-11T10:54:24.775Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Public/ItemSystem/UI/ItemContainerGrid.h",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→6 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "h"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T10:54:24.775Z"
+    },
+    {
+      "id": "bug-071",
+      "timestamp": "2026-10-11T10:54:31.980Z",
+      "error_message": "Wrong operator: >= should be ==",
+      "file": "Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp",
+      "root_cause": "Used \">=\" instead of \"==\"",
+      "fix": "Changed operator >= → ==",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T10:54:31.980Z"
+    },
+    {
+      "id": "bug-072",
+      "timestamp": "2026-10-11T10:54:35.874Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 7→12 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T10:54:35.874Z"
+    },
+    {
+      "id": "bug-073",
+      "timestamp": "2026-10-11T10:55:17.182Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Public/ItemSystem/UI/QuickBarWidget.h",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→6 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "h"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T10:55:17.182Z"
+    },
+    {
+      "id": "bug-074",
+      "timestamp": "2026-10-11T10:56:26.984Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 15→25 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T10:56:26.984Z"
+    },
+    {
+      "id": "bug-075",
+      "timestamp": "2026-10-11T10:56:40Z",
+      "error_message": "UMainUserWidget::NativeConstruct 里 QuickBarWidget->InitializeGrid(FoundContainer, FoundContainer->GetCapacity()) 的容量恒为 0 → 快捷栏一个槽位控件都不建、按键标签全空、快捷键全部无效（日志：ItemContainerGrid::InitializeGrid: 绑定容器 QuickContainer（容量 0））。",
+      "file": "Source/Wildforge/Private/UI/MainUserWidget.cpp",
+      "root_cause": "(1) GetCapacity() = Slots.Num()（ItemContainer.h:142），Slots 只在 InitializeContainer 里被写。(2) W_MainWidget 由 BP_FirstPersonPlayerController 的 BeginPlay 创建，而 InitializeContainer 在 APlayerCharacter::BeginPlay（PlayerCharacter.cpp:233，仅权威端）——同一个 DispatchBeginPlay 批次里 PlayerController 排在 Pawn 之前，所以 NativeConstruct 时容器对象活着但 Slots 还是空的。实证：Saved/Logs/Wildforge/2026-10-10/Info.log 第 1-2 行「InitializeGrid: 绑定容器 Inventory（容量 30）」出现在第 17-18 行「[背包] … 初始化背包容器：容量 30 格」之前约 20ms；那时的容量是**构造函数**里初始化的（commit 6a40a18 才挪进 BeginPlay），构造函数跑在 spawn 时、早于控制器 BeginPlay，所以这个时序坑一直没暴露。(3) 后果不止布局：UQuickBarWidget::SetupHotkeyBindings 里有「i >= SlotWidgets.Num() 就 break」，槽位为 0 → 一个 InputAction 都没绑且无人会再补；按键标签循环同样走空；客户端 Slots 是 COND_OwnerOnly 复制、更晚，且客户端本地 PC 的 BeginPlay 常常连 Pawn 都还没有（整块初始化被静默跳过）。",
+      "fix": "(1) UItemContainerGrid::HandleContainerChanged 改 virtual；UQuickBarWidget 重写它：容量到位时先把 SlotsPerRow 校正为容量（快捷栏单行，必须在 Super 之前，Super 里 EnsureSlotCount 后立刻 LayoutSlots），再 Super、最后 RefreshHotkeyLabels()。(2) 新增 UQuickBarWidget::RefreshHotkeyLabels()：按 HotkeyBindings 给已存在的槽位补标签，文本没变就不写（SetButtomExtraText 会写 Slate + 落日志，容器每次广播都调它）。(3) SetupHotkeyBindings 去掉「槽位不足 break」，改为记 INFO——绑定只依赖 HotkeyBindings；HandleHotkeyTriggered 补 SlotWidgets.IsValidIndex 守卫。(4) UMainUserWidget 拆出 TryInitializeQuickBar()：NativeConstruct 先试一次，并订阅 APlayerController::OnPossessedPawnChanged（引擎注明两端都会广播，客户端走 SetPawnFromRep，Controller.cpp:568）补「Pawn 复制到位」那一枪，NativeDestruct 退订。(5) UInventorySlotWidget 新增 GetButtomExtraText() 供去重。(6) 重写父类 UFUNCTION 时子类**不能**再写 UFUNCTION()（UHT 报 cannot have a UFUNCTION() declaration above it），父类声明必须 virtual。验证：UHT 通过、clangd 对全部改动文件零诊断；未做完整编译（当时空闲物理内存仅 0.76GB）——本次改了虚表，Live Coding 未必接得住。",
+      "tags": [
+        "ui",
+        "umg",
+        "beginplay-ordering",
+        "quickbar",
+        "widget-lifecycle",
+        "latent-init",
+        "replication"
+      ],
+      "related_bugs": [
+        "bug-064",
+        "bug-065"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T10:56:40Z"
+    },
+    {
+      "id": "bug-076",
+      "timestamp": "2026-10-11T10:56:40Z",
+      "error_message": "Config/DefaultGame.ini 的 [/Script/Wildforge.PlayerCharacterSettings] 写了 InventoryCapacity=40 / QuickBarCapacity=12，日志却是「背包容量没有 ini 覆盖，用类默认值 30」——ini 的值是死文本；UPlayerCharacterSettings::bOverride_QuickBarCapacity 从未被读过。",
+      "file": "Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+      "root_cause": "(1) ini 里没有 bOverride_InventoryCapacity=True / bOverride_QuickBarCapacity=True——bOverride_X 才是开关，值本身不生效（本次实测：ini 里那两行 40/12 从写下起就没生效过）。(2) 代码写成 else if (Settings->bOverride_InventoryCapacity) 一口气改掉两个容量，快捷栏自己的 bOverride_QuickBarCapacity 因此永不生效：只勾快捷栏 → 完全无效；勾了背包 → 顺手把快捷栏也改了（与「每项一对 bOverride_X + 值」的约定不符）。",
+      "fix": "把两个覆盖拆成各自独立的 if：bOverride_InventoryCapacity → InventoryCapacity、bOverride_QuickBarCapacity → QuickBarCapacity，勾没勾都记一条 [配置] 日志。注意本次只修开关语义，**没有动 ini 的值**：想让 40/12 生效，需要在 Project Settings > Project > Game > 玩家角色里勾上两个 bOverride_*（或在 ini 里补这两行）。",
+      "tags": [
+        "ini",
+        "config",
+        "developersettings",
+        "silent-failure",
+        "playercharacter"
+      ],
+      "related_bugs": [
+        "bug-052"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T10:56:40Z"
+    },
+    {
+      "id": "bug-077",
+      "timestamp": "2026-10-11T11:05:09.099Z",
+      "error_message": "clang-cl -fsyntax-only 扫描 TU 时报 InventoryUserWidget.cpp(37,17): error: member access into incomplete type 'APawn'（代码为 Pawn->FindComponentByClass<UPlayerInventory>()，Pawn 来自 GetOwningPlayerPawn()）。",
+      "file": "Source/Wildforge/Private/ItemSystem/UI/InventoryUserWidget.cpp",
+      "root_cause": "NativeConstruct 里用完整类型访问 APawn，但本文件从未 include 过 GameFramework/Pawn.h——UBT 构建时 SharedPCH 恰好带了 Pawn.h，所以正式构建一直编得过；项目「绕开 PCH 的只读语法检查路径」一上来就报 incomplete type（bug-014 同族）。本次并非改动引入，是快捷栏排查时对相邻 TU 扫描时扫出的潜伏项。",
+      "fix": "include 块补 #include \"GameFramework/Pawn.h\"（位于 Components/WidgetSwitcher.h 之后）。复验：对照跑（源文件字节拷贝 + 追加 int WfSyntaxProbe = ;，期望恰好 1 个错误且行号=注入行）精确命中后，真身 EXIT=0 / 0 errors。",
+      "tags": [
+        "iwyu",
+        "include",
+        "latent",
+        "sharedpch",
+        "umg"
+      ],
+      "related_bugs": [
+        "bug-014",
+        "bug-064"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T11:05:09.099Z"
     }
   ]
 }

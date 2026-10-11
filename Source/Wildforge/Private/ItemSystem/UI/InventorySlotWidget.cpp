@@ -40,6 +40,10 @@ void UInventorySlotWidget::SetItemData(const FItemInformation &Item) {
 // 按 CurrentItem / bHasItemData 重画整套外观。「状态 -> 外观」只有这一个出口：
 // NativeConstruct（构造与重建）、SetItemData、ClearSlot 都走它，下面那些单字段 setter 只被它调用。
 void UInventorySlotWidget::RefreshFromState() {
+  // 附加文本与本格「有没有物品」无关，两条分支都要重放；
+  // 「默认折叠」就落在这里：内容为空 ⇒ 折叠，不依赖 UMG 设计器里的可见性配置
+  RefreshButtomExtraText();
+
   // 空槽：各 setter 会根据“空/无”自动折叠对应控件，形成默认不可见状态
   if (!bHasItemData) {
     SetTopText(FText::GetEmpty());
@@ -148,6 +152,42 @@ void UInventorySlotWidget::SetSlotStyle(const FSlateBrush &InBrush) {
   if (SlotStyle) {
     SlotStyle->SetBrush(InBrush);
   }
+}
+
+void UInventorySlotWidget::SetButtomExtraText(const FText &InText) {
+  // 内容先落到状态上，再统一重画（同 SetItemData）：Slate 控件随时可能被释放并重建，
+  // NativeConstruct 会按状态重放，只戳一次控件的写法在重建后会丢。
+  ButtomExtraTextContent = InText;
+
+  WFLOG_INFO("InventorySlotWidget::SetButtomExtraText: 槽位 %d 设置附加文本「%s」",
+             SlotIndex, *InText.ToString());
+
+  RefreshButtomExtraText();
+}
+
+void UInventorySlotWidget::CollapseButtomExtraText() {
+  // 清状态 + 重画：之后即使控件被重建，也仍然是折叠的
+  // （只改外观不清状态的话，重建会按旧内容又画出来）
+  ButtomExtraTextContent = FText::GetEmpty();
+
+  WFLOG_INFO("InventorySlotWidget::CollapseButtomExtraText: 槽位 %d 折叠附加文本",
+             SlotIndex);
+
+  RefreshButtomExtraText();
+}
+
+// 「附加文本状态 -> ButtomExtraText 外观」的唯一出口：
+// 空文本 = 折叠（与 SetTopText / SetBottomText 同一套「空即折叠」语义，
+// 「没设过」和「设成空」因此落到同一个外观上，不需要额外的 bool 状态）
+void UInventorySlotWidget::RefreshButtomExtraText() {
+  if (!ButtomExtraText)
+    return;
+
+  const bool bHasText = !ButtomExtraTextContent.IsEmpty();
+
+  ButtomExtraText->SetText(ButtomExtraTextContent);
+  ButtomExtraText->SetVisibility(bHasText ? ESlateVisibility::HitTestInvisible
+                                          : ESlateVisibility::Collapsed);
 }
 
 void UInventorySlotWidget::SetSelected(bool bSelected) {

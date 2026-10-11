@@ -19,7 +19,7 @@ public:
      *  InSlotsPerRow <= 0（默认）表示沿用控件上配置的 SlotsPerRow —— 也就是 WBP 设计器里
      *  设的每行个数；调用方不需要、也不应该再硬编码列数。 */
     UFUNCTION(BlueprintCallable, Category = "ItemContainerGrid")
-    void InitializeGrid(UItemContainer* InContainer, int32 InSlotsPerRow = 0);
+    virtual void InitializeGrid(UItemContainer* InContainer, int32 InSlotsPerRow = 0);
 
     /** 根据容器数据重建：保证槽位数量与布局，并让每个槽位重新绑定来源 + 拉一次数据。
      *  容器内容变化时会自动走 HandleContainerChanged（结构）+ 各槽位自己的订阅（内容），
@@ -44,9 +44,11 @@ protected:
     virtual void NativeDestruct() override;
 
     /** 容器内容变化回调：只处理结构（容量变化 -> 增删槽位控件）。
-     *  内容不在这里刷——每个槽位都订阅了同一个委托，会自己按 (容器, 索引) 拉数据 */
+     *  内容不在这里刷——每个槽位都订阅了同一个委托，会自己按 (容器, 索引) 拉数据。
+     *  virtual 是为了让子类补自己的「结构变化后的收尾」（如快捷栏在槽位控件补建后
+     *  再刷一次按键标签）。动态委托按函数名在**实例的实际类**上查找，所以重写能生效。 */
     UFUNCTION()
-    void HandleContainerChanged();
+    virtual void HandleContainerChanged();
 
     /** 订阅当前容器的变更委托（会先解绑，避免重复绑定） */
     void BindToContainer();

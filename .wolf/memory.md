@@ -490,3 +490,68 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+
+## Session: 2026-10-11 13:49
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-11 14:16
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-11 17:25
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:26 | Edited Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp | 1→2 lines | ~22 |
+| 17:26 | Edited Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp | 5→2 lines | ~22 |
+| 17:26 | Edited Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp | inline fix | ~15 |
+| 17:26 | Edited Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp | 2→2 lines | ~34 |
+| 17:27 | 把 QuickBarWidget.cpp 的 3 处 UE_LOG(LogTemp) 改为 WFLOG_WARNING（补 include Utils/WildforgeLog.h），重跑 GenerateClangDatabase 刷新 clangd 数据库 | Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp | 编译数据库重建成功，IDE 诊断清零 | ~2000 |
+| 17:28 | Session end: 4 writes across 1 files (QuickBarWidget.cpp) | 5 reads | ~1100 tok |
+| 17:30 | Edited Source/Wildforge/Public/ItemSystem/Structs/QuickSlotContext.h | expanded (+7 lines) | ~40 |
+| 17:30 | Edited Source/Wildforge/Public/ItemSystem/UI/QuickBarWidget.h | 4→8 lines | ~46 |
+| 17:31 | 修复 QuickBarWidget.h（补 #pragma once、include 改模块相对路径）与 QuickSlotContext.h（补 CoreMinimal.h/ItemInfo.h 依赖 + UInventorySlotWidget 前向声明）；重跑 UHT 后 clangd 假错误（FID_.._h_15_PROLOG）消失 | Source/Wildforge/Public/ItemSystem/UI/QuickBarWidget.h, Source/Wildforge/Public/ItemSystem/Structs/QuickSlotContext.h | 诊断清零（编辑器在运行，未做真编译，待 Ctrl+Alt+F11） | ~3000 |
+| 17:31 | Session end: 6 writes across 3 files (QuickBarWidget.cpp, QuickSlotContext.h, QuickBarWidget.h) | 5 reads | ~1192 tok |
+| 17:46 | Edited Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h | expanded (+13 lines) | ~168 |
+| 17:46 | Edited Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h | 2→5 lines | ~47 |
+| 17:46 | Edited Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h | expanded (+7 lines) | ~76 |
+| 17:46 | Edited Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp | added 1 condition(s) | ~340 |
+| 17:46 | Edited Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp | modified RefreshFromState() | ~59 |
+| 17:47 | 给 UInventorySlotWidget 加 SetButtomExtraText / CollapseButtomExtraText（状态 ButtomExtraTextContent + RefreshButtomExtraText，RefreshFromState 重放，空文本=默认折叠）；重跑 UHT | Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h, Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp | UHT 5.06s 成功，两文件诊断清零（编辑器在运行，未真编译，待 Ctrl+Alt+F11） | ~6000 |
+| 17:47 | Session end: 11 writes across 5 files (QuickBarWidget.cpp, QuickSlotContext.h, QuickBarWidget.h, InventorySlotWidget.h, InventorySlotWidget.cpp) | 7 reads | ~8132 tok |
+| 18:14 | Edited Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp | 6→6 lines | ~67 |
+| 18:15 | Edited Source/Wildforge/Public/ItemSystem/UI/QuickBarWidget.h | 2→2 lines | ~33 |
+
+## Session: 2026-10-11 18:47
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:54 | Edited Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h | expanded (+6 lines) | ~112 |
+| 18:54 | Edited Source/Wildforge/Public/ItemSystem/UI/ItemContainerGrid.h | 4→6 lines | ~67 |
+| 18:54 | Edited Source/Wildforge/Public/ItemSystem/UI/QuickBarWidget.h | expanded (+10 lines) | ~121 |
+| 18:54 | Edited Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp | added 3 condition(s) | ~523 |
+| 18:54 | Edited Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp | WFLOG_WARNING() → WFLOG_INFO() | ~133 |
+| 18:54 | Edited Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp | added 1 condition(s) | ~121 |
+| 18:54 | Edited Source/Wildforge/Public/UI/MainUserWidget.h | expanded (+13 lines) | ~210 |
+| 18:54 | Created Source/Wildforge/Private/UI/MainUserWidget.cpp | — | ~1013 |
+| 18:55 | Edited Source/Wildforge/Public/ItemSystem/UI/QuickBarWidget.h | 4→6 lines | ~80 |
+| 18:55 | Edited Source/Wildforge/Private/UI/MainUserWidget.cpp | 5→4 lines | ~42 |
+| 18:56 | Edited Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp | added 2 condition(s) | ~304 |
+| 18:58 | 定位「MainUserWidget::NativeConstruct 里 QuickContainer->GetCapacity() 恒为 0」：控件由 BP_FirstPersonPlayerController 的 BeginPlay 创建并 AddToViewport，早于 APlayerCharacter::BeginPlay（容器容量在那里才由 InitializeContainer 写进 Slots）。旧版容量在**构造函数**里初始化（commit 6a40a18 才挪进 BeginPlay），构造函数跑在 spawn 时、早于控制器 BeginPlay，所以这个时序坑一直被掩盖。证据：Saved/Logs/Wildforge/2026-10-10/Info.log 第 1-2 行「InitializeGrid: 绑定容器 Inventory（容量 30）」早于第 17-18 行「[背包] … 初始化背包容器：容量 30 格」约 20ms | Source/Wildforge/Private/UI/MainUserWidget.cpp, Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp | 结论：时序问题（不是数据损坏）；0 容量还连带让快捷键一个都没绑、标签全空 | ~5000 |
+| 19:02 | 修复：UQuickBarWidget 重写 HandleContainerChanged（容量到位时把 SlotsPerRow 校正为容量＝单行，再 Super，再补标签）、新增 RefreshHotkeyLabels（文本没变就不写）、SetupHotkeyBindings 去掉「槽位不足就 break」、HandleHotkeyTriggered 加 SlotWidgets.IsValidIndex 守卫；UMainUserWidget 拆出 TryInitializeQuickBar + 订阅 OnPossessedPawnChanged（客户端 Pawn 晚到那一枪）；UInventorySlotWidget 加 GetButtomExtraText 供去重；UItemContainerGrid::HandleContainerChanged 改 virtual | QuickBarWidget.h/.cpp, MainUserWidget.h/.cpp, InventorySlotWidget.h, ItemContainerGrid.h | UHT 通过（其间被 UHT 纠正一次：重写父类 UFUNCTION 不能带 UFUNCTION()）；clangd 对全部改动文件零诊断；**未做完整编译**（当时空闲物理内存仅 0.76GB），需 Ctrl+Alt+F11 或关编辑器全量构建——本次动了虚表 | ~12000 |
+| 19:03 | 顺带修 bug-076：PlayerCharacter.cpp 里快捷栏容量寄生在 bOverride_InventoryCapacity 上（bOverride_QuickBarCapacity 成死属性），拆成各自独立的 if；Config/DefaultGame.ini 里的 InventoryCapacity=40 / QuickBarCapacity=12 因缺 bOverride_* 一直是死文本（日志「没有 ini 覆盖，用类默认值 30」） | Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp | UHT 通过；ini 的值**没动**（要生效需勾两个 bOverride_*） | ~1500 |
+| 19:03 | 记录 bug-075 / bug-076；cerebrum 增 3 条 Do-Not-Repeat + 3 条 Key Learnings + 1 条 Decision Log | .wolf/buglog.json, .wolf/cerebrum.md | buglog JSON 校验通过（76 条） | ~4000 |
+| 18:57 | Edited Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp | added 1 condition(s) | ~138 |
+| 18:58 | Created C:/Users/xf317/AppData/Local/Temp/wf-syntax-check.ps1 | — | ~537 |
+
+## Session: 2026-10-11 19:04
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:05 | Edited Source/Wildforge/Private/ItemSystem/UI/InventoryUserWidget.cpp | 2→3 lines | ~32 |
+| 19:06 | clang-cl 语法检查 InventoryUserWidget.cpp（含对照 run） | Source/Wildforge/Private/ItemSystem/UI/InventoryUserWidget.cpp | 对照精确报 1 错@224，真身 EXIT=0/0 errors | ~480 |
+| 19:06 | 修正 hook 自动写入的 bug-077（真实因果：APawn incomplete type，缺 GameFramework/Pawn.h） | .wolf/buglog.json | JSON 校验通过，77 bugs | ~230 |
+| 19:06 | Session end: 1 writes across 1 files (InventoryUserWidget.cpp) | 1 reads | ~34 tok |
