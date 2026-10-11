@@ -132,6 +132,12 @@
 		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/PlayerInventory.cpp.obj"
 	},
 	{
+		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/Components/QuickContainer.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/QuickContainer.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/QuickContainer.cpp.obj"
+	},
+	{
 		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/Database/ItemDatabaseSubsystem.cpp",
 		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/ItemDatabaseSubsystem.cpp.obj.rsp\" ",
 		"directory": "D:/UE/UE_5.7/Engine/Source",

@@ -3,6 +3,8 @@
 /.git
 /.vs
 /.vscode
+/.wolf
+/.workbuddy
 /backup-repo.git
 /Content
 /DerivedDataCache

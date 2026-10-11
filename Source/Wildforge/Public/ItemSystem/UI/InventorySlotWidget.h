@@ -67,7 +67,7 @@ public:
   UFUNCTION(BlueprintCallable, Category = "Inventory|Slot")
   void RefreshFromContainer();
 
-  UItemContainer *GetOwningContainer() const { return OwningContainer; }
+  UItemContainer *GetOwningContainer() const { return OwningContainer.Get(); }
 
   UFUNCTION(BlueprintPure, Category = "Inventory|Slot")
   int32 GetSlotIndex() const { return SlotIndex; }
@@ -160,10 +160,14 @@ protected:
   FLinearColor HighlightColor = FLinearColor(1.f, 0.85f, 0.2f, 1.f);
 
 private:
-  // 显示来源（容器 + 索引）。用 UPROPERTY 持有：容器是本控件唯一的数据来源，
-  // 顺带让 GC 能看见这条引用（原先的裸指针既不受 GC 保护，容器销毁后也不会置空）。
+  // 显示来源（容器 + 索引）。必须用弱引用：
+  //   1) 控件实例化时会从 WBP 模板逐属性拷贝，`OwningContainer` 这类普通对象引用即使
+  //      标了 Transient 也会被带过来（UObjectGlobals.cpp:4671-4684），旧运行的容器指针
+  //      会直接落在新实例上；裸指针的第一次解引用就是踩已回收内存（bug-064）；
+  //   2) 弱引用只做序列号比对，对已销毁的容器返回「无效」，既不会悬空解引用，
+  //      也不会像强引用那样把已死的容器拖在这里（原来注释里担心的问题弱引用天然解决）。
   UPROPERTY(Transient)
-  TObjectPtr<UItemContainer> OwningContainer;
+  TWeakObjectPtr<UItemContainer> OwningContainer;
 
   int32 SlotIndex = INDEX_NONE;
 

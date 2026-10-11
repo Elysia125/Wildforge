@@ -1091,6 +1091,227 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-08T14:19:33.204Z"
+    },
+    {
+      "id": "bug-055",
+      "timestamp": "2026-10-09T16:11:41.243Z",
+      "error_message": "Wrong return value",
+      "file": "Source/Wildforge/Public/ItemSystem/UI/ItemContainerGrid.h",
+      "root_cause": "Was returning: Container; }",
+      "fix": "Now returns: Container.Get(); }",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "h"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-09T16:11:41.243Z"
+    },
+    {
+      "id": "bug-056",
+      "timestamp": "2026-10-09T16:11:43.629Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Public/ItemSystem/UI/ItemContainerGrid.h",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 3→8 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "h"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-09T16:11:43.629Z"
+    },
+    {
+      "id": "bug-057",
+      "timestamp": "2026-10-09T16:11:47.328Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Private/ItemSystem/UI/ItemContainerGrid.cpp",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 24→35 lines (3 removed) | Also: if (Container) {; Container->OnContainerChanged.AddDynamic( | Also: *GetNameSafe(InContainer),; InContainer ? InContainer->GetCapacity() : 0, Slot | Also: // 目标槽位数 = 容器容量（无容器/未指定槽位类时为 0）; (Container && SlotWidgetClass) ? Container->GetCap",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-10-09T16:12:07.786Z"
+    },
+    {
+      "id": "bug-058",
+      "timestamp": "2026-10-09T16:12:14.542Z",
+      "error_message": "Wrong return value",
+      "file": "Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h",
+      "root_cause": "Was returning: OwningContainer; }",
+      "fix": "Now returns: OwningContainer.Get(); }",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "h"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-09T16:12:14.542Z"
+    },
+    {
+      "id": "bug-059",
+      "timestamp": "2026-10-09T16:12:17.121Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 5→9 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "h"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-09T16:12:17.121Z"
+    },
+    {
+      "id": "bug-060",
+      "timestamp": "2026-10-09T16:12:24.884Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 6→7 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-09T16:12:24.884Z"
+    },
+    {
+      "id": "bug-061",
+      "timestamp": "2026-10-09T16:12:27.769Z",
+      "error_message": "Wrong condition in logic",
+      "file": "Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+      "root_cause": "Condition was: if (!OwningContainer || !OwningContainer->GetItemAtSlo)",
+      "fix": "Changed to: if (!LiveContainer && OwningContainer.IsStale(true)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-10-09T16:12:46.128Z"
+    },
+    {
+      "id": "bug-062",
+      "timestamp": "2026-10-09T16:12:55.717Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Public/ItemSystem/UI/InventoryUserWidget.h",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 3→6 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "h"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-09T16:12:55.717Z"
+    },
+    {
+      "id": "bug-063",
+      "timestamp": "2026-10-09T16:13:06.141Z",
+      "error_message": "Missing guard clause",
+      "file": "Source/Wildforge/Private/ItemSystem/Components/ItemContainer.cpp",
+      "root_cause": "No early return/throw for edge case: !Slots.IsValidIndex(SlotIndex",
+      "fix": "Added guard clause: if (!Slots.IsValidIndex(SlotIndex)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-09T16:13:06.141Z"
+    },
+    {
+      "id": "bug-064",
+      "timestamp": "2026-10-10T00:20:00",
+      "error_message": "W32/0xC0000005 读访问违规：UItemContainer::GetItemAtSlot（ItemContainer.cpp:310）解引用 this->SlotOccupied.AllocatorInstance.Data = 0x111011101110112 —— 这是字节模式而非堆地址。调用栈：ItemContainerGrid::NativeConstruct -> InitializeGrid/RefreshGrid -> EnsureSlotCount 新建槽位 -> InventorySlotWidget::InitializeSlot -> RefreshFromContainer -> GetItemAtSlot。两次 PIE 均在 BP_FirstPersonPlayerController::ReceiveBeginPlay 后数毫秒崩溃，日志中 0 条 [背包]/LogWildforge（本进程内没有任何容器被 InitializeContainer 初始化过）。",
+      "file": "Source/Wildforge/Private/ItemSystem/UI/ItemContainerGrid.cpp",
+      "root_cause": "控件实例上的容器引用是失效指针（已回收内存）——非空不等于有效。(1) 证据：已回收内存才会出现 0x111011101110112 这类字节模式（新 UObject 是零初始化，未写过的 TArray 指针只会是 0）；且因无任何容器被初始化，任何活着的容器 Slots.Num()=0，GetItemAtSlot 里 Slots.IsValidIndex 早就会返回 false——但它没有，说明 this 根本不是一个活着的容器。(2) 注入通道（引擎已证实）：控件实例化时按 WBP 模板逐属性拷贝，普通对象引用（非 Instanced）即使标了 Transient 也会被原样带过来（UObjectGlobals.cpp:4671-4684），旧运行的容器指针会落在新实例上。(3) 为什么没被拦下：NativeConstruct 的 if (!Container) 把非空当成有效而跳过重解析。(4) 崩溃链：RefreshGrid 对失效指针读 GetCapacity()（=Slots.Num()），从垃圾内存读到正数容量并据此创建槽位控件，第一个 InitializeSlot 把死指针存进 OwningContainer 后立刻 GetItemAtSlot 解引用 SlotOccupied.Data。此前 AddDynamic/RemoveDynamic 只碰委托数组不深入对象，才苟活到了这一步。具体是哪条链把死指针放上去的，由本次新增的诊断日志在下次运行时指认。",
+      "fix": "(1) ItemContainerGrid::Container / InventorySlotWidget::OwningContainer / InventoryUserWidget::ItemContainer 全部改为 UPROPERTY(Transient) TWeakObjectPtr<UItemContainer>：弱引用只做序列号比对，目标被回收后返回无效，绝不解引用；(2) ItemContainerGrid::NativeConstruct 去掉 if (!Container) 守卫，无条件以 GetOwningPlayerPawn()->FindComponentByClass<UItemContainer>() 的实时结果为重新解析来源，对继承的失效引用记 WFLOG_WARNING；(3) 所有使用点一律先 .Get() 解析成活对象再判空；(4) UItemContainer::GetItemAtSlot/IsSlotEmpty 对 Slots 与 SlotOccupied 各自做 IsValidIndex 边界检查，不同步时记 WFLOG_ERROR（原来只查了前者）；(5) EnsureSlotCount 对目标槽位数做 [0,512] 夹紧并记 WFLOG_ERROR，防止垃圾容量驱动批量 CreateWidget；(6) InitializeGrid/BindToContainer 加 WFLOG_INFO 诊断。完整构建通过（UBT WildforgeEditor Win64 Development -> Result: Succeeded）。",
+      "tags": [
+        "crash",
+        "access-violation",
+        "stale-pointer",
+        "weak-pointer",
+        "widget-template-copy",
+        "transient",
+        "umg",
+        "itemcontainer",
+        "itemcontainergrid"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-09T16:01:52Z"
+    },
+    {
+      "id": "bug-066",
+      "timestamp": "2026-10-11T00:00:00+08:00",
+      "error_message": "clang: No matching member function for call to 'BindDelegate' at QuickContainer.cpp:36; UFunction* is not accepted by any overload",
+      "file": "Source/Wildforge/Private/ItemSystem/Components/QuickContainer.cpp",
+      "root_cause": "FInputActionUnifiedDelegate::BindDelegate has a dynamic-binding overload taking (UObject*, const FName), while the code passed the UFunction* returned by FindFunction, which matches no overload.",
+      "fix": "Pass Binding.FunctionName directly to BindDelegate(Owner, Binding.FunctionName).",
+      "tags": [
+        "compile-error",
+        "input",
+        "delegate",
+        "BindDelegate"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T00:00:00+08:00"
+    },
+    {
+      "id": "bug-065",
+      "timestamp": "2026-10-10T00:35:00+08:00",
+      "error_message": "修复 bug-064 后实测（4 局 PIE，日志 UTC 16:22:15–16:26:07 = 本地 2026-10-10 00:22–00:26）：每局开局刷约 90 条 WFLOG_ERROR「GetItemAtSlot[BP_ThirdPersonCharacter_C_0]: Slots(30) 与 SlotOccupied(0) 长度不一致，槽位 N 不可查询」，4 局共 360 条，InitializeContainer 之后自愈。同批次确认修复效果：8 次 InitializeGrid / 4 次「初始化背包容器」、0 条 crash 标记。",
+      "file": "Source/Wildforge/Private/ItemSystem/Components/ItemContainer.cpp",
+      "root_cause": "控件（UItemContainerGrid / UInventorySlotWidget）的构造与首轮查询发生在玩家角色 BeginPlay 的 InitializeContainer 之前（实测：控件首查 ~+27ms、[背包] 初始化 ~+46ms）。该窗口内容器带着蓝图资产保存的旧槽位状态：Slots 有 30 个元素、SlotOccupied 为 0。C++ 运行期所有改容量路径（InitializeContainer / ResizeContainer / RebuildDerivedState）都成对 SetNum，历史版本（HEAD）亦同，不存在单侧扩容 ⇒ 不等长只能来自资产序列化残留。旧 GetItemAtSlot 只查 Slots 就索引 SlotOccupied，在该窗口下越界读（bug-064 修复后改为 ERROR 返回，但把预期内窗口刷成了高频噪声）。",
+      "fix": "GetItemAtSlot 区分两种不等长：SlotOccupied.Num()==0（初始化前窗口）→ 按空槽处理 + 一次性 WFLOG_WARNING（函数内 static bool 去重，不动类布局、兼容 Live Coding）；其它不等长 → 保持逐条 WFLOG_ERROR。窗口在 PlayerCharacter.cpp:199 的 InitializeContainer 之后自然消失，无需调整初始化顺序。",
+      "tags": [
+        "item-container",
+        "ui-widget",
+        "initialization-order",
+        "log-noise",
+        "pie",
+        "array-out-of-sync",
+        "serialized-state"
+      ],
+      "related_bugs": [
+        "bug-064"
+      ],
+      "occurrences": 360,
+      "last_seen": "2026-10-09T16:26:07Z"
+    },
+    {
+      "id": "bug-067",
+      "timestamp": "2026-10-11T04:00:13.215Z",
+      "error_message": "Wrong reference: return should be WFLOG_WARNING",
+      "file": "Source/Wildforge/Private/ItemSystem/Components/QuickContainer.cpp",
+      "root_cause": "Used \"return\" instead of \"WFLOG_WARNING\"",
+      "fix": "Changed return → WFLOG_WARNING",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T04:00:13.215Z"
     }
   ]
 }

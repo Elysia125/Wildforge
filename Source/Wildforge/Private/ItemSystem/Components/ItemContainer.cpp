@@ -4,24 +4,8 @@
 
 #include "ItemSystem/Database/ItemDatabaseSubsystem.h"
 #include "Net/UnrealNetwork.h"
-#include "Utils/WildforgeAuthority.h"
 #include "Utils/WildforgeLog.h"
-
-// 开发期门禁：本类所有修改函数都是 BlueprintAuthorityOnly，在客户端调用会被引擎
-// 静默丢弃（callspace = Absorbed）——单机测试看不出来，联机才失效，这类 bug 极难查。
-// 统一用本宏在非权威端立刻报错并安全返回（Shipping 下被裁掉，只剩日志）。
-// 客户端请改调对应的 Server_* RPC。
-// 注意：HasAuthority() 是 AActor 的方法，组件上不存在（会报 C3861），必须经
-// GetOwner() 转发——这里用 Utils/WildforgeAuthority.h 的辅助函数。
-#define WF_CONTAINER_AUTHORITY_GUARD(RetVal)                                   \
-  do {                                                                         \
-    if (!IsAuthoritativeForActorComponent(this)) {                             \
-      WFLOG_ERROR(                                                             \
-          "%s 在非权威端被调用，已忽略；客户端请改用对应的 Server_* RPC。",   \
-          *FString(__FUNCTION__));                                             \
-      return RetVal;                                                           \
-    }                                                                          \
-  } while (false)
+#include "Utils/ComponentAuthorityGuard.h"
 
 // Sets default values for this component's properties
 UItemContainer::UItemContainer() {
@@ -96,7 +80,7 @@ void UItemContainer::TickComponent(
 }
 
 void UItemContainer::InitializeContainer(int32 InCapacity) {
-  WF_CONTAINER_AUTHORITY_GUARD(void());
+  WF_COMPONENT_AUTHORITY_GUARD(void());
   check(IsInGameThread());
   if (InCapacity <= 0)
     return;
@@ -121,7 +105,7 @@ void UItemContainer::InitializeContainer(int32 InCapacity) {
 
 int32 UItemContainer::AddItemStack(const FItemInformation &Item,
                                    int32 Quantity) {
-  WF_CONTAINER_AUTHORITY_GUARD(0);
+  WF_COMPONENT_AUTHORITY_GUARD(0);
   check(IsInGameThread());
   if (Quantity <= 0) {
     return 0;
@@ -186,7 +170,7 @@ int32 UItemContainer::AddItemStack(const FItemInformation &Item,
 }
 
 int32 UItemContainer::AddItemByID(int32 ItemID, int32 Quantity) {
-  WF_CONTAINER_AUTHORITY_GUARD(0);
+  WF_COMPONENT_AUTHORITY_GUARD(0);
   check(IsInGameThread());
   const UItemDatabaseSubsystem *Database = UItemDatabaseSubsystem::Get(this);
   if (!Database) {
@@ -197,7 +181,7 @@ int32 UItemContainer::AddItemByID(int32 ItemID, int32 Quantity) {
 }
 
 bool UItemContainer::RemoveItem(int32 SlotIndex, int32 Quantity) {
-  WF_CONTAINER_AUTHORITY_GUARD(false);
+  WF_COMPONENT_AUTHORITY_GUARD(false);
   check(IsInGameThread());
   if (RemoveSlotQuantityInternal(SlotIndex, Quantity) <= 0) {
     return false;
@@ -207,7 +191,7 @@ bool UItemContainer::RemoveItem(int32 SlotIndex, int32 Quantity) {
 }
 
 bool UItemContainer::RemoveAllItem(int32 ItemID, int32 Quantity) {
-  WF_CONTAINER_AUTHORITY_GUARD(false);
+  WF_COMPONENT_AUTHORITY_GUARD(false);
   check(IsInGameThread());
   if (RemoveByItemIDInternal(ItemID, Quantity) <= 0) {
     return false;
@@ -302,19 +286,49 @@ TArray<int32> UItemContainer::FindAllItems(int32 ItemID) const {
   return {};
 }
 bool UItemContainer::IsSlotEmpty(int32 SlotIndex) const {
-  return Slots.IsValidIndex(SlotIndex) && !SlotOccupied[SlotIndex];
+  // 两个数组是分开复制的，长度理论上一致但各自查边界更稳：
+  // 只检查 Slots 就按下标读 SlotOccupied，两数组一旦不等长就是越界读
+  return Slots.IsValidIndex(SlotIndex) &&
+         SlotOccupied.IsValidIndex(SlotIndex) && !SlotOccupied[SlotIndex];
 }
 
 bool UItemContainer::GetItemAtSlot(int32 SlotIndex,
                                    FItemInformation &OutItem) const {
-  if (!Slots.IsValidIndex(SlotIndex) || !SlotOccupied[SlotIndex])
+  if (!Slots.IsValidIndex(SlotIndex))
+    return false;
+  if (!SlotOccupied.IsValidIndex(SlotIndex)) {
+    // Slots 通过而 SlotOccupied 越界：旧写法在这里直接读越界内存
+    //（读访问违规，bug-064 现场 stack 的第一受害者）。分两种情况：
+    //   1) SlotOccupied 为空（Num==0）：已知的「初始化前窗口」——控件在角色 BeginPlay
+    //      （InitializeContainer）之前就先构造并查询，容器此刻可能仍带着蓝图资产里
+    //      保存的旧槽位元素（实测 Slots(30)/SlotOccupied(0)，见 bug-065）；按空槽
+    //      处理，且只提示一次，避免每局刷 60+ 条噪声把真错误淹没。
+    //   2) 其它不等长（部分缺失/错位）：真正的数据损坏，保持每次报错。
+    if (SlotOccupied.Num() == 0) {
+      static bool bWarnedUninitializedSlotArrays = false;
+      if (!bWarnedUninitializedSlotArrays) {
+        bWarnedUninitializedSlotArrays = true;
+        WFLOG_WARNING("GetItemAtSlot[%s]: 容器尚未初始化（Slots 已有 %d 个元素、"
+                      "SlotOccupied 为空），按空槽处理；该窗口预期消失在 BeginPlay 的 "
+                      "InitializeContainer 之后（本条仅提示一次）",
+                      *GetNameSafe(GetOwner()), Slots.Num());
+      }
+    } else {
+      WFLOG_ERROR("GetItemAtSlot[%s]: Slots(%d) 与 SlotOccupied(%d) 长度不一致，"
+                  "槽位 %d 不可查询",
+                  *GetNameSafe(GetOwner()), Slots.Num(), SlotOccupied.Num(),
+                  SlotIndex);
+    }
+    return false;
+  }
+  if (!SlotOccupied[SlotIndex])
     return false;
   OutItem = Slots[SlotIndex];
   return true;
 }
 
 bool UItemContainer::SwapSlots(int32 SlotA, int32 SlotB) {
-  WF_CONTAINER_AUTHORITY_GUARD(false);
+  WF_COMPONENT_AUTHORITY_GUARD(false);
   check(IsInGameThread());
   if (!Slots.IsValidIndex(SlotA) || !Slots.IsValidIndex(SlotB))
     return false;
@@ -340,7 +354,7 @@ bool UItemContainer::SwapSlots(int32 SlotA, int32 SlotB) {
 }
 
 bool UItemContainer::MoveOrMergeItem(int32 FromSlot, int32 ToSlot) {
-  WF_CONTAINER_AUTHORITY_GUARD(false);
+  WF_COMPONENT_AUTHORITY_GUARD(false);
   check(IsInGameThread());
   if (!Slots.IsValidIndex(FromSlot) || !Slots.IsValidIndex(ToSlot)) {
     return false;
@@ -402,7 +416,7 @@ bool UItemContainer::MoveOrMergeItem(int32 FromSlot, int32 ToSlot) {
 }
 
 void UItemContainer::ClearContainer() {
-  WF_CONTAINER_AUTHORITY_GUARD(void());
+  WF_COMPONENT_AUTHORITY_GUARD(void());
   check(IsInGameThread());
   const int32 Capacity = Slots.Num();
   for (int32 i = 0; i < Capacity; ++i) {
@@ -421,7 +435,7 @@ void UItemContainer::ClearContainer() {
 }
 
 bool UItemContainer::ResizeContainer(int32 NewCapacity) {
-  WF_CONTAINER_AUTHORITY_GUARD(false);
+  WF_COMPONENT_AUTHORITY_GUARD(false);
   check(IsInGameThread());
   if (NewCapacity <= 0)
     return false;
@@ -492,7 +506,7 @@ bool UItemContainer::ResizeContainer(int32 NewCapacity) {
 }
 
 void UItemContainer::OrganizeContainer() {
-  WF_CONTAINER_AUTHORITY_GUARD(void());
+  WF_COMPONENT_AUTHORITY_GUARD(void());
   check(IsInGameThread());
   const int32 Capacity = Slots.Num();
   if (Capacity <= 0)

@@ -2,11 +2,10 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
 
 #include "Blueprint/UserWidget.h"
 #include "ItemSystem/UI/InventoryUserWidget.h"
-
+#include "ItemSystem/UI/ItemContainerGrid.h"
 #include "MainUserWidget.generated.h"
 
 /**
@@ -16,8 +15,14 @@ UCLASS()
 class WILDFORGE_API UMainUserWidget : public UUserWidget {
   GENERATED_BODY()
 public:
+  UMainUserWidget(const FObjectInitializer &ObjectInitializer =
+                     FObjectInitializer::Get());
   UPROPERTY(BlueprintReadOnly, meta = (BindWidget), Category = "Inventory")
   TObjectPtr<UInventoryUserWidget> InventoryWidget;
+
+  UPROPERTY(BlueprintReadOnly, meta = (BindWidget), Category = "Inventory")
+  TObjectPtr<UItemContainerGrid> QuickBarWidget;
+
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
   bool bIsInventoryOpen = false;
 

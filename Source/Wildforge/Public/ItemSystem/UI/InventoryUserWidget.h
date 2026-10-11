@@ -168,8 +168,11 @@ protected:
 	TObjectPtr<UWidgetAnimation> OrganizeButtonClickAnim;
 
 private:
-	UPROPERTY()
-	TObjectPtr<UItemContainer> ItemContainer;
+	// 弱引用：与 ItemContainerGrid / InventorySlotWidget 同一约定——控件实例化会从 WBP
+	// 模板逐属性拷贝对象引用（Transient 挡不住，见 UObjectGlobals.cpp:4671-4684），
+	// 裸指针可能带着旧运行的容器落到新实例上（bug-064）；弱引用对失效目标返回「无效」。
+	UPROPERTY(Transient)
+	TWeakObjectPtr<UItemContainer> ItemContainer;
 
 	int32 CurrentPageIndex = -1; // 默认初始化为 -1 确保首次切换生效
 

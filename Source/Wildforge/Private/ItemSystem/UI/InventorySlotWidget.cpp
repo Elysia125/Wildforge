@@ -8,6 +8,7 @@
 #include "ItemSystem/UI/InventorySlotDragDropOperation.h"
 #include "Styling/SlateBrush.h"
 #include "UObject/Class.h"
+#include "Utils/WildforgeLog.h"
 
 void UInventorySlotWidget::NativeConstruct() {
   Super::NativeConstruct();
@@ -193,8 +194,9 @@ void UInventorySlotWidget::ClearSlot() {
 
 void UInventorySlotWidget::InitializeSlot(UItemContainer *InContainer,
                                           int32 InSlotIndex) {
-  // 已经绑在同一个来源上：只补一次拉取（RefreshGrid 会重复调到这里）
-  if (OwningContainer == InContainer && SlotIndex == InSlotIndex) {
+  // 已经绑在同一个来源上：只补一次拉取（RefreshGrid 会重复调到这里）。
+  // 比较用弱引用解析值：继承来的失效引用解析为 nullptr，不会被误判成「已绑定」
+  if (OwningContainer.Get() == InContainer && SlotIndex == InSlotIndex) {
     RefreshFromContainer();
     return;
   }
@@ -204,13 +206,16 @@ void UInventorySlotWidget::InitializeSlot(UItemContainer *InContainer,
   OwningContainer = InContainer;
   SlotIndex = InSlotIndex;
 
-  if (!OwningContainer || SlotIndex == INDEX_NONE) {
+  // 取弱引用解析后的活对象：目标已销毁（含模板带进来的死指针）时为 nullptr，
+  // 一律按空槽处理，绝不解引用
+  UItemContainer *LiveContainer = OwningContainer.Get();
+  if (!LiveContainer || SlotIndex == INDEX_NONE) {
     ClearSlot();
     return;
   }
 
   // 订阅容器变更：之后容器一变，本控件就去比对「我这一格」有没有变
-  OwningContainer->OnContainerChanged.AddDynamic(
+  LiveContainer->OnContainerChanged.AddDynamic(
       this, &UInventorySlotWidget::HandleContainerChanged);
 
   // 立即拉一次。两种情况都靠它兜底：
@@ -221,8 +226,9 @@ void UInventorySlotWidget::InitializeSlot(UItemContainer *InContainer,
 }
 
 void UInventorySlotWidget::UnbindFromContainer() {
-  if (OwningContainer) {
-    OwningContainer->OnContainerChanged.RemoveDynamic(
+  // 只对活对象退订；引用失效时无可退订（弱引用不会解引用已回收对象）
+  if (UItemContainer *LiveContainer = OwningContainer.Get()) {
+    LiveContainer->OnContainerChanged.RemoveDynamic(
         this, &UInventorySlotWidget::HandleContainerChanged);
   }
 }
@@ -230,8 +236,17 @@ void UInventorySlotWidget::UnbindFromContainer() {
 void UInventorySlotWidget::HandleContainerChanged() { RefreshFromContainer(); }
 
 void UInventorySlotWidget::RefreshFromContainer() {
+  // 弱引用解析：容器在本控件存活期间被销毁时，这里拿到 nullptr 而不是悬空指针。
+  // 解析值为空且引用确实失效过 —— 说明来源已经没了（可能来自控件模板带进来的旧值），
+  // 记一条日志便于定位，然后按空槽处理
+  UItemContainer *LiveContainer = OwningContainer.Get();
+  if (!LiveContainer && OwningContainer.IsStale(true)) {
+    WFLOG_WARNING("InventorySlotWidget::RefreshFromContainer: 绑定过的容器引用已失效"
+                  "（弱指针，未解引用），本格按空槽处理");
+  }
+
   FItemInformation Item;
-  if (!OwningContainer || !OwningContainer->GetItemAtSlot(SlotIndex, Item)) {
+  if (!LiveContainer || !LiveContainer->GetItemAtSlot(SlotIndex, Item)) {
     // 空槽：本来就是空的就不要再写一遍 Slate 状态（一次广播会叫到所有槽位）
     if (bHasItemData) {
       ClearSlot();
@@ -264,11 +279,12 @@ bool UInventorySlotWidget::IsSameAsCurrentData(
 FReply UInventorySlotWidget::NativeOnMouseButtonDown(
     const FGeometry &InGeometry, const FPointerEvent &InMouseEvent) {
   if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton) {
-    if (OwningContainer == nullptr) {
+    UItemContainer *LiveContainer = OwningContainer.Get();
+    if (LiveContainer == nullptr) {
       return FReply::Handled();
     }
     FItemInformation ItemInfo;
-    if (OwningContainer->GetItemAtSlot(SlotIndex, ItemInfo)) {
+    if (LiveContainer->GetItemAtSlot(SlotIndex, ItemInfo)) {
       if (ItemInfo.ItemID < 0 || ItemInfo.ItemQuality <= 0) {
         return FReply::Handled();
       }
@@ -287,7 +303,8 @@ void UInventorySlotWidget::NativeOnDragDetected(
   Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
 
   // 没有容器就没有可拖拽的内容来源，直接放弃（否则下面会解引用空指针）
-  if (!OwningContainer) {
+  UItemContainer *LiveContainer = OwningContainer.Get();
+  if (!LiveContainer) {
     return;
   }
 
@@ -313,12 +330,13 @@ void UInventorySlotWidget::NativeOnDragDetected(
     // 手工 TakeWidget 拿到的 TSharedRef 一丢就整棵析构，引擎随后还会再建一次
     // （FUMGDragDropOp::New 里的 TakeWidget，UMGDragDropOp.cpp:192）；
     // 外观由 NativeConstruct 按状态重放，顺序无关。
-    DragVisual->InitializeSlot(OwningContainer, SlotIndex);
+    DragVisual->InitializeSlot(LiveContainer, SlotIndex);
     DragOp->DefaultDragVisual = DragVisual;
   }
   // 设置锚点：鼠标按下位置作为锚点
   DragOp->Pivot = EDragPivot::MouseDown;
-  DragOp->SourceContainer = OwningContainer;
+  // 拖拽操作上用强引用记录来源容器（拖拽期间保证容器存活；操作本身是短命对象）
+  DragOp->SourceContainer = LiveContainer;
   DragOp->SourceSlotIndex = SlotIndex;
   // 弱引用记录源控件：供落点/取消时兜底复位显示（不延长控件生命周期）
   DragOp->SourceWidget = this;
@@ -360,7 +378,8 @@ bool UInventorySlotWidget::NativeOnDrop(const FGeometry& InGeometry,
     Super::NativeOnDrop(InGeometry, InDragDropEvent, InOperation);
 
     UInventorySlotDragDropOperation* ItemOp = Cast<UInventorySlotDragDropOperation>(InOperation);
-    if (!ItemOp || !OwningContainer) return false;
+    UItemContainer *LiveContainer = OwningContainer.Get();
+    if (!ItemOp || !LiveContainer) return false;
 
     // 先复位源控件的拖拽视觉：无论下面走合并、交换还是提前 return，
     // 都必须恢复，否则源格子会永久停留在半透明状态。
@@ -379,13 +398,13 @@ bool UInventorySlotWidget::NativeOnDrop(const FGeometry& InGeometry,
     }
 
     // 拖到自己身上，什么都不做
-    if (ItemOp->SourceContainer == OwningContainer && FromSlot == ToSlot)
+    if (ItemOp->SourceContainer == LiveContainer && FromSlot == ToSlot)
     {
         return false;
     }
 
     // 跨容器拖拽暂不支持：共享容器（箱子等）需要额外的服务器校验通道
-    if (ItemOp->SourceContainer != OwningContainer)
+    if (ItemOp->SourceContainer != LiveContainer)
     {
         return false;
     }
@@ -393,7 +412,7 @@ bool UInventorySlotWidget::NativeOnDrop(const FGeometry& InGeometry,
     // 真正的合并/交换规则由容器决定（服务器权威，客户端不得直接改容器数据）：
     //   - 同 ItemID 且可堆叠且目标未满堆 -> 源数量并入目标，装不下的留在源槽位
     //   - 不可堆叠 / 不同 ItemID / 目标已是满堆 -> 交换两槽
-    OwningContainer->Server_MoveOrMerge(FromSlot, ToSlot);
+    LiveContainer->Server_MoveOrMerge(FromSlot, ToSlot);
 
     return true;
 }

@@ -327,6 +327,32 @@
   既不会报错也不会生效（被当作未知键忽略），现象是「改了名以后打包服务器上的调参全部回到默认值」。
   改字段名时要同步改服务器上的 `Saved/Config/<Platform>/Game.ini`。**改类名同理**——ini 节名是
   `[/Script/Wildforge.<类名>]`，拆类/改名都会让旧节整节失效（旧键留在文件里但不被读取）。
+- **UI 控件实例化是「按模板逐属性拷贝」，`Transient` 拦不住普通对象引用**：控件实例由
+  `NewObject(..., Template=模板树, bCopyTransientsFromClassDefaults=false, &ObjectInstancingGraph)`
+  创建，随后 `FObjectInitializer::InitProperties`（`UObjectGlobals.cpp:4671-4684`）把模板属性灌进来；
+  跳过拷贝的条件要求「transient 标记 **且** `ContainsInstancedObjectProperty()`」**同时成立**。
+  所以 Widget 上 `TObjectPtr<USomeObject>` 字段会继承模板里的值（哪怕是编辑器期/旧运行留下的
+  死指针）；`UUserWidget::WidgetTree` 之所以安全，是因为它同时满足两个条件。⇒ **UI 里指向
+  外部对象的引用一律 `TWeakObjectPtr`**，「非空」在任何时候都不能当「有效」的判据。见 bug-064。
+- **`TWeakObjectPtr` 的行为边界**：`Get()` / `IsValid()` 只做「对象数组下标 + 序列号」比对，
+  对已回收目标返回 nullptr / false，**不会解引用**目标（这正是它比裸指针安全的原因）；
+  支持作为 `UPROPERTY(Transient)`（反射类型 FWeakObjectProperty，别加蓝图可见性标记）。
+  `IsStale(true)` 能区分「从未设置」与「曾设置但目标已失效」——适合放在构造/刷新路径里做
+  「是不是继承了一个死指针」的诊断日志。
+- **控件构造早于角色 `BeginPlay` 的「初始化前窗口」（实测 2026-10-10，见 bug-065）**：`UItemContainerGrid` /
+  `UInventorySlotWidget` 的构造与首轮查询发生在玩家角色 `BeginPlay`（`InitializeContainer`）之前
+  （实测：控件首查 ~+27ms、背包初始化 ~+46ms）。该窗口内容器可能带着蓝图资产保存的旧槽位状态
+  （实测 `Slots` 30 个元素、`SlotOccupied` 0 个元素）——C++ 运行期所有改容量路径都成对 `SetNum`
+  （含 HEAD 历史版本），不存在单侧扩容 ⇒ 不等长只能来自资产序列化。这是**预期内的短暂窗口**，
+  `InitializeContainer` 后自愈：配对数组按空槽处理即可，不要为它加初始化顺序 hack。
+- **`TArray<bool>` 在 UE 5.7 不是位特化**：`SlotOccupied[i]` 就是 `bool&`（无代理对象；
+  `FDefaultBitArrayAllocator` 属 `TBitArray` 体系）。`TArray::operator[]` = `RangeCheck(Index)`
+  （`checkf`，越界即断言/崩溃）+ `GetData()[Index]`；`GetData()` 返回 `AllocatorInstance.Data`——
+  VS 报错里的 `this->SlotOccupied.AllocatorInstance.Data` 就是**数组内部指针本身**。推论：活着的
+  未初始化 TArray 只会产生 nullptr 解引用（AV@0x0）或 RangeCheck 断言，**给不出**
+  `0x111011101110112` 这类垃圾值——出现这种值即 `this` 指向的内存已被回收复用（对象已死，见 bug-064）。
+
+- [2026-10-11] `FInputActionUnifiedDelegate::BindDelegate` 的动态绑定重载签名是 `(UObject*, const FName)`，不是 `(UObject*, UFunction*)`；有函数名时直接传 `FName`，无需先 `FindFunction`。见 bug-066。
 
 ## Do-Not-Repeat
 
@@ -491,6 +517,18 @@
 - [2026-10-08] **在一个 `.cpp` 里改动多处时不要靠「行号记忆」定位**：本会话里 `SlideComponent.cpp`
   的 `COND_OwnerOnly` 行（`SlideCooldown`）与新增的 `COND_InitialOnly` 行相邻，插错位置会让
   同一个属性注册两次（UHT 不报错、运行期行为诡异）。加复制注册时先 `grep -n DOREPLIFETIME` 看全貌。
+- [2026-10-10] **不要用 `if (!Container)` 判「控件上的对象引用可用」**：控件实例会从 WBP 模板
+  逐属性拷贝普通对象引用（`Transient` 也拦不住，见 Key Learnings），「非空」完全可能是「指向已回收
+  内存的死指针」——旧写法因此跳过重解析，把垃圾指针喂给 RefreshGrid（读到垃圾容量 → 按垃圾数量建
+  槽位 → 第一次解引用就读访问违规，`0x111011101110112` 这种字节模式就是回收内存的特征）。
+  控件里所有指向外部对象的引用改用 `TWeakObjectPtr` + 使用点先 `.Get()` 再判空；构造时以
+  「拥有者 Pawn 的实时查找结果」为准**无条件重解析**，不要任何「已有值就跳过」的守卫。见 bug-064。
+- [2026-10-10] **不要只对成对数组的一半做边界检查**：`GetItemAtSlot` 只查了 `Slots.IsValidIndex`
+  就按下标读 `SlotOccupied`，两个复制数组一旦不同步就是越界读。复制数组
+  （`Slots`/`SlotOccupied`）的每一半都要各自 `IsValidIndex`，不一致时记 ERROR 后返回。见 bug-064。
+- [2026-10-10] **预期内的正常窗口不要逐条打 ERROR**：高频查询路径（如每局开局每个槽位都会调用的
+  `GetItemAtSlot`）在预期分支上用函数内 `static bool` 只提示一次 WARNING，只有真损坏才逐条 ERROR——
+  否则每局 ~90 条噪声会把真错误淹没（见 bug-065）。
 
 ## Decision Log
 
@@ -685,3 +723,11 @@
   只发 owner 会让旁观者用错值。附带修好一处旧问题：`UBlinkComponent::BlinkCooldown` 原先**没有任何
   复制通道**，客户端 `IsBlinkReady()` 读的是类默认值（ini 一改就两端不一致），现在随出生束下发。
   背包容量不需要复制——客户端容量由复制下来的 `Slots` 推导。
+- [2026-10-10] **控件对容器/外部对象的引用一律用弱引用（`TWeakObjectPtr`），并统一在
+  `NativeConstruct` 里无条件重解析来源**：`UItemContainerGrid::Container` /
+  `UInventorySlotWidget::OwningContainer` / `UInventoryUserWidget::ItemContainer` 三个字段一起改。
+  选弱引用而非「继续用 `TObjectPtr` + 处处判空」：判空挡不住死指针（非空），弱引用把「目标是否
+  还活着」交给引擎的序列号机制，从根上消灭悬空解引用；也沿用本项目
+  `InventorySlotDragDropOperation::SourceWidget` 的先例（见 bug-064）。
+  配套的两层底线各自独立生效：`EnsureSlotCount` 对目标槽位数做 [0,512] 夹紧（垃圾容量不得驱动
+  批量建控件）、`GetItemAtSlot` 做双数组边界检查——「读不到数据」永远好过「按坏数据干活」。

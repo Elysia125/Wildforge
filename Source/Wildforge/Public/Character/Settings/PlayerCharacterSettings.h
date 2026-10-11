@@ -2,8 +2,6 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
-
 #include "Engine/DeveloperSettings.h"
 
 #include "PlayerCharacterSettings.generated.h"
@@ -42,4 +40,13 @@ public:
             meta = (EditCondition = "bOverride_InventoryCapacity", ClampMin = "1",
                     UIMin = "1"))
   int32 InventoryCapacity = 30;
+
+    UPROPERTY(Config, EditAnywhere, Category = "PlayerCharacter",
+            meta = (InlineEditConditionToggle))
+  bool bOverride_QuickBarCapacity = false;
+
+  UPROPERTY(Config, EditAnywhere, Category = "PlayerCharacter",
+            meta = (EditCondition = "bOverride_QuickBarCapacity", ClampMin = "1",
+                    UIMin = "1"))
+  int32 QuickBarCapacity = 10;
 };

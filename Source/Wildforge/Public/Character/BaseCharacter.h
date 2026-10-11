@@ -22,7 +22,7 @@
  * 由**需要它的那个角色类**在构造函数里 `CreateDefaultSubobject` 创建：
  *
  *   - `UAttackComponent`、`ULandRollComponent`、`USprintBoostComponent`、
- *     `UBlinkComponent` → `APlayerCharacter`
+ *     `UBlinkComponent` 可由需要闪现能力的角色类自行装配
  *
  * 之所以不放在本类：这些能力的**权威状态、复制通道、蒙太奇、输入入口**都是
  * 能力自己的事，基类只该提供「角色一定有」的东西。放在基类还会让每个派生类
@@ -31,8 +31,8 @@
  * ⚠️ 加速与闪现原先就是写在本类里的（`StartSpeedBoost` / `BlinkForward` 等），
  * 现已拆成 `USprintBoostComponent` / `UBlinkComponent`。
  * **旧蓝图节点（如 BP_ThirdPersonCharacter 里的 `Server_StartSpeedBoost`）需要
- * 手动重连到 `GetSprintBoostComponent()` / `GetBlinkComponent()` 上**，
- * 本类不再提供同名转发函数。
+ * 手动重连到 `GetSprintBoostComponent()` 或对应组件的入口上**，本类不再提供
+ * 同名转发函数。
  */
 UCLASS(ClassGroup = (Custom),BlueprintType, Blueprintable)
 class WILDFORGE_API ABaseCharacter : public ACharacter {

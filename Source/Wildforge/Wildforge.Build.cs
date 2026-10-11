@@ -18,7 +18,8 @@ public class Wildforge : ModuleRules
     		"SlateCore",
 			"DeveloperSettings",  // UDeveloperSettings（项目设置集成）
 			"AnimationModifiers",
-			"AnimationBlueprintLibrary"
+			"AnimationBlueprintLibrary",
+			"EnhancedInput" 
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

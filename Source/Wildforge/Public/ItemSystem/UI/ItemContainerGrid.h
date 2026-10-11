@@ -27,9 +27,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "ItemContainerGrid")
     void RefreshGrid();
 
-    /** 获取当前关联的容器 */
+    /** 获取当前关联的容器（弱引用解析；目标已销毁时返回 nullptr） */
     UFUNCTION(BlueprintPure, Category = "ItemContainerGrid")
-    UItemContainer* GetContainer() const { return Container; }
+    UItemContainer* GetContainer() const { return Container.Get(); }
 
     /** 获取每行个数 */
     UFUNCTION(BlueprintPure, Category = "ItemContainerGrid")
@@ -70,9 +70,14 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ItemContainerGrid")
     int32 SlotsPerRow = 5;
 
-    /** 当前关联的容器 */
-    UPROPERTY(BlueprintReadOnly, Category = "ItemContainerGrid")
-    TObjectPtr<UItemContainer> Container;
+    /** 当前关联的容器。
+     *  必须用弱引用：控件实例化时会从 WBP 模板逐属性拷贝，普通对象引用（非 Instanced）
+     *  即使标了 Transient 也会被原样带过来（UObjectGlobals.cpp:4671-4684）。
+     *  也就是说进入 NativeConstruct 时它可能已经指向一个被回收的对象 —— 裸指针的第一次
+     *  解引用就是踩已回收内存（bug-064 的崩溃现场）。TWeakObjectPtr 只做序列号比对，
+     *  对失效目标返回「无效」，绝不解引用。 */
+    UPROPERTY(Transient)
+    TWeakObjectPtr<UItemContainer> Container;
 
     /** 已生成的槽位 Widget 列表 */
     UPROPERTY()

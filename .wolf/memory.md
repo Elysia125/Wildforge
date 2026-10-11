@@ -372,3 +372,121 @@
 | 22:25 | 消费方全量迁移：6 组件 .cpp/.h + PlayerCharacter .cpp/.h，锚定 `Settings->` 前缀做 sed 改名（避免误伤组件自家同名字段），include/类名/日志文案同步；删除旧 Core/Settings/WildforgeGameplaySettings.{h,cpp}；逐文件把 `Settings->X` 清单与新头文件声明清单对照（7 组逐项相等，bug-052 纪律） | Source/Wildforge/{Public,Private}/Character/** | 旧类已删除，无残留引用 | ~7k |
 | 22:30 | 验证：UHT 通过（16 files written，-WarningsAsErrors）→ 全量编译 Result: Succeeded（16 actions / 30s；clangd 两个实例占 15.5GB，UBA 自动把并行降到 2，未触发 bug-039 的低内存重试） | - | 编译器链路全通 | ~3k |
 | 22:35 | 文档同步：anatomy.md 删掉两个 Core/Settings 节、重写 7 条 Settings 条目描述、修正 AttackComponent.h 条目类名；cerebrum.md 加 User Preferences（配置按归属拆分）+ Key Learnings（一类一页一节的机制 / 类名改名同样静默丢 ini）+ Do-Not-Repeat（bug-052 条目改为「消费方引用的是不是正确那个类」）+ Decision Log（扁平加前缀 → 按归属拆类）；buglog 加 bug-053（设计纠正）；CLAUDE.md 配置层小节与强制约束 #6 重写，并记下「anatomy.md 非条目行会被 hook 静默丢弃」 | .wolf/anatomy.md, .wolf/cerebrum.md, .wolf/buglog.json, .wolf/memory.md, CLAUDE.md | 文档与实际实现一致 | ~6k |
+| 22:45 | 提交 3893790：每组件独立配置类 + ini 覆盖（7 个新配置头文件、6 组件 + PlayerCharacter 接入、删除旧单一配置类、CLAUDE.md 与 .wolf 文档同步），29 files / +2275 | git | 工作区干净 | ~2k |
+| 22:24 | Session end: 3 writes across 1 files (CLAUDE.md) | 1 reads | ~3111 tok |
+
+## Session: 2026-10-09 23:44
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-09 23:56
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-09 23:57
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-09 00:09
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:11 | Edited Source/Wildforge/Public/ItemSystem/UI/ItemContainerGrid.h | 3→3 lines | ~47 |
+| 00:11 | Edited Source/Wildforge/Public/ItemSystem/UI/ItemContainerGrid.h | 3→8 lines | ~95 |
+| 00:11 | Edited Source/Wildforge/Private/ItemSystem/UI/ItemContainerGrid.cpp | added 1 condition(s) | ~326 |
+| 00:11 | Edited Source/Wildforge/Private/ItemSystem/UI/ItemContainerGrid.cpp | modified GetCapacity() | ~56 |
+| 00:11 | Edited Source/Wildforge/Private/ItemSystem/UI/ItemContainerGrid.cpp | modified BindToContainer() | ~142 |
+| 00:11 | Edited Source/Wildforge/Private/ItemSystem/UI/ItemContainerGrid.cpp | modified InitializeGrid() | ~94 |
+| 00:12 | Edited Source/Wildforge/Private/ItemSystem/UI/ItemContainerGrid.cpp | modified GetCapacity() | ~130 |
+| 00:12 | Edited Source/Wildforge/Private/ItemSystem/UI/ItemContainerGrid.cpp | modified GetCapacity() | ~74 |
+| 00:12 | Edited Source/Wildforge/Private/ItemSystem/UI/ItemContainerGrid.cpp | modified GetCapacity() | ~160 |
+| 00:12 | Edited Source/Wildforge/Private/ItemSystem/UI/ItemContainerGrid.cpp | added 1 condition(s) | ~124 |
+| 00:12 | Edited Source/Wildforge/Private/ItemSystem/UI/ItemContainerGrid.cpp | 5→6 lines | ~82 |
+| 00:12 | Edited Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h | inline fix | ~21 |
+| 00:12 | Edited Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h | 5→9 lines | ~102 |
+| 00:12 | Edited Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp | 3→4 lines | ~40 |
+| 00:12 | Edited Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp | modified InitializeSlot() | ~216 |
+| 00:12 | Edited Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp | modified UnbindFromContainer() | ~73 |
+| 00:12 | Edited Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp | added 1 condition(s) | ~135 |
+| 00:12 | Edited Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp | modified if() | ~79 |
+| 00:12 | Edited Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp | modified if() | ~36 |
+| 00:12 | Edited Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp | 6→7 lines | ~68 |
+| 00:12 | Edited Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp | 2→3 lines | ~55 |
+| 00:12 | Edited Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp | modified if() | ~120 |
+| 00:12 | Edited Source/Wildforge/Public/ItemSystem/UI/InventoryUserWidget.h | 3→6 lines | ~69 |
+| 00:13 | Edited Source/Wildforge/Private/ItemSystem/UI/InventoryUserWidget.cpp | modified InitializeInventory() | ~79 |
+| 00:13 | Edited Source/Wildforge/Private/ItemSystem/UI/InventoryUserWidget.cpp | modified OnOrganizeButtonClicked() | ~94 |
+| 00:13 | Edited Source/Wildforge/Private/ItemSystem/Components/ItemContainer.cpp | added 2 condition(s) | ~245 |
+| 00:15 | 修复 bug-064（UI 侧容器指针失效导致 GetItemAtSlot 读访问违规）：三处控件字段改 TWeakObjectPtr + NativeConstruct 无条件重解析 + GetItemAtSlot 双数组各自边界检查 + EnsureSlotCount 容量 [0,512] 夹紧 + 全链路诊断日志；buglog/cerebrum/anatomy 同步更新 | ItemContainerGrid(.h/.cpp)、InventorySlotWidget(.h/.cpp)、InventoryUserWidget(.h/.cpp)、ItemContainer.cpp | 完整构建 Result: Succeeded，待用户重跑 PIE 复测 | ~6500 |
+| 00:15 | Session end: 26 writes across 7 files (ItemContainerGrid.h, ItemContainerGrid.cpp, InventorySlotWidget.h, InventorySlotWidget.cpp, InventoryUserWidget.h) | 5 reads | ~16530 tok |
+| 00:32 | Edited Source/Wildforge/Private/ItemSystem/Components/ItemContainer.cpp | added 2 condition(s) | ~298 |
+
+## Session: 2026-10-09 00:33
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:34 | 修复后实测 4 局 PIE：InitializeGrid×8 / [背包]初始化×4 / crash 标记 0；确认 bug-064 修复生效 | Saved/Logs/Wildforge.log | 通过 | ~10k |
+| 00:35 | 发现「初始化前窗口」：控件先于 BeginPlay 构造，容器带资产旧状态 Slots(30)/SlotOccupied(0)，4 局共 360 条 ERROR；GetItemAtSlot 降噪（窗口→一次性 WARNING，真损坏→ERROR） | ItemContainer.cpp | 已改，完整构建验证中 | ~35k |
+| 00:36 | .wolf 更新：cerebrum 追加 2 条 Key Learnings + 1 条 Do-Not-Repeat；buglog 将 hook 自动生成的空壳 bug-065 重写为完整因果 | .wolf/* | 完成 | ~5k |
+| 00:38 | 完整构建验证通过：UBT WildforgeEditor Win64 Development → Result: Succeeded（重编译 ItemContainer.cpp，23.4s） | ItemContainer.cpp | 通过 | ~2k |
+
+## Session: 2026-10-10 00:19
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-10 00:53
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-10 00:54
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+| 11:57 | 修复 QuickContainer 动态绑定：将 `UFunction*` 参数改为动态委托所需的 `FName`，增加参数/Owner/查找失败及成功日志；IDE 诊断无报错 | Source/Wildforge/Private/ItemSystem/Components/QuickContainer.cpp | clang diagnostics 0；未运行 UBT 构建 | ~1k |
+
+## Session: 2026-10-11 11:46
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:57 | Edited Source/Wildforge/Private/ItemSystem/Components/QuickContainer.cpp | inline fix | ~24 |
+| 12:00 | Edited Source/Wildforge/Private/ItemSystem/Components/QuickContainer.cpp | 1→3 lines | ~22 |
+| 12:00 | Edited Source/Wildforge/Private/ItemSystem/Components/QuickContainer.cpp | 3→1 lines | ~11 |
+| 12:00 | Created Source/Wildforge/Private/ItemSystem/Components/QuickContainer.cpp | — | ~404 |
+| 12:03 | Session end: 4 writes across 1 files (QuickContainer.cpp) | 4 reads | ~842 tok |
+| 12:12 | Session end: 4 writes across 1 files (QuickContainer.cpp) | 5 reads | ~842 tok |
+
+## Session: 2026-10-11 12:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-11 12:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-11 12:14
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-11 12:14
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-11 12:49
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-11 12:49
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
