@@ -1,40 +1,12 @@
 {
-  "session_id": "session-2026-10-17-2239",
-  "started": "2026-10-17T14:39:56.769Z",
-  "files_read": {
-    "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/AttackComponent.cpp": {
-      "count": 6,
-      "tokens": 8005,
-      "first_read": "2026-10-17T14:40:05.182Z"
-    }
-  },
-  "files_written": [
-    {
-      "file": "C:/Users/xf317/AppData/Local/Temp/wf-syntax-attack.ps1",
-      "action": "create",
-      "tokens": 179,
-      "at": "2026-10-17T14:40:31.763Z"
-    },
-    {
-      "file": "C:/Users/xf317/AppData/Local/Temp/wf-probe-attack.ps1",
-      "action": "create",
-      "tokens": 346,
-      "at": "2026-10-17T14:40:57.793Z"
-    },
-    {
-      "file": "C:/Users/xf317/AppData/Local/Temp/wf-probe-attack.ps1",
-      "action": "create",
-      "tokens": 412,
-      "at": "2026-10-17T14:41:17.175Z"
-    }
-  ],
-  "edit_counts": {
-    "C:/Users/xf317/AppData/Local/Temp/wf-syntax-attack.ps1": 1,
-    "C:/Users/xf317/AppData/Local/Temp/wf-probe-attack.ps1": 2
-  },
-  "anatomy_hits": 1,
+  "session_id": "session-2026-10-17-0029",
+  "started": "2026-10-17T16:29:46.491Z",
+  "files_read": {},
+  "files_written": [],
+  "edit_counts": {},
+  "anatomy_hits": 0,
   "anatomy_misses": 0,
-  "repeated_reads_warned": 5,
+  "repeated_reads_warned": 0,
   "cerebrum_warnings": 0,
-  "stop_count": 1
+  "stop_count": 0
 }

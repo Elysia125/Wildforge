@@ -625,3 +625,8 @@
 | 22:42 | 修复连击同蒙太奇重播导致的攻击链提前结束（bug-084） | Source/Wildforge/Private/Character/Components/AttackComponent.cpp | 同蒙太奇改用 Montage_JumpToSection；clang-cl 语法检查 EXIT=0（含探针对照） | ~400 |
 | 22:42 | 记录 bug-084 与连击切段结论 | .wolf/buglog.json, .wolf/cerebrum.md | buglog 新增 bug-084；cerebrum 增 Key Learnings/Do-Not-Repeat/Decision Log 各一条 | ~300 |
 | 22:42 | Session end: 3 writes across 2 files (wf-syntax-attack.ps1, wf-probe-attack.ps1) | 1 reads | ~8942 tok |
+
+## Session: 2026-10-17 00:29
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
