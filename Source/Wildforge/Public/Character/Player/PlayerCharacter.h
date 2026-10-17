@@ -37,21 +37,38 @@ class UCharacterAdaptor;
  *
  * ## 攻击 / 翻滚 / 滑行 / 趴下期间的移动门控在这里落地
  *
- * 订阅攻击组件的 `OnAttackStarted`（禁止移动）/
- * `OnAttackFinished`（恢复移动）与 翻滚组件、滑行组件、趴下组件的 `On*Started`
+ * 订阅攻击组件的 `OnAttackStarted`（禁止攻击期间的移动输入）/
+ * `OnAttackFinished`（恢复移动输入）与 翻滚组件、滑行组件、趴下组件的 `On*Started`
  * / `On*Finished`，不对组件的内部逻辑 做任何假设——组件只负责广播「开始了 /
  * 结束了」。
  *
- * ### 两种强度：硬锁与软锁（「边跑边滚 / 边跑边滑」手感的关键）
+ * ### 攻击 = 输入锁；翻滚 / 滑行 / 趴下 = 只记账的软锁
  *
  * | 来源 | 强度 | 对移动组件做了什么 |
  * |---|---|---|
- * | `MovementLockAttack` | **硬锁** | `StopMovementImmediately()` +
- * `DisableMovement()`（MOVE_None） | | `MovementLockLandRoll` | **软锁** |
- * 什么都不做（只记账 / 复位加速 / 供 UI 查询） | | `MovementLockSlide` |
- * **软锁** | 同上（滑行的位移是它自己每帧写的速度，硬锁会当场把速度清零） | |
- * `MovementLockCrawl` | **软锁** |
- * 同上（趴下/起身的位移同样来自蒙太奇根运动，硬锁会把它和速度一起丢掉） |
+ * | `MovementLockAttack` | **输入锁（软锁）** | 不改移动模式与速度；锁持有期间
+ * `IsMoveInputIgnored()` 返回 true，`AddMovementInput` 变成空操作 |
+ * | `MovementLockLandRoll` | **软锁** | 什么都不做（只记账 / 复位加速 / 供 UI 查询） |
+ * | `MovementLockSlide` | **软锁** | 同上（滑行的位移是它自己每帧写的速度） |
+ * | `MovementLockCrawl` | **软锁** | 同上（趴下/起身的位移来自蒙太奇根运动） |
+ *
+ * 攻击为什么也不能关移动组件（2026-10-18 修正）：
+ *
+ *   * 攻击蒙太奇可能带**根运动**（突进 / 位移攻击），而 `MOVE_None` 会在
+ *     `PerformMovement` 入口直接 return 并**丢弃根运动**
+ *     （`CharacterMovementComponent.cpp:2716-2734`），硬锁会让这类攻击变成原地挥砍。
+ *   * 关掉移动组件之后连跳跃也起不来（`ACharacter::Jump` 要靠
+ *     `CharacterMovement` 的 `CheckJumpButton` 真正往上跳），而「跳跃打断攻击」
+ *     需要移动模式仍是 Walking。
+ *   * 正确做法是**只禁止移动输入**：`IsMoveInputIgnored()` 是引擎给 Pawn /
+ *     PawnMovementComponent 预留的输入门（`Pawn.cpp:838-844`，`AddMovementInput`
+ *     → `Internal_AddMovementInput` 会检查它），锁持有期间返回 true 就能让
+ *     蓝图里的 IA_Move 变成空操作。移动模式、根运动、重力与跳跃全部保持原样。
+ *
+ * 跳跃打断**不在 C++ 里接线**（输入行为由蓝图决定）：在蓝图的跳跃输入里调用
+ * `UAttackComponent::Server_CancelAttack()` 即可（服务器就地执行；服务器侧蓝图
+ * 直接调 `CancelAttack()`）。取消由服务器统一执行：`CancelAttack` →
+ * `Multicast_CancelAttack`，各端停播蒙太奇并广播 `OnAttackFinished`，移动输入随即恢复。
  *
  * 翻滚为什么必须是软锁（踩过的坑）：
  *
@@ -66,8 +83,10 @@ class UCharacterAdaptor;
  * 由服务端权威路径广播），客户端那份没有被锁，
  *     于是服务器原地不动、客户端继续以跑速前进，最后被位置纠正拉回来 = 橡皮筋。
  *
- * 结论：**要禁止输入，不要关移动组件**。翻滚期间是否响应移动输入，属于动画状态机
- * / 蓝图的门控；`CharacterMovement` 一旦关掉，连动画自带的位移都一起没了。
+ * 结论：**要禁止输入，不要关移动组件**。动作期间是否响应移动输入由
+ * `IsMoveInputIgnored()` 这一层门控；`CharacterMovement` 一旦关掉，连动画自带的
+ * 位移都一起没了。`ApplyMovementLock` 的硬锁分支仍保留给「完全定身」类状态
+ * （眩晕 / 处决等），但**当前没有任何能力使用**——不要再拿它做动作门控。
  *
  * ### 移动锁按「来源」记账，不是布尔、也不是计数
  *
@@ -228,6 +247,9 @@ private:
   // ===== 移动锁的来源标识 =====
   // 用 FName 常量而不是裸字面量：写错名字会变成一个「新来源」而不会报错，
   // 那种静默走偏很难查，所以统一从这里取。
+  //
+  // 攻击：**输入锁**（软锁）。锁持有期间 IsMoveInputIgnored() 返回 true，
+  // 不改移动模式 / 速度——带根运动的攻击与跳跃打断都依赖这一点。
   static const FName MovementLockAttack;
   static const FName MovementLockLandRoll;
   // 滑行也是软锁：它的位移由组件每帧写速度推进，硬锁的
@@ -283,11 +305,11 @@ protected:
   UFUNCTION()
   void OnRep_CharacterAdaptorClass();
 
-  // 攻击开始：落**硬锁**（禁用移动组件）
+  // 攻击开始：落**输入锁**（软锁 + IsMoveInputIgnored 门控，不碰移动组件）
   UFUNCTION()
   void HandleAttackStarted();
 
-  // 攻击结束：硬锁释放（若没有别的硬锁持有者，恢复移动模式）
+  // 攻击结束：释放输入锁（IsMoveInputIgnored 立刻恢复响应）
   UFUNCTION()
   void HandleAttackFinished();
 
@@ -328,6 +350,13 @@ protected:
 public:
   // Sets default values for this character's properties
   APlayerCharacter();
+
+  // **攻击期间忽略移动输入**（输入锁的落地方式，见类注释）。
+  // 引擎的 AddMovementInput 链路（APawn::AddMovementInput →
+  // UPawnMovementComponent::AddInputVector → APawn::Internal_AddMovementInput）
+  // 会检查这个虚函数（Pawn.cpp:838-844），所以蓝图里的 IA_Move 不需要改：
+  // 锁持有期间它自然变成空操作，而移动模式 / 根运动 / 跳跃保持可用。
+  virtual bool IsMoveInputIgnored() const override;
 
   // 适配器选择要发给**所有端**（含模拟代理）：网格体 / 动画蓝图 / 蒙太奇都
   // 不在引擎的复制列表里，每个端必须自己应用（见 ApplyCharacterAdaptorResources）。
@@ -394,12 +423,14 @@ public:
   // 表示这次没做任何事）。
   //
   // `bDisableMovement` 决定强度：
-  //   * `true`（硬锁，攻击用）：第一个硬锁持有者会 `StopMovementImmediately()`
-  //   +
-  //     `DisableMovement()`，把角色钉住（MOVE_None）。⚠️ 硬锁会丢弃根运动，
-  //     不要让靠根运动位移的动作（翻滚 / 位移技）用硬锁。
-  //   * `false`（软锁，翻滚用）：只记账 + 复位加速，**完全不碰移动组件**，
-  //     位移留给蒙太奇根运动 / 蓝图，边跑边滚的惯性得以保留。
+  //   * `false`（软锁，**攻击 / 翻滚 / 滑行 / 趴下都用这个**）：只记账 + 复位加速，
+  //     **完全不碰移动组件**，位移留给蒙太奇根运动 / 蓝图 / 组件自己的速度曲线。
+  //     攻击的「禁止移动输入」由 `IsMoveInputIgnored()` 读取锁集合实现，
+  //     与这里的软锁是同一份记账。
+  //   * `true`（硬锁）：第一个硬锁持有者会 `StopMovementImmediately()` +
+  //     `DisableMovement()`，把角色钉住（MOVE_None）。⚠️ 硬锁会丢弃根运动并让
+  //     跳跃失效，**当前没有任何能力使用**；只保留给眩晕 / 处决这类「完全定身」
+  //     状态，不要拿它做动作门控。
   bool ApplyMovementLock(FName Source, bool bDisableMovement);
 
   // 解锁：`Source` 移出集合。只有当**硬锁**持有者清空、且移动组件确实是被这套锁

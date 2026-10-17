@@ -34,6 +34,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAttackStarted);
  * | 攻击状态 `bIsAttacking` / 连击窗口 / 选段下标 / 在播蒙太奇 | 服务器写 | 只读（复制下来） | `DOREPLIFETIME_CONDITION(COND_SimulatedOnly)` |
  * | 蒙太奇播放 | 服务器发起 | 跟随（但不写状态） | `Multicast_PlayAttackMontage(段位)` |
  * | 特效 `PlayAttackEffects()` | 服务器发起 | 跟随 | `Multicast_PlayAttackEffects` |
+ * | 取消攻击链 `CancelAttack()` | 服务器 | ✗（改调 `Server_CancelAttack`） | `Multicast_CancelAttack` |
  *
  * 判断规则：**会改变玩法状态的一律权威端执行**；纯表现（特效、音效、动画播放）
  * 用 Multicast 同步到所有端。权威函数都带 `BlueprintAuthorityOnly`，并且内部还有一道
@@ -43,7 +44,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAttackStarted);
  * ## 连击流程（关键：连击通知在蒙太奇**播放中途**发出）
  *
  * ```
- * 起手 Attack() ──► 播第 1 段，bIsAttacking = true（订阅者禁止移动）
+ * 起手 Attack() ──► 播第 1 段，bIsAttacking = true（订阅者禁止移动输入）
  *                     │
  *   动画中途的连击通知 ─┴─► Server_NotifyComboWindow ──► bCanCombo = true（开窗）
  *                     │
@@ -51,6 +52,10 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAttackStarted);
  *                     │                       交叉淡入衔接，bIsAttacking 保持 true
  *                     │
  *   没有下一段可播 ─────┴─► FinishAttackChain：复位 + OnAttackFinished（恢复移动）
+ *
+ *   跳跃打断（蓝图调用） ─┴─► Server_CancelAttack → CancelAttack
+ *                            → Multicast_CancelAttack（各端停播蒙太奇）
+ *                            → FinishAttackChain（复位 + 恢复移动输入）
  * ```
  *
  * 三条容易搞错的地方：
@@ -191,7 +196,7 @@ public:
 
   // ===== 通知 =====
   // 两段式生命周期：OnAttackStarted（蒙太奇真的要播了）/ OnAttackFinished（蒙太奇结束）。
-  // 订阅者（如 APlayerCharacter 禁止/恢复移动）只认这两个事件，不需要知道蒙太奇细节。
+  // 订阅者（如 APlayerCharacter 禁止/恢复移动输入）只认这两个事件，不需要知道蒙太奇细节。
 
   UPROPERTY(BlueprintAssignable, Category = "Attack")
   FOnAttackStarted OnAttackStarted;
@@ -244,7 +249,7 @@ protected:
   void OnAttackMontageEnded(UAnimMontage *Montage, bool bInterrupted);
 
   // 兜底：动画异常（蒙太奇没触发 OnMontageEnded）时强制收尾，避免角色永久卡在
-  // 「攻击中不能移动」。时长按当前蒙太奇的剩余时间估算。
+  // 「攻击中不能移动输入」。时长按当前蒙太奇的剩余时间估算。
   void HandleAttackTimeout();
   // 指定蒙太奇的时长（秒）；取不到时返回 1.0 作为兜底
   float GetMontagePlayLength(int32 InMontageIndex) const;
@@ -263,7 +268,7 @@ protected:
   // 返回是否真的接上了（没有下一段可播时返回 false = 连招打完）。
   bool AdvanceAttackChain(float PrevSegmentStartTime);
 
-  // 整条攻击链结束：复位状态 + 清定时器 + 广播 OnAttackFinished（订阅者据此恢复移动）。
+  // 整条攻击链结束：复位状态 + 清定时器 + 广播 OnAttackFinished（订阅者据此恢复移动输入）。
   void FinishAttackChain(const TCHAR *Reason);
 
 public:
@@ -302,6 +307,18 @@ public:
   UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Attack")
   void OpenComboWindow();
 
+  // 取消当前攻击链（跳跃打断等）。**服务器执行**：先 Multicast 让所有端停播
+  // 攻击蒙太奇，再各端 FinishAttackChain（复位状态 / 广播 OnAttackFinished）。
+  // 输入接线由蓝图负责：客户端蓝图调 `Server_CancelAttack()`，不要在这里写死
+  // 某个按键 / 动作的判断。
+  // 不在攻击中时是安全空操作（返回 false）。
+  //
+  // 之所以要单独做一条「取消」而不是直接停蒙太奇：蒙太奇被其他系统停掉时，
+  // 各端的 OnAttackMontageEnded 仍会走一遍正常收尾；但取消攻击链还需要
+  // 主动推进「玩法状态复位 + 移动输入解锁」，且不能等淡出结束才生效。
+  UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Attack")
+  bool CancelAttack();
+
   // 播放攻击表现（特效 / 音效 / 镜头震动）。
   // 在服务器上调用会经 Multicast 同步到所有端；客户端也可以本地调用（纯表现）。
   // 蓝图覆写同名事件即可实现具体效果。
@@ -323,6 +340,14 @@ public:
   UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable,
             Category = "Attack|RPC")
   void Server_NotifyComboWindow();
+
+  // 请求取消当前攻击链（跳跃打断走这里）。无参数，_Validate 恒真；
+  // 服务器侧只在 `bIsAttacking` 为真时真正取消。
+  // 与 `Server_Attack` 一样：Server RPC 在服务器上会就地同步执行，
+  // 单机 / 监听服务器 / 联机走同一条路径。
+  UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable,
+            Category = "Attack|RPC")
+  void Server_CancelAttack();
 
   // 语义化别名，与 `Server_Attack` 同一个东西：输入层写 RequestAttack 读起来更清楚。
   UFUNCTION(BlueprintCallable, Category = "Attack|RPC")
@@ -353,7 +378,23 @@ public:
   UFUNCTION(NetMulticast, Reliable, BlueprintCallable, Category = "Attack|RPC")
   void Multicast_PlayAttackEffects();
 
+  // 服务器 -> 所有端：停止攻击蒙太奇并收尾。
+  // 与上面两条 Multicast 同一套规则：**不要**在这里加「非权威端就忽略」的门禁
+  // ——每个端都要停掉自己本地的蒙太奇、广播 OnAttackFinished 解锁移动输入。
+  // 先清 `ActiveAttackMontage` 再 `Montage_Stop`，避免淡出结束后延迟到达的
+  // `OnMontageEnded` 再把收尾走第二遍。
+  UFUNCTION(NetMulticast, Reliable, BlueprintCallable, Category = "Attack|RPC")
+  void Multicast_CancelAttack();
+
 private:
+  // 本端是否真的广播过 OnAttackStarted（= 本端确实把攻击蒙太奇播起来了）。
+  // Started / Finished 必须**严格配对**：蒙太奇没播起来时不会广播 Started，
+  // 收尾时也就不能广播 Finished——否则订阅者会「解锁一把没落过的锁」，
+  // 在日志里留下无配对的 WARNING（同类问题见 bug-030）。
+  // 另外，取消攻击时用它判断本端要不要做收尾广播（没播过就没有锁可解）。
+  // **不复制**：这是每端各自的表现层状态。
+  bool bLocalAttackPresentationActive = false;
+
   // 正在为连击切段（我们自己停掉了上一段蒙太奇）。
   // 引擎在 Montage_Play 新蒙太奇时会触发上一段的 OnMontageEnded(bInterrupted=true)，
   // 这个标记让回调知道「那是我们自己干的」，不要当成攻击链结束。**不复制**。

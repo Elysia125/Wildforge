@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-17T14:41:17.159Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-17T16:59:54.510Z
 > Files: 97 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
@@ -57,7 +57,7 @@
 
 ## Source/Wildforge/Private/Character/Components/
 
-- `AttackComponent.cpp` — 攻击组件实现：服务器权威起手/连击/结束，Multicast 同步蒙太奇与特效；同一蒙太奇多 Section 用 Montage_JumpToSection 硬切，跨蒙太奇用 Montage_PlayWithBlendIn（bug-084） (~8005 tok)
+- `AttackComponent.cpp` — 攻击组件实现（服务器权威）：冷却/连击/超时；`Multicast_PlayAttackMontage` 记录 `bLocalAttackPresentationActive`；`FinishAttackChain` 只在权威端 `ResetAttackState` 并保证 Started/Finished 严格配对；`CancelAttack` / `Server_CancelAttack` / `Multicast_CancelAttack` 提供取消入口（输入接线由蓝图负责） (~9000 tok)
 - `BlinkComponent.cpp` — 闪现实现：Sweep + 落点校验全在权威端；**新增 BeginPlay**（唯一职责是应用 ini 覆盖），4 项调参 COND_InitialOnly（含原先根本没复制的 BlinkCooldown） (~5300 tok)
 - `CharacterAttributes.cpp` — 属性组件实现：DOREPLIFETIME + OnRep 广播委托，SetHealth/SetMaxHealth 带 Clamp (~900 tok)
 - `CrawlingComponent.cpp` — 趴下实现：姿态/过渡状态机 + 速度镜像（一律经 SprintBoostComponent::SetBaseMaxSpeed）；BeginPlay 先应用 5 项 ini 覆盖、再订阅动画回调 (~10500 tok)
@@ -67,7 +67,7 @@
 
 ## Source/Wildforge/Private/Character/Player/
 
-- `PlayerCharacter.cpp` — 玩家角色实现：BeginPlay 订阅各组件事件做移动门控 + 权威端初始化背包/快捷栏 + 每一端在 BeginPlay 应用 CharacterAdaptorClass（读适配器蓝图 CDO）；GetLifetimeReplicatedProps 复制适配器类，ApplyCharacterAdaptorClass（仅服务器）/ OnRep_CharacterAdaptorClass 应用，ApplyCharacterAdaptorResources 把网格体/AnimClass/各组件蒙太奇逐项写进本地并打详细 [角色适配器] 日志 (~11700 tok)
+- `PlayerCharacter.cpp` — 玩家角色实现：能力组件装配与按来源记账的移动锁；攻击走**输入软锁**（`HandleAttackStarted` 传 `bDisableMovement=false`），`IsMoveInputIgnored()` 在攻击锁存在时只拦蓝图 `AddMovementInput`，保留根运动与跳跃；跳跃打断攻击由蓝图调用 `Server_CancelAttack`，C++ 不覆写 `Jump()` (~9200 tok)
 
 ## Source/Wildforge/Private/Core/
 
@@ -120,7 +120,7 @@
 
 ## Source/Wildforge/Public/Character/Components/
 
-- `AttackComponent.h` — 攻击组件（服务器权威）：连击间隔/伤害/扫描参数带 Replicated，可被 UAttackComponentSettings 的 ini 覆盖（服务器读 → COND_InitialOnly 复制） (~3700 tok)
+- `AttackComponent.h` — 攻击组件（服务器权威）：冷却/连击/超时与 `OnAttackStarted`/`OnAttackFinished` 广播（订阅者据此落/放移动输入锁）；`CancelAttack`（BlueprintAuthorityOnly）+ `Server_CancelAttack` / `Multicast_CancelAttack` 供蓝图接线取消；`bLocalAttackPresentationActive` 保证 Started/Finished 配对 (~4200 tok)
 - `BlinkComponent.h` — 点按闪现组件（服务器权威）：距离/冷却/播速带 Replicated（COND_InitialOnly）；新增 protected BeginPlay + ApplyGameplaySettingsOverrides（本组件原先没有 BeginPlay） (~2500 tok)
 - `CharacterAttributes.h` — UCharacterAttributes：复制 Health/MaxHealth（ReplicatedUsing OnRep 广播 FOnHealthChanged/FOnMaxHealthChanged），Setter 为 BlueprintAuthorityOnly，且 SetHealth/SetMaxHealth 内联加非权威端门禁（IsAuthoritativeForActorComponent + WFLOG_ERROR） (~900 tok)
 - `CrawlingComponent.h` — 趴下（爬行）组件（服务器权威）：爬行速度/奔跑阈值/播速带 Replicated + ini 覆盖；速度改写一律经 USprintBoostComponent::SetBaseMaxSpeed (~5100 tok)
@@ -131,7 +131,7 @@
 
 ## Source/Wildforge/Public/Character/Player/
 
-- `PlayerCharacter.h` — 玩家角色：把玩家专用的「能力组件」装配在一起；**新增 EditDefaultsOnly 的 CharacterAdaptorClass（TSubclassOf<UCharacterAdaptor>，在角色蓝图类默认值指定）、GetCharacterAdaptorClass / ApplyCharacterAdaptorClass（仅服务器）与 ApplyCharacterAdaptorClassLocal / ApplyCharacterAdaptorResources**，适配器应用到网格/攻击/翻滚/滑行/加速/闪现/趴下（不碰玩法数值） (~4500 tok)
+- `PlayerCharacter.h` — 玩家角色：把玩家专用的「能力组件」装配在一起；移动门控按来源记账（`MovementLockHolders`），攻击走软锁并覆写 `IsMoveInputIgnored()` 只拦移动输入以保留根运动；跳跃打断由蓝图调用攻击组件的 `Server_CancelAttack`（C++ 不覆写 `Jump()`） (~4600 tok)
 
 ## Source/Wildforge/Public/Character/Settings/
 

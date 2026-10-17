@@ -1,12 +1,21 @@
 {
-  "session_id": "session-2026-10-17-0029",
-  "started": "2026-10-17T16:29:46.491Z",
-  "files_read": {},
-  "files_written": [],
-  "edit_counts": {},
-  "anatomy_hits": 0,
-  "anatomy_misses": 0,
-  "repeated_reads_warned": 0,
-  "cerebrum_warnings": 0,
-  "stop_count": 0
+  "files_read": {
+    "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h": {
+      "count": 3,
+      "tokens": 4600,
+      "first_read": "2026-10-17T16:59:30.585Z"
+    },
+    "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/AttackComponent.cpp": {
+      "count": 1,
+      "tokens": 9100,
+      "first_read": "2026-10-17T16:59:43.537Z"
+    },
+    "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp": {
+      "count": 1,
+      "tokens": 9200,
+      "first_read": "2026-10-17T17:01:52.881Z"
+    }
+  },
+  "anatomy_hits": 1,
+  "repeated_reads_warned": 1
 }

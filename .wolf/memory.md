@@ -630,3 +630,43 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+| 00:35 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | 2→3 lines | ~64 |
+| 00:35 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | 3→7 lines | ~72 |
+| 00:35 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | expanded (+10 lines) | ~136 |
+| 00:35 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | expanded (+8 lines) | ~133 |
+| 00:35 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | expanded (+8 lines) | ~121 |
+| 00:35 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | expanded (+8 lines) | ~131 |
+| 00:35 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | modified if() | ~100 |
+| 00:35 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | added 2 condition(s) | ~332 |
+| 00:35 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | added 1 condition(s) | ~238 |
+| 00:35 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | modified Server_Attack_Implementation() | ~189 |
+| 00:36 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | added 2 condition(s) | ~451 |
+| 00:36 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | expanded (+17 lines) | ~366 |
+| 00:36 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | 2→4 lines | ~52 |
+| 00:36 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | 5→8 lines | ~74 |
+| 00:36 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | 7→9 lines | ~109 |
+| 00:36 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | 7→7 lines | ~50 |
+| 00:36 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | expanded (+12 lines) | ~162 |
+| 00:36 | Edited Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp | 13→17 lines | ~203 |
+| 00:36 | Edited Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp | added 1 condition(s) | ~274 |
+| 00:36 | Edited Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp | added 2 condition(s) | ~213 |
+| 00:39 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | inline fix | ~15 |
+| 00:39 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | inline fix | ~16 |
+| 00:39 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | inline fix | ~9 |
+| 00:39 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | inline fix | ~16 |
+| 00:39 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | inline fix | ~12 |
+
+## Session: 2026-10-17 00:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:41 | 攻击移动门控由硬锁改为输入软锁 + 跳跃打断（IsMoveInputIgnored / Jump→Server_CancelAttack） | AttackComponent.h/.cpp, PlayerCharacter.h/.cpp | 已实现；UHT 成功 | ~9000 |
+| 00:42 | 两个改动 TU 的编译级语法验证 | AttackComponent.cpp, PlayerCharacter.cpp | clang-cl -fsyntax-only EXIT=0 | ~1200 |
+| 00:59 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | 4→4 lines | ~61 |
+| 00:59 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | inline fix | ~15 |
+| 00:59 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | — | ~0 |
+| 00:59 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | 2→4 lines | ~49 |
+| 00:59 | Edited Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp | — | ~0 |
+| 00:59 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | "攻击被取消（跳跃打断）" → "攻击被取消" | ~10 |
+| 01:03 | 按用户要求移除 C++ 跳跃打断（APlayerCharacter::Jump 覆写/声明），保留组件取消 RPC 供蓝图接线 | PlayerCharacter.h/.cpp, AttackComponent.h/.cpp | 已移除；UHT 成功 | ~2500 |
+| 01:04 | 再次编译级语法验证 | AttackComponent.cpp, PlayerCharacter.cpp | clang-cl -fsyntax-only EXIT=0 | ~1200 |

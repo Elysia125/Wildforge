@@ -36,6 +36,198 @@
 		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/PerModuleInline.gen.cpp.obj"
 	},
 	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysicsEd/Module.KawaiiPhysicsEd.gen.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysicsEd/Module.KawaiiPhysicsEd.gen.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysicsEd/Module.KawaiiPhysicsEd.gen.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysicsEd/PerModuleInline.gen.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysicsEd/PerModuleInline.gen.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysicsEd/PerModuleInline.gen.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/Module.KawaiiPhysics.gen.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/Module.KawaiiPhysics.gen.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/Module.KawaiiPhysics.gen.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/PerModuleInline.gen.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/PerModuleInline.gen.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/PerModuleInline.gen.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysicsEd/Private/AnimGraphNode_KawaiiPhysics.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysicsEd/AnimGraphNode_KawaiiPhysics.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysicsEd/AnimGraphNode_KawaiiPhysics.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysicsEd/Private/KawaiiPhysicsEd.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysicsEd/KawaiiPhysicsEd.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysicsEd/KawaiiPhysicsEd.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysicsEd/Private/KawaiiPhysicsEditMode.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysicsEd/KawaiiPhysicsEditMode.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysicsEd/KawaiiPhysicsEditMode.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysics/Private/AnimNode_KawaiiPhysics.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/AnimNode_KawaiiPhysics.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/AnimNode_KawaiiPhysics.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysics/Private/AnimNode_KawaiiPhysicsCollision.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/AnimNode_KawaiiPhysicsCollision.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/AnimNode_KawaiiPhysicsCollision.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysics/Private/AnimNode_KawaiiPhysicsDebug.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/AnimNode_KawaiiPhysicsDebug.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/AnimNode_KawaiiPhysicsDebug.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysics/Private/AnimNode_KawaiiPhysicsModifyBones.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/AnimNode_KawaiiPhysicsModifyBones.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/AnimNode_KawaiiPhysicsModifyBones.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysics/Private/AnimNode_KawaiiPhysicsSimulation.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/AnimNode_KawaiiPhysicsSimulation.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/AnimNode_KawaiiPhysicsSimulation.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysics/Private/AnimNode_KawaiiPhysicsSyncBone.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/AnimNode_KawaiiPhysicsSyncBone.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/AnimNode_KawaiiPhysicsSyncBone.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysics/Private/AnimNotifies/AnimNotifyState_KawaiiPhysicsAddExternalForce.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/AnimNotifyState_KawaiiPhysicsAddExternalForce.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/AnimNotifyState_KawaiiPhysicsAddExternalForce.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysics/Private/AnimNotifies/AnimNotifyState_KawaiiPhysicsSetAlpha.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/AnimNotifyState_KawaiiPhysicsSetAlpha.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/AnimNotifyState_KawaiiPhysicsSetAlpha.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysics/Private/AnimNotifies/AnimNotify_KawaiiPhysicsAddExternalForce.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/AnimNotify_KawaiiPhysicsAddExternalForce.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/AnimNotify_KawaiiPhysicsAddExternalForce.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysics/Private/ExternalForces/KawaiiPhysicsExternalForce.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsExternalForce.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsExternalForce.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysics/Private/ExternalForces/KawaiiPhysicsExternalForce_Basic.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsExternalForce_Basic.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsExternalForce_Basic.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysics/Private/ExternalForces/KawaiiPhysicsExternalForce_Curve.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsExternalForce_Curve.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsExternalForce_Curve.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysics/Private/ExternalForces/KawaiiPhysicsExternalForce_Gravity.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsExternalForce_Gravity.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsExternalForce_Gravity.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysics/Private/ExternalForces/KawaiiPhysicsExternalForce_Wind.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsExternalForce_Wind.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsExternalForce_Wind.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysics/Private/KawaiiPhysics.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysics.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysics.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysics/Private/KawaiiPhysicsBoneConstraintsDataAsset.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsBoneConstraintsDataAsset.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsBoneConstraintsDataAsset.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysics/Private/KawaiiPhysicsCustomExternalForce.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsCustomExternalForce.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsCustomExternalForce.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysics/Private/KawaiiPhysicsDeveloperSettings.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsDeveloperSettings.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsDeveloperSettings.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysics/Private/KawaiiPhysicsLibrary.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsLibrary.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsLibrary.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysics/Private/KawaiiPhysicsLimitsDataAsset.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsLimitsDataAsset.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsLimitsDataAsset.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysics/Private/KawaiiPhysicsSharedCollisionSubsystem.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsSharedCollisionSubsystem.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsSharedCollisionSubsystem.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysics/Private/KawaiiPhysicsSyncBone.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsSyncBone.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsSyncBone.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysics/Private/Tests/KawaiiPhysicsCollisionTest.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsCollisionTest.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsCollisionTest.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysics/Private/Tests/KawaiiPhysicsSharedCollisionSlotTest.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsSharedCollisionSlotTest.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsSharedCollisionSlotTest.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Source/KawaiiPhysics/Private/Tests/KawaiiPhysicsSimulationTest.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsSimulationTest.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsSimulationTest.cpp.obj"
+	},
+	{
 		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Adaptor/CharacterAdaptor.cpp",
 		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/CharacterAdaptor.cpp.obj.rsp\" ",
 		"directory": "D:/UE/UE_5.7/Engine/Source",

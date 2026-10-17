@@ -545,9 +545,12 @@ void UAttackComponent::Multicast_PlayAttackMontage_Implementation(
   }
 
   if (ActiveAttackMontage != nullptr) {
-    // 广播给订阅者（禁止移动等）。服务器与各客户端各自在自己的机器上收到一次。
+    // 广播给订阅者（禁止移动输入等）。服务器与各客户端各自在自己的机器上收到一次。
     // 连击切段时也会再广播一次——订阅者用「已经在禁止移动」判断做了幂等，
     // 所以不会重复操作（见 APlayerCharacter::HandleAttackStarted）。
+    // bLocalAttackPresentationActive 与这次广播严格配对：只有它置位后，
+    // FinishAttackChain 才会广播对应的 OnAttackFinished（见该函数）。
+    bLocalAttackPresentationActive = true;
     OnAttackStarted.Broadcast();
     WFLOG_INFO("[攻击] 已广播 OnAttackStarted：%s",
                *GetAttackStateDebugString());
@@ -568,6 +571,36 @@ void UAttackComponent::Multicast_PlayAttackEffects_Implementation() {
              IsAuthoritativeForActorComponent(this) ? 1 : 0,
              GetOwner() ? *GetOwner()->GetName() : TEXT("None"));
   PlayAttackEffects();
+}
+
+void UAttackComponent::Multicast_CancelAttack_Implementation() {
+  const bool bAuthority = IsAuthoritativeForActorComponent(this);
+  WFLOG_INFO("[攻击] Multicast_CancelAttack 到达（%s）：停止攻击蒙太奇并收尾。",
+             bAuthority ? TEXT("服务器") : TEXT("客户端"));
+
+  // 先摘掉「本端在播哪个蒙太奇」，再停它。
+  // Montage_Stop 的 OnMontageEnded(bInterrupted=true) 会在淡出结束后才到；
+  // 这里已经把 ActiveAttackMontage 清空，归属判断会直接忽略那个延迟事件，
+  // 不会重复走一遍 FinishAttackChain。
+  UAnimMontage *MontageToStop = ActiveAttackMontage;
+  ActiveAttackMontage = nullptr;
+
+  if (ACharacter *OwnerChar = Cast<ACharacter>(GetOwner())) {
+    USkeletalMeshComponent *Mesh = OwnerChar->GetMesh();
+    UAnimInstance *AnimInst = Mesh ? Mesh->GetAnimInstance() : nullptr;
+    if (AnimInst != nullptr && MontageToStop != nullptr &&
+        AnimInst->Montage_IsPlaying(MontageToStop)) {
+      // 留一点淡出，避免跳跃打断时看到硬切抽帧；玩法状态已经收尾，
+      // 余下的蒙太奇混合只影响表现。
+      AnimInst->Montage_Stop(0.1f, MontageToStop);
+    }
+  }
+
+  // 每一端都走收尾：服务器复位玩法状态；客户端清本地表现标记；
+  // 两端各自广播 OnAttackFinished（订阅者据此恢复移动输入）。
+  // 没播起过蒙太奇的那一端由 bLocalAttackPresentationActive 挡住广播，
+  // 不会出现「解锁一把没落过的锁」。
+  FinishAttackChain(TEXT("攻击被取消"));
 }
 
 void UAttackComponent::OnAttackMontageEnded(UAnimMontage *Montage,
@@ -613,12 +646,33 @@ void UAttackComponent::FinishAttackChain(const TCHAR *Reason) {
   WFLOG_INFO("[攻击] FinishAttackChain：%s。宿主 %s", Reason,
              GetOwner() ? *GetOwner()->GetName() : TEXT("None"));
 
-  // 复位状态（含关窗口、清输入标记、清定时器）
-  ResetAttackState();
+  // 权威端复位玩法状态（含关窗口、清输入标记、清定时器）。
+  // ⚠️ 客户端**不能**调 ResetAttackState：它是 BlueprintAuthorityOnly，且实现里
+  // 有开发期门禁——非权威端调用会记一条 WFLOG_ERROR，而客户端的玩法状态本来
+  // 就以服务器复制为准。过去这里无条件调用，客户端每次攻击结束都会刷一条 ERROR。
+  if (IsAuthoritativeForActorComponent(this)) {
+    ResetAttackState();
+  }
 
-  // 通知订阅者（恢复移动、切回待机等）。服务器与各客户端都会各自收到。
-  OnAttackFinished.Broadcast();
-  WFLOG_INFO("[攻击] 已广播 OnAttackFinished（订阅者会恢复移动）。");
+  // 表现层标记每个端都要清：OnAttackMontageEnded 靠 ActiveAttackMontage 判断
+  // 「结束的是不是当前段」，留着它会让下一段 / 下一次攻击误配。
+  ActiveAttackMontage = nullptr;
+  bAdvancingCombo = false;
+
+  // 通知订阅者（恢复移动输入、切回待机等）。服务器与各客户端都会各自收到。
+  // 只有本端真的广播过 OnAttackStarted 才广播对应的 Finished：蒙太奇没播起来
+  // （例如攻击列表为空 / 没有 AnimInstance）时 Started 根本没发，此时再发
+  // Finished 会让订阅者「解锁一把没落过的锁」（见 bug-030 的同类问题）。
+  if (bLocalAttackPresentationActive) {
+    bLocalAttackPresentationActive = false;
+    OnAttackFinished.Broadcast();
+    WFLOG_INFO("[攻击] 已广播 OnAttackFinished（订阅者会恢复移动输入）。");
+  } else {
+    WFLOG_WARNING("[攻击] FinishAttackChain：本端没有生效的攻击表现"
+                  "（OnAttackStarted 未广播过），跳过 OnAttackFinished，"
+                  "避免订阅者解锁一把没落过的锁。宿主 %s",
+                  GetOwner() ? *GetOwner()->GetName() : TEXT("None"));
+  }
 }
 
 void UAttackComponent::ResetAttackState_Implementation() {
@@ -691,7 +745,7 @@ void UAttackComponent::OpenComboWindow() {
   WFLOG_INFO("[攻击] 连击窗口已打开（现在点击即可接下一段）。宿主 %s", *Who);
 
   // 兜底：连击窗口开了之后，如果攻击蒙太奇因为动画异常（比如没触发
-  // OnMontageEnded）一直不结束，角色会永久卡在「攻击中不能移动」。
+  // OnMontageEnded）一直不结束，角色会永久卡在「攻击中不能移动输入」。
   // 这里按蒙太奇时长挂一个一次性定时器强制收尾；蒙太奇正常结束会清掉它。
   if (UWorld *World = GetWorld()) {
     FTimerDelegate TimeoutDelegate;
@@ -700,6 +754,25 @@ void UAttackComponent::OpenComboWindow() {
         AttackTimeoutHandle, TimeoutDelegate,
         FMath::Max(1.0f, GetMontagePlayLength(AttackMontageIndex)), false);
   }
+}
+
+bool UAttackComponent::CancelAttack() {
+  WF_ATTACK_AUTHORITY_GUARD(false);
+
+  const FString Who = GetOwner() ? GetOwner()->GetName() : TEXT("None");
+  if (!bIsAttacking) {
+    WFLOG_INFO("[攻击] CancelAttack 被忽略：当前不在攻击中（宿主 %s）。", *Who);
+    return false;
+  }
+
+  WFLOG_INFO("[攻击] 取消攻击链（宿主 %s）：%s", *Who,
+             *GetAttackStateDebugString());
+
+  // 表现同步到所有端：每个端停掉自己本地的蒙太奇并走一遍 FinishAttackChain。
+  // 权威状态（bIsAttacking / 连击窗口 / 段位）由服务器本地那一次
+  // FinishAttackChain → ResetAttackState 复位，客户端只清表现层标记。
+  Multicast_CancelAttack();
+  return true;
 }
 
 // ===== 服务器权威：伤害判定 =====
@@ -806,6 +879,18 @@ void UAttackComponent::Server_Attack_Implementation() {
   WFLOG_INFO("[攻击] RPC Server_Attack 到达服务器（宿主 %s）。",
              GetOwner() ? *GetOwner()->GetName() : TEXT("None"));
   Attack(true);
+}
+
+bool UAttackComponent::Server_CancelAttack_Validate() {
+  // 无参数，没有可校验的输入；是否真的取消由服务器侧的 bIsAttacking 判定。
+  return true;
+}
+
+void UAttackComponent::Server_CancelAttack_Implementation() {
+  // 与 Server_Attack 同理：服务器本地执行时就地同步跑，单机 / 联机同一路径。
+  WFLOG_INFO("[攻击] RPC Server_CancelAttack 到达服务器（宿主 %s）。",
+             GetOwner() ? *GetOwner()->GetName() : TEXT("None"));
+  CancelAttack();
 }
 
 bool UAttackComponent::Server_NotifyComboWindow_Validate() {

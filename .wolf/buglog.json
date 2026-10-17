@@ -1609,6 +1609,129 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-17T14:10:00.000Z"
+    },
+    {
+      "id": "bug-085",
+      "timestamp": "2026-10-17T16:35:50.689Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 11→32 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-17T16:35:50.689Z"
+    },
+    {
+      "id": "bug-086",
+      "timestamp": "2026-10-17T16:36:03.377Z",
+      "error_message": "Null/undefined access in ",
+      "file": "Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-17T16:36:03.377Z"
+    },
+    {
+      "id": "bug-087",
+      "timestamp": "2026-10-17T16:36:09.503Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+      "root_cause": "9 lines replaced/restructured",
+      "fix": "Rewrote 17→34 lines (9 removed) | Also: //   * `true`（硬锁，攻击用）：第一个硬锁持有者会 `StopMovementImmed; //   +",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "h"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-17T16:36:20.989Z"
+    },
+    {
+      "id": "bug-088",
+      "timestamp": "2026-10-17T16:36:33.809Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 13→17 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-17T16:36:33.809Z"
+    },
+    {
+      "id": "bug-089",
+      "timestamp": "2026-10-17T16:36:37.180Z",
+      "error_message": "Null/undefined access in ",
+      "file": "Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-17T16:36:37.180Z"
+    },
+    {
+      "id": "bug-090",
+      "timestamp": "2026-10-17T16:41:30.000Z",
+      "error_message": "攻击期间用硬锁禁止移动（DisableMovement/MOVE_None）：带根运动的攻击动作原地播放，且跳跃无法打断攻击",
+      "file": "Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp; Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+      "root_cause": "HandleAttackStarted 调 ApplyMovementLock(MovementLockAttack, true)：MOVE_None 让 CharacterMovementComponent::PerformMovement 提前返回并清空 RootMotion，CheckJumpButton 也不会执行；同时 bIsAttacking 是 COND_SimulatedOnly 复制，拥有者客户端收不到，不能拿来做本地输入门控判据。",
+      "fix": "攻击改为软锁：IsMoveInputIgnored() 在 MovementLockHolders 含 MovementLockAttack 时返回 true，只拦蓝图 AddMovementInput，保留 MOVE_Walking、根运动、重力与跳跃；取消入口保留为 Server_CancelAttack（客户端蓝图调用）/ CancelAttack（服务器）→ Multicast_CancelAttack 在每端停蒙太奇并走 FinishAttackChain；C++ 不覆写 Jump()，跳跃打断的输入接线由蓝图负责；FinishAttackChain 只在权威端调 ResetAttackState，并用 bLocalAttackPresentationActive 保证 Started/Finished 严格配对。",
+      "tags": [
+        "attack",
+        "movement",
+        "root-motion",
+        "jump",
+        "input-gating",
+        "networking"
+      ],
+      "related_bugs": [
+        "bug-027",
+        "bug-029",
+        "bug-030"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-17T16:41:30.000Z"
+    },
+    {
+      "id": "bug-091",
+      "timestamp": "2026-10-17T17:02:00.000Z",
+      "error_message": "用户要求：跳跃打断攻击不要在 C++ 里写，输入接线由蓝图负责",
+      "file": "Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp; Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+      "root_cause": "实现时把输入行为写进了 APlayerCharacter::Jump() 覆写（攻击锁存在且 CanJump() 时自动发 Server_CancelAttack），等于替用户在代码里写死了输入接线。",
+      "fix": "移除 Jump() 覆写与声明；保留 AttackComponent 的 CancelAttack / Server_CancelAttack / Multicast_CancelAttack 作为蓝图可调用的取消 API（客户端蓝图调 Server_CancelAttack）。攻击软锁与 IsMoveInputIgnored() 不变。",
+      "tags": [
+        "user-preference",
+        "input-binding",
+        "blueprint",
+        "attack",
+        "jump"
+      ],
+      "related_bugs": [
+        "bug-090"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-17T17:02:00.000Z"
     }
   ]
 }

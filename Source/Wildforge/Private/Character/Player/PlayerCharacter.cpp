@@ -17,14 +17,18 @@
 //   OnCrawlTransitionStarted…）
 //     是**每端各自本地广播**的，
 //     所以两端都能就地立即响应，不必等状态复制往返一个 RTT。
-//   * 锁分**两种强度**（见头文件里的大段说明）：
-//       - 攻击 = 硬锁：StopMovementImmediately +
-//       DisableMovement（MOVE_None），真把角色钉住；
-//       - 翻滚 / 滑行 / 趴下 = 软锁：只记账 + 复位加速，**不碰移动组件**。
-//     这几个能力都不能用硬锁：MOVE_None 会让 PerformMovement 直接 return
-//     并**丢弃根运动**
-//     （CharacterMovementComponent.cpp:2716-2734），翻滚的位移就没了、滑行每帧写的速度也会被
-//     StopMovementImmediately 当场清掉；而且边跑边滚 / 边跑边滑会被变成急停。
+//   * 攻击 = **输入锁**（2026-10-18 从硬锁改过来）：锁持有期间
+//     IsMoveInputIgnored() 返回 true，蓝图里的 AddMovementInput 变成空操作；
+//     移动模式、速度、根运动、重力与跳跃全部保持原样。
+//     原因：有些攻击蒙太奇需要根运动，而 MOVE_None 会在 PerformMovement
+//     入口直接 return 并**丢弃根运动**（CharacterMovementComponent.cpp:2716-2734）；
+//     硬锁还会让跳跃起不来（CheckJumpButton 只在移动组件正常更新时执行），
+//     而「跳跃打断攻击」需要移动模式仍是 Walking。
+//   * 翻滚 / 滑行 / 趴下 = 软锁：只记账 + 复位加速，**不碰移动组件**。
+//     这几个能力都不能用硬锁：滑行每帧写的速度会被 StopMovementImmediately
+//     当场清掉，翻滚 / 趴下的根运动也会被 MOVE_None 丢掉；而且边跑边滚 /
+//     边跑边滑会被变成急停。
+//   * 硬锁分支仍保留在 ApplyMovementLock 里，但当前没有任何能力使用。
 //   * 趴下的锁对象是「**这一次过渡动画**」，不是整个趴下姿态：动画一结束（组件广播
 //     OnCrawlTransitionFinished）就释放，所以趴着还能以爬行速度移动。锁住姿态本身会让
 //     玩家趴下后彻底动不了。
@@ -663,6 +667,28 @@ void APlayerCharacter::ResetSprintBoostOnMovementLock(FName Source) {
   }
 }
 
+// 攻击期间的移动输入门控。
+//
+// 引擎的 AddMovementInput 链路是：
+//   APawn::AddMovementInput
+//     → UPawnMovementComponent::AddInputVector
+//     → APawn::Internal_AddMovementInput，其中 `if (bForce || !IsMoveInputIgnored())`
+//       （Pawn.cpp:838-844）。
+// 所以这里返回 true 就能让蓝图里的 IA_Move 变成空操作，**不需要**禁用移动组件：
+// 移动模式保持 Walking，蒙太奇根运动、重力与跳跃都不受影响。
+//
+// 为什么用「移动锁集合」而不是 bIsAttacking 当判据：
+//   * bIsAttacking 是 COND_SimulatedOnly 复制的，拥有者客户端（本地玩家）收不到，
+//     在本地永远是 false；
+//   * 移动锁集合是每端在 OnAttackStarted / OnAttackFinished 里本地维护的，
+//     服务器与所有客户端都准确，而且和移动门控用的是同一份真相源。
+bool APlayerCharacter::IsMoveInputIgnored() const {
+  if (MovementLockHolders.Contains(MovementLockAttack)) {
+    return true;
+  }
+  return Super::IsMoveInputIgnored();
+}
+
 bool APlayerCharacter::ApplyMovementLock(FName Source, bool bDisableMovement) {
   // 1) 先记账。同一个来源重复落锁是**幂等**的（TSet 的重复 Add 是空操作）——
   //    这一条是必须的：攻击组件在每次连击切段时都会再广播一次 OnAttackStarted，
@@ -839,12 +865,14 @@ bool APlayerCharacter::ReleaseMovementLock(FName Source) {
 
 // ===== 组件事件 -> 移动锁 =====
 
-// 攻击开始 → 硬锁（禁用移动组件）。攻击没有位移，被钉住是预期行为。
+// 攻击开始 → **输入锁**（软锁 + IsMoveInputIgnored 门控，不碰移动组件）。
+// 不能禁用移动组件：带根运动的攻击需要 CharacterMovement 正常处理根运动，
+// 而且跳跃打断攻击也要求移动模式保持 Walking（否则 CheckJumpButton 根本不跑）。
 void APlayerCharacter::HandleAttackStarted() {
-  ApplyMovementLock(MovementLockAttack, /*bDisableMovement=*/true);
+  ApplyMovementLock(MovementLockAttack, /*bDisableMovement=*/false);
 }
 
-// 攻击结束 → 释放硬锁
+// 攻击结束 → 释放输入锁（IsMoveInputIgnored 立刻恢复响应）
 void APlayerCharacter::HandleAttackFinished() {
   ReleaseMovementLock(MovementLockAttack);
 }

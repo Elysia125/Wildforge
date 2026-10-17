@@ -56,6 +56,10 @@
 - [2026-10-17] **角色 / Pawn 自身的配置挂在 Character 上，不要挂在 Controller 上**：用户明确纠正过
   一次——角色适配器只需要在角色蓝图的类默认值里指定，Controller 不参与资源选择。Controller
   只负责它自己的职责（输入模式、UI 等），不要因为它「先于 Pawn 存在」就把角色配置挪过去。
+- [2026-10-18] **输入接线由用户在蓝图里自己写，C++ 不要替他把输入行为写死**：例如「跳跃打断攻击」
+  只保留可调用的 `Server_CancelAttack()` / `CancelAttack()` / `Multicast_CancelAttack()`，不要覆写
+  `APlayerCharacter::Jump()` 或在代码里判断按键。C++ 负责权威状态与可调用 API，触发时机交给蓝图。
+  见 bug-091。
 
 ## Key Learnings
 
@@ -231,8 +235,17 @@
 - **`MOVE_None` 会丢弃根运动**：`UCharacterMovementComponent::PerformMovement` 入口对
   `MovementMode == MOVE_None` 直接 return，且显式 `RootMotionParams.Clear()` / `CurrentRootMotion.Clear()`
   再 `ClearAccumulatedForces()`（`CharacterMovementComponent.cpp:2716-2734`）。所以 `DisableMovement()` 是
-  「连动画自带的位移一起关掉」，只适合不需要位移的动作（攻击）。需要位移的动作（翻滚 / 位移技）不要碰移动
-  组件；`StopMovementImmediately()` 也会把跑动惯性清零，边跑边滚会变成急停 + 原地滚。见 bug-029。
+  「连动画自带的位移一起关掉」；本项目原先只用于攻击，2026-10-18 起攻击也改为软锁（见 bug-090），
+  已无硬锁使用者。需要位移的动作（翻滚 / 位移技）不要碰移动组件；`StopMovementImmediately()` 也会把
+  跑动惯性清零，边跑边滚会变成急停 + 原地滚。见 bug-029。
+- **拦截「移动输入」用覆写 `IsMoveInputIgnored()`，不要动移动组件**：`APawn::AddMovementInput`
+  → `UPawnMovementComponent::AddInputVector` → `APawn::Internal_AddMovementInput`，最后一步是
+  `if (bForce || !IsMoveInputIgnored())`（`Pawn.cpp:838-844`）。返回 true 就能让蓝图 `AddMovementInput`
+  全部变成空操作，而 `MOVE_Walking`、根运动、重力、跳跃全部保留。判据必须是**每端本地维护**的状态，
+  不能用 `COND_SimulatedOnly` 复制的 `bIsAttacking`（拥有者客户端收不到，永远是 false）。
+  `ACharacter::Jump()` 只在输入端（本地客户端 / AI）被调用，服务器侧的跳跃由 move 包驱动、不会走它；
+  所以「跳跃时取消攻击」这类输入行为应在**蓝图**的跳跃事件里调 Server RPC（服务器上就地同步执行）。
+  **不要为了接这个输入去覆写 `Jump()`**——输入接线归蓝图（见 bug-091）。
 - **`UCharacterMovementComponent` 在 UE 5.7 不复制任何移动参数**：头文件里 `MaxWalkSpeed` /
   `MaxWalkSpeedCrouched` / `GroundFriction` / `BrakingDecelerationWalking` / `MaxAcceleration`
   都**没有** `Replicated` 标记，cpp 里也**没有** `GetLifetimeReplicatedProps`（本机 grep 实测）。
@@ -420,6 +433,11 @@
    更糟的是如果这个锁只在服务器落（客户端没有对应事件），客户端还在以跑速前进，误差累积后被位置纠正
    拉回来 = 橡皮筋。要「占住角色但不关移动」时用**软锁**（只记账 / 复位加速），位移留给根运动或蓝图。
    见 bug-029。
+- [2026-10-18] **攻击期间的移动限制不要改回硬锁**：攻击现在与翻滚 / 滑行一样走软锁，并覆写
+   `IsMoveInputIgnored()` 只拦移动输入；不要恢复 `ApplyMovementLock(MovementLockAttack, true)` /
+   `DisableMovement()`。硬锁会丢根运动，且 `Jump()` 根本起不来，跳跃打断就无从谈起。见 bug-090。
+- [2026-10-18] **不要在 C++ 里替用户接输入**：跳跃打断攻击由蓝图调用 `Server_CancelAttack()`；
+   不要覆写 `APlayerCharacter::Jump()` 或按按键自动取消。C++ 只提供权威 API，触发时机归蓝图。见 bug-091。
 - [2026-10-07] **不要在 `NetMulticast` 的 `_Implementation` 里写「非权威端就忽略/报错」的门禁**：每个端
    都会执行它，客户端那一份正是**正常接收**（`Actor.cpp:5500-5519`），加门禁等于客户端永远看不到表现。
    （这条规则当时只改了翻滚，加速 / 闪现 / 攻击特效三处漏了 —— 见 bug-033，说明「立了规则」不等于
@@ -697,7 +715,8 @@
   **前置条件**：持有锁的组件必须与角色同生共死（本项目都是构造函数里 `CreateDefaultSubobject` 的），
   运行时 `RemoveComponent` 掉持有锁的组件会让锁永远挂着——真要这么做必须先主动解锁。
   **同日修正（见 bug-029）**：翻滚不再用硬锁 —— `ApplyMovementLock(Source, bDisableMovement)` 分两种强度，
-  攻击 = 硬锁（`StopMovementImmediately + DisableMovement`），翻滚 = **软锁**（只记账 + 复位加速，不碰移动
+  攻击（当时）= 硬锁（`StopMovementImmediately + DisableMovement`；2026-10-18 起改为软锁，见文末决策与
+  bug-090），翻滚 = **软锁**（只记账 + 复位加速，不碰移动
   模式与速度）。因此「恢复移动」的判据从「全部持有者清空」改成新增的硬锁子集
   `MovementDisablingHolders` 清空，并且用 `bMovementDisabledByLock` 显式记录「移动组件是被这套锁禁掉的」，
   不再靠 `MovementMode == MOVE_None` 反推（它可能来自布娃娃 / 死亡 / 过场）。
@@ -838,3 +857,9 @@
   时长（0.05~0.2s）——不同资产指针能正确过滤旧蒙太奇的延迟结束事件。
   设计含义：单蒙太奇多段时，**连击通知点（`UAnimNotify_Combo`）应放在每段动作已经打出去的位置**，
   因为切段是立即硬切、没有淡入过渡来掩盖抽帧。
+- [2026-10-18] **攻击的移动门控从硬锁改为「移动输入软锁」；跳跃打断由蓝图接线**：`HandleAttackStarted`
+  改调 `ApplyMovementLock(MovementLockAttack, false)`，`APlayerCharacter::IsMoveInputIgnored()` 在攻击锁
+  存在时返回 true；取消入口是组件的 `Server_CancelAttack()`（客户端蓝图调用）/ `CancelAttack()`
+  （服务器），再由 `Multicast_CancelAttack` 在每端停蒙太奇并走 `FinishAttackChain`。理由：带根运动的攻击
+  需要 `MOVE_Walking`（MOVE_None 会丢根运动），且跳跃应当能打断攻击。门控判据用每端本地的
+  `MovementLockHolders`，不用 `COND_SimulatedOnly` 的 `bIsAttacking`。见 bug-090 / bug-091。
