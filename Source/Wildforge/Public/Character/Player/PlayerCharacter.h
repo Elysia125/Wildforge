@@ -13,6 +13,8 @@
 
 #include "PlayerCharacter.generated.h"
 
+class UCharacterAdaptor;
+
 /**
  * 玩家角色：把玩家专用的「能力组件」装配在一起。
  *
@@ -101,6 +103,39 @@ private:
 
   UPROPERTY(BlueprintGetter = GetQuickContainer, Category = "Items")
   TObjectPtr<UQuickContainer> QuickContainer;
+
+  // ===== 角色资源适配器 =====
+  // 这个角色使用哪一套资源（骨骼网格体 / 动画蓝图 / 各能力组件的蒙太奇）。
+  // 在**角色蓝图**的类默认值里指定一个 UCharacterAdaptor 的**蓝图子类**
+  // （每新增一个角色就做一个适配器蓝图），不用逐项改组件默认值。
+  //
+  // 为什么存 TSubclassOf 而不是 UCharacterAdaptor*：蓝图资源本身是「类」，
+  // 对象属性槽只接受资源实例；用 TSubclassOf 才能把适配器蓝图直接拖进角色
+  // 蓝图的这个槽位。数据都放在适配器蓝图的类默认值里，各端读同一份 CDO
+  // （适配器只读，不需要实例化）。
+  //
+  // 复制到**所有端**：引擎不复制网格体 / 动画蓝图，各组件里的蒙太奇字段也没有
+  // Replicated，所以每个端都要在本地应用；服务器运行时换适配器时，客户端靠
+  // OnRep 重新应用。适配器类本身由角色蓝图的类默认值硬引用，所有端都已加载。
+  //
+  // 用 BlueprintGetter 而不是 BlueprintReadOnly：UHT 不允许私有成员直接标
+  // BlueprintReadOnly（与 SprintBoostComponent 的 bMirrorSpeedOnOwningClient 同一个坑）。
+  UPROPERTY(EditDefaultsOnly,
+            BlueprintGetter = GetCharacterAdaptorClass,
+            ReplicatedUsing = OnRep_CharacterAdaptorClass,
+            Category = "Character|Adaptor")
+  TSubclassOf<UCharacterAdaptor> CharacterAdaptorClass;
+
+  // 在本端读取适配器蓝图类的 CDO，把里面的资源逐项写进网格与各能力组件
+  // （不会碰任何玩法数值，也不实例化适配器）。
+  // `Reason` 只用于日志，标明这次应用来自 BeginPlay / 服务器 / OnRep。
+  void ApplyCharacterAdaptorClassLocal(
+      TSubclassOf<UCharacterAdaptor> InAdaptorClass, const TCHAR *Reason);
+
+  // 把适配器里的资源逐项写进网格与各能力组件（不会碰任何玩法数值）。
+  // `Reason` 只用于日志，标明这次应用来自哪里。
+  void ApplyCharacterAdaptorResources(const UCharacterAdaptor *Adaptor,
+                                      const TCHAR *Reason);
 
   // 背包容量（格数）。**只在权威端的 BeginPlay 里用来初始化容器**（见 .cpp
   // 的实现注释）。
@@ -242,6 +277,12 @@ protected:
   // 组件销毁 / 角色销毁时退订，避免回调打到半销毁对象上
   virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
+  // 客户端收到服务器在运行时选定的适配器蓝图：立刻在本端重新应用。
+  // 服务器自己不会触发 OnRep（它在写入后直接应用一次，见
+  // ApplyCharacterAdaptorClass）。
+  UFUNCTION()
+  void OnRep_CharacterAdaptorClass();
+
   // 攻击开始：落**硬锁**（禁用移动组件）
   UFUNCTION()
   void HandleAttackStarted();
@@ -287,6 +328,26 @@ protected:
 public:
   // Sets default values for this character's properties
   APlayerCharacter();
+
+  // 适配器选择要发给**所有端**（含模拟代理）：网格体 / 动画蓝图 / 蒙太奇都
+  // 不在引擎的复制列表里，每个端必须自己应用（见 ApplyCharacterAdaptorResources）。
+  virtual void GetLifetimeReplicatedProps(
+      TArray<FLifetimeProperty> &OutLifetimeProps) const override;
+
+  // 运行时切换适配器蓝图（默认值在角色蓝图里配，平时不需要调用它）。
+  // **只允许在服务器调用**：适配器决定所有客户端看到的角色外观，不能让客户端
+  // 自己指定；非权威端调用会记 WFLOG_ERROR 并直接返回。
+  // 服务器写入复制属性后立即在本端应用，客户端收到 OnRep 后应用同一份。
+  UFUNCTION(BlueprintCallable, Category = "Character|Adaptor")
+  void ApplyCharacterAdaptorClass(
+      TSubclassOf<UCharacterAdaptor> InAdaptorClass);
+
+  // 当前生效的适配器蓝图类（角色蓝图类默认值里指定的那个）。
+  UFUNCTION(BlueprintPure, Category = "Character|Adaptor",
+            meta = (BlueprintThreadSafe))
+  TSubclassOf<UCharacterAdaptor> GetCharacterAdaptorClass() const {
+    return CharacterAdaptorClass;
+  }
 
   UFUNCTION(BlueprintPure, Category = "Items", meta = (BlueprintThreadSafe))
   UPlayerInventory *GetInventory() const { return Inventory.Get(); }

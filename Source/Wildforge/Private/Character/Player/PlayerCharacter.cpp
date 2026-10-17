@@ -2,8 +2,14 @@
 
 #include "Character/Player/PlayerCharacter.h"
 
+#include "Animation/AnimInstance.h"
+#include "Character/Adaptor/CharacterAdaptor.h"
+#include "Character/Components/BlinkComponent.h"
 #include "Character/Settings/PlayerCharacterSettings.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Engine/SkeletalMesh.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Net/UnrealNetwork.h"
 #include "Utils/WildforgeLog.h"
 
 // 移动门控的设计（攻击 / 翻滚 / 滑行 / 趴下共用）：
@@ -80,8 +86,272 @@ APlayerCharacter::APlayerCharacter() : ABaseCharacter() {
       CreateDefaultSubobject<UCrawlingComponent>(TEXT("CrawlingComponent"));
 }
 
+// ===== 角色资源适配器 =====
+
+void APlayerCharacter::GetLifetimeReplicatedProps(
+    TArray<FLifetimeProperty> &OutLifetimeProps) const {
+  Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+  // 适配器蓝图类决定「这个角色用哪套网格体 / 动画蓝图 / 蒙太奇」，**所有端**都要，
+  // 包括模拟代理（别人看到的角色外观与动画靠它）。平时它就是角色蓝图的类默认值，
+  // 各端本来就一致；注册复制是为了支持服务器在运行时换角色——新的类会复制到
+  // 所有端并在 OnRep 里重新应用。带宽只在真正变化时产生，可以忽略。
+  DOREPLIFETIME(APlayerCharacter, CharacterAdaptorClass);
+}
+
+void APlayerCharacter::ApplyCharacterAdaptorClass(
+    TSubclassOf<UCharacterAdaptor> InAdaptorClass) {
+  // 适配器决定所有客户端看到的角色外观，只能由服务器选择。
+  // 客户端调用一律拒绝（类默认值在 BeginPlay 已经应用过，客户端没有
+  // 「先本地应用、等复制覆盖」的必要）。
+  if (!HasAuthority()) {
+    WFLOG_ERROR(
+        "[角色适配器] %s 在非权威端调用 ApplyCharacterAdaptorClass（%s），已拒绝。"
+        "适配器只能由服务器选择，客户端会通过复制收到服务器的那一份。",
+        *GetName(),
+        InAdaptorClass != nullptr ? *InAdaptorClass->GetName() : TEXT("空"));
+    return;
+  }
+
+  // 空类不能用来「恢复蓝图默认值」：应用前的网格 / 蒙太奇已经被覆盖，
+  // 而蓝图默认值是在 C++ 构造函数之后才应用的，本类手里没有那份快照可回退。
+  // 所以明确拒绝，保持当前资源，并把这件事记出来。
+  if (InAdaptorClass == nullptr) {
+    WFLOG_WARNING("[角色适配器] %s 服务器收到空适配器蓝图，忽略（保持当前资源）。",
+                  *GetName());
+    return;
+  }
+
+  // 即使类没变也重新应用一次：重新 Possess / 资源被别处改过时，
+  // 这一步能把所有字段拉回适配器定义的状态。
+  if (CharacterAdaptorClass == InAdaptorClass) {
+    WFLOG_INFO("[角色适配器] %s 服务器重复应用同一个适配器蓝图（%s），刷新一次资源。",
+               *GetName(), *InAdaptorClass->GetName());
+  } else {
+    CharacterAdaptorClass = InAdaptorClass;
+    WFLOG_INFO("[角色适配器] %s 服务器选定适配器蓝图：%s（将复制到所有端）。",
+               *GetName(), *InAdaptorClass->GetName());
+  }
+  ApplyCharacterAdaptorClassLocal(InAdaptorClass, TEXT("服务器"));
+}
+
+void APlayerCharacter::ApplyCharacterAdaptorClassLocal(
+    TSubclassOf<UCharacterAdaptor> InAdaptorClass, const TCHAR *Reason) {
+  if (InAdaptorClass == nullptr) {
+    // 没配适配器是合法状态：角色沿用蓝图里的资源（与引入适配器之前一致）。
+    WFLOG_INFO("[角色适配器] %s 没有指定适配器蓝图（来源=%s），保持角色蓝图"
+               "当前的网格体 / 动画蓝图 / 蒙太奇。",
+               *GetName(), Reason);
+    return;
+  }
+
+  // 适配器是只读资源集合：直接读蓝图类的 CDO，不 NewObject。
+  // 类由角色蓝图的类默认值硬引用，所有端都已加载，读到的数据一致。
+  const UCharacterAdaptor *Adaptor = InAdaptorClass.GetDefaultObject();
+  if (Adaptor == nullptr) {
+    WFLOG_ERROR("[角色适配器] %s 无法读取适配器蓝图 %s 的类默认值（来源=%s）。",
+                *GetName(), *InAdaptorClass->GetName(), Reason);
+    return;
+  }
+
+  WFLOG_INFO("[角色适配器] %s 应用适配器蓝图 %s（来源=%s）：%s", *GetName(),
+             *InAdaptorClass->GetName(), Reason, *Adaptor->GetDebugString());
+  ApplyCharacterAdaptorResources(Adaptor, Reason);
+}
+
+void APlayerCharacter::OnRep_CharacterAdaptorClass() {
+  if (CharacterAdaptorClass == nullptr) {
+    // 服务器主动清空适配器时没有「恢复默认资源」的依据（旧资源是蓝图默认值，
+    // 已被覆盖且没有缓存），只能保持现状并把这件事记清楚。
+    WFLOG_WARNING("[角色适配器] %s 收到服务器清空的适配器蓝图；保持当前资源"
+                  "不做回退。",
+                  *GetName());
+    return;
+  }
+
+  WFLOG_INFO("[角色适配器] %s 收到服务器复制的适配器蓝图：%s。", *GetName(),
+             *CharacterAdaptorClass->GetName());
+  ApplyCharacterAdaptorClassLocal(CharacterAdaptorClass, TEXT("复制（OnRep）"));
+}
+
+void APlayerCharacter::ApplyCharacterAdaptorResources(
+    const UCharacterAdaptor *Adaptor, const TCHAR *Reason) {
+  if (Adaptor == nullptr) {
+    return;
+  }
+
+  const FString Who = GetName();
+
+  // ===== 1) 骨骼网格体 / 动画蓝图 =====
+  //
+  // 顺序：先换网格体、再换动画蓝图。SetSkeletalMesh 内部会 InitAnim，
+  // 用当时挂着的 AnimClass 建一次实例；随后 SetAnimInstanceClass 会清掉它并用
+  // 适配器指定的类重建（引擎实现：SkeletalMeshComponent.cpp:3288 / :3458）。
+  //
+  // 留空 = 保留角色蓝图里的默认值（记 WARNING）：骨骼网格体 / 动画蓝图为空
+  // 通常就是没填，而不是「故意清空」。
+  USkeletalMeshComponent *MeshComponent = GetMesh();
+  if (MeshComponent == nullptr) {
+    WFLOG_ERROR("[角色适配器] %s 没有 SkeletalMeshComponent，无法应用网格体与动画"
+                "蓝图（来源=%s）。",
+                *Who, Reason);
+  } else {
+    if (Adaptor->SkeletalMesh != nullptr) {
+      if (MeshComponent->GetSkeletalMeshAsset() != Adaptor->SkeletalMesh.Get()) {
+        MeshComponent->SetSkeletalMesh(Adaptor->SkeletalMesh.Get());
+        WFLOG_INFO("[角色适配器] %s 骨骼网格体 -> %s（来源=%s）。", *Who,
+                   *Adaptor->SkeletalMesh->GetName(), Reason);
+      } else {
+        WFLOG_INFO("[角色适配器] %s 骨骼网格体已经是 %s，跳过（来源=%s）。", *Who,
+                   *Adaptor->SkeletalMesh->GetName(), Reason);
+      }
+    } else {
+      WFLOG_WARNING("[角色适配器] %s 的适配器 %s 没有配置 SkeletalMesh，"
+                    "保留角色蓝图当前的网格体（来源=%s）。",
+                    *Who, *Adaptor->GetName(), Reason);
+    }
+
+    if (Adaptor->AnimClass.Get() != nullptr) {
+      if (MeshComponent->GetAnimClass() != Adaptor->AnimClass.Get()) {
+        MeshComponent->SetAnimInstanceClass(Adaptor->AnimClass.Get());
+        WFLOG_INFO("[角色适配器] %s 动画蓝图 -> %s（来源=%s）。", *Who,
+                   *Adaptor->AnimClass->GetName(), Reason);
+      } else {
+        WFLOG_INFO("[角色适配器] %s 动画蓝图已经是 %s，跳过（来源=%s）。", *Who,
+                   *Adaptor->AnimClass->GetName(), Reason);
+      }
+    } else {
+      WFLOG_WARNING("[角色适配器] %s 的适配器 %s 没有配置 AnimClass，"
+                    "保留角色蓝图当前的动画蓝图（来源=%s）。",
+                    *Who, *Adaptor->GetName(), Reason);
+    }
+
+    if (Adaptor->bOverrideMeshTransform) {
+      MeshComponent->SetRelativeTransform(Adaptor->MeshRelativeTransform);
+      WFLOG_INFO("[角色适配器] %s 网格体相对变换 -> %s（来源=%s）。", *Who,
+                 *Adaptor->MeshRelativeTransform.ToHumanReadableString(), Reason);
+    }
+  }
+
+  // ===== 2) 攻击 =====
+  // 整个列表覆盖（含空列表）：从 A 角色切到 B 角色时，必须能把 A 的蒙太奇清掉，
+  // 否则 B 会继续播 A 的动画。蒙太奇留空 = 明确清空，与网格体留空的语义不同。
+  if (AttackComponent != nullptr) {
+    AttackComponent->AttackMontageList = Adaptor->AttackMontageList;
+    WFLOG_INFO("[角色适配器] %s 攻击蒙太奇列表 -> %d 段（来源=%s）。", *Who,
+               Adaptor->AttackMontageList.Num(), Reason);
+  } else {
+    WFLOG_WARNING("[角色适配器] %s 没有 AttackComponent，跳过攻击蒙太奇（来源=%s）。",
+                  *Who, Reason);
+  }
+
+  // ===== 3) 翻滚 =====
+  if (LandRollComponent != nullptr) {
+    LandRollComponent->LandRollMontage = Adaptor->LandRollMontage;
+    LandRollComponent->LandRollSectionName = Adaptor->LandRollSectionName;
+    WFLOG_INFO("[角色适配器] %s 翻滚蒙太奇 -> %s，Section=%s（来源=%s）。", *Who,
+               Adaptor->LandRollMontage != nullptr
+                   ? *Adaptor->LandRollMontage->GetName()
+                   : TEXT("未配置"),
+               *Adaptor->LandRollSectionName.ToString(), Reason);
+  } else {
+    WFLOG_WARNING("[角色适配器] %s 没有 LandRollComponent，跳过翻滚蒙太奇"
+                  "（来源=%s）。",
+                  *Who, Reason);
+  }
+
+  // ===== 4) 滑行 =====
+  if (SlideComponent != nullptr) {
+    SlideComponent->SlideMontage = Adaptor->SlideMontage;
+    SlideComponent->SlideSectionName = Adaptor->SlideSectionName;
+    WFLOG_INFO("[角色适配器] %s 滑行蒙太奇 -> %s，Section=%s（来源=%s）。", *Who,
+               Adaptor->SlideMontage != nullptr
+                   ? *Adaptor->SlideMontage->GetName()
+                   : TEXT("未配置"),
+               *Adaptor->SlideSectionName.ToString(), Reason);
+  } else {
+    WFLOG_WARNING("[角色适配器] %s 没有 SlideComponent，跳过滑行蒙太奇（来源=%s）。",
+                  *Who, Reason);
+  }
+
+  // ===== 5) 加速 =====
+  if (SprintBoostComponent != nullptr) {
+    SprintBoostComponent->SprintMontage = Adaptor->SprintMontage;
+    WFLOG_INFO("[角色适配器] %s 加速蒙太奇 -> %s（来源=%s）。", *Who,
+               Adaptor->SprintMontage != nullptr
+                   ? *Adaptor->SprintMontage->GetName()
+                   : TEXT("未配置"),
+               Reason);
+  } else {
+    WFLOG_WARNING("[角色适配器] %s 没有 SprintBoostComponent，跳过加速蒙太奇"
+                  "（来源=%s）。",
+                  *Who, Reason);
+  }
+
+  // ===== 6) 闪现（组件是可选的，没有就跳过）=====
+  if (UBlinkComponent *BlinkComponent =
+          FindComponentByClass<UBlinkComponent>()) {
+    BlinkComponent->BlinkMontage = Adaptor->BlinkMontage;
+    WFLOG_INFO("[角色适配器] %s 闪现蒙太奇 -> %s（来源=%s）。", *Who,
+               Adaptor->BlinkMontage != nullptr
+                   ? *Adaptor->BlinkMontage->GetName()
+                   : TEXT("未配置"),
+               Reason);
+  } else {
+    // 不是错误：APlayerCharacter 当前并没有装配 BlinkComponent，
+    // 将来装配后这段会自动生效。
+    WFLOG_INFO("[角色适配器] %s 没有 BlinkComponent，跳过闪现蒙太奇（来源=%s）。",
+               *Who, Reason);
+  }
+
+  // ===== 7) 趴下 =====
+  if (CrawlingComponent != nullptr) {
+    CrawlingComponent->ProneFromStandMontage = Adaptor->ProneFromStandMontage;
+    CrawlingComponent->ProneFromRunMontage = Adaptor->ProneFromRunMontage;
+    CrawlingComponent->ProneToStandMontage = Adaptor->ProneToStandMontage;
+    CrawlingComponent->ProneFromStandSectionName =
+        Adaptor->ProneFromStandSectionName;
+    CrawlingComponent->ProneFromRunSectionName =
+        Adaptor->ProneFromRunSectionName;
+    CrawlingComponent->ProneToStandSectionName =
+        Adaptor->ProneToStandSectionName;
+    WFLOG_INFO(
+        "[角色适配器] %s 趴下蒙太奇 -> 站立趴下=%s[%s]，奔跑趴下=%s[%s]，"
+        "起身=%s[%s]（来源=%s）。",
+        *Who,
+        Adaptor->ProneFromStandMontage != nullptr
+            ? *Adaptor->ProneFromStandMontage->GetName()
+            : TEXT("未配置"),
+        *Adaptor->ProneFromStandSectionName.ToString(),
+        Adaptor->ProneFromRunMontage != nullptr
+            ? *Adaptor->ProneFromRunMontage->GetName()
+            : TEXT("未配置"),
+        *Adaptor->ProneFromRunSectionName.ToString(),
+        Adaptor->ProneToStandMontage != nullptr
+            ? *Adaptor->ProneToStandMontage->GetName()
+            : TEXT("未配置"),
+        *Adaptor->ProneToStandSectionName.ToString(), Reason);
+  } else {
+    WFLOG_WARNING("[角色适配器] %s 没有 CrawlingComponent，跳过趴下蒙太奇"
+                  "（来源=%s）。",
+                  *Who, Reason);
+  }
+
+  // 最后打一行完整快照：联机排查时把服务器与客户端这两行对一下，
+  // 就能确认两端应用的是同一份资源。
+  WFLOG_INFO("[角色适配器] %s 适配器应用完成（来源=%s）：%s", *Who, Reason,
+             *Adaptor->GetDebugString());
+}
+
 void APlayerCharacter::BeginPlay() {
   Super::BeginPlay();
+
+  // 角色资源适配器：**每一端**都要在本地应用一次（网格体 / 动画蓝图 / 蒙太奇
+  // 都不在引擎的复制列表里）。适配器蓝图类在角色蓝图的类默认值里指定，各端拿到的
+  // 默认值一致；服务器运行中换过时，客户端会通过 OnRep_CharacterAdaptorClass
+  // 再应用一次。放在 Super 之后：此时各组件的 BeginPlay 已经跑完，组件的配置值
+  // 已生效，适配器覆盖的是资源而不是玩法数值。
+  ApplyCharacterAdaptorClassLocal(CharacterAdaptorClass, TEXT("BeginPlay"));
 
   const FString Who = GetName();
 

@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-10-05T10:52:46.081Z",
   "lifetime": {
-    "total_tokens_estimated": 155008,
-    "total_reads": 76,
-    "total_writes": 163,
-    "total_sessions": 35,
-    "anatomy_hits": 45,
-    "anatomy_misses": 31,
-    "repeated_reads_blocked": 19,
-    "estimated_savings_vs_bare_cli": 51226
+    "total_tokens_estimated": 232093,
+    "total_reads": 95,
+    "total_writes": 188,
+    "total_sessions": 38,
+    "anatomy_hits": 62,
+    "anatomy_misses": 33,
+    "repeated_reads_blocked": 27,
+    "estimated_savings_vs_bare_cli": 110651
   },
   "sessions": [
     {
@@ -1551,6 +1551,296 @@
         "writes_count": 1,
         "repeated_reads_blocked": 0,
         "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-10-17-2109",
+      "started": "2026-10-17T13:09:39.511Z",
+      "ended": "2026-10-17T13:16:28.966Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 4500,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Core/WildforgePlayerController.h",
+          "tokens_estimated": 500,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Core/WildforgePlayerController.cpp",
+          "tokens_estimated": 700,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+          "tokens_estimated": 6400,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/AttackComponent.h",
+          "tokens_estimated": 3700,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/CrawlingComponent.h",
+          "tokens_estimated": 5100,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/LandRollComponent.h",
+          "tokens_estimated": 3600,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/SlideComponent.h",
+          "tokens_estimated": 5600,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/SprintBoostComponent.h",
+          "tokens_estimated": 6900,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/BlinkComponent.h",
+          "tokens_estimated": 2500,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/BaseCharacter.h",
+          "tokens_estimated": 800,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/structs/AttackMontageData.h",
+          "tokens_estimated": 150,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Source/Runtime/Engine/Private/Components/SkeletalMeshComponent.cpp",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Adaptor/CharacterAdaptor.h",
+          "tokens_estimated": 1358,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Adaptor/CharacterAdaptor.cpp",
+          "tokens_estimated": 420,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 28,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 267,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 79,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 274,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+          "tokens_estimated": 113,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+          "tokens_estimated": 2630,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Core/WildforgePlayerController.h",
+          "tokens_estimated": 500,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Core/WildforgePlayerController.cpp",
+          "tokens_estimated": 782,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/xf317/AppData/Local/Temp/wf-syntax-check.ps1",
+          "tokens_estimated": 213,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+          "tokens_estimated": 38,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+          "tokens_estimated": 54,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/CLAUDE.md",
+          "tokens_estimated": 200,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 40450,
+        "output_tokens_estimated": 6956,
+        "reads_count": 13,
+        "writes_count": 14,
+        "repeated_reads_blocked": 2,
+        "anatomy_lookups": 12
+      }
+    },
+    {
+      "id": "session-2026-10-17-2124",
+      "started": "2026-10-17T13:24:46.885Z",
+      "ended": "2026-10-17T13:29:08.074Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Adaptor/CharacterAdaptor.h",
+          "tokens_estimated": 1500,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 4500,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Core/WildforgePlayerController.h",
+          "tokens_estimated": 900,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+          "tokens_estimated": 11500,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Source/Runtime/CoreUObject/Public/Templates/SubclassOf.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Adaptor/CharacterAdaptor.h",
+          "tokens_estimated": 400,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 373,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 45,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 222,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+          "tokens_estimated": 844,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+          "tokens_estimated": 114,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/CLAUDE.md",
+          "tokens_estimated": 134,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/xf317/AppData/Local/Temp/wf-syntax-check2.ps1",
+          "tokens_estimated": 205,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 18400,
+        "output_tokens_estimated": 2337,
+        "reads_count": 5,
+        "writes_count": 8,
+        "repeated_reads_blocked": 1,
+        "anatomy_lookups": 4
+      }
+    },
+    {
+      "id": "session-2026-10-17-2239",
+      "started": "2026-10-17T14:39:56.769Z",
+      "ended": "2026-10-17T14:42:45.662Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+          "tokens_estimated": 8005,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/xf317/AppData/Local/Temp/wf-syntax-attack.ps1",
+          "tokens_estimated": 179,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/xf317/AppData/Local/Temp/wf-probe-attack.ps1",
+          "tokens_estimated": 346,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/xf317/AppData/Local/Temp/wf-probe-attack.ps1",
+          "tokens_estimated": 412,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 8005,
+        "output_tokens_estimated": 937,
+        "reads_count": 1,
+        "writes_count": 3,
+        "repeated_reads_blocked": 5,
+        "anatomy_lookups": 1
       }
     }
   ],

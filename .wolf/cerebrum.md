@@ -53,6 +53,9 @@
   `Character/Settings/<X>ComponentSettings.h`，一类一个 Project Settings 页 / 一个 ini 节），
   不要为了「集中管理」把它们塞进 `UWildforgeGameplaySettings` 这种大杂烩。落笔前先想清楚
   「这个值到底属于谁」；跨组件共用的值（如背包容量）放到**宿主**的配置类里，不要复制两份。
+- [2026-10-17] **角色 / Pawn 自身的配置挂在 Character 上，不要挂在 Controller 上**：用户明确纠正过
+  一次——角色适配器只需要在角色蓝图的类默认值里指定，Controller 不参与资源选择。Controller
+  只负责它自己的职责（输入模式、UI 等），不要因为它「先于 Pawn 存在」就把角色配置挪过去。
 
 ## Key Learnings
 
@@ -374,6 +377,29 @@
   （`Controller.h:20/62`，`BlueprintAssignable`，注释明确说两端都会广播；客户端走 `SetPawnFromRep`，
   `Controller.cpp:568`）。客户端本地 PlayerController 的 `BeginPlay` 时 Pawn 往往还没复制过来，
   这时 `GetOwningPlayerPawn()` 是空 —— 想初始化「挂在 Pawn 上的东西」必须补这一枪，不能只在 `NativeConstruct` 里做一次。
+- [2026-10-17] UE 5.7 的 `USkeletalMeshComponent` **不复制** `SkeletalMesh` / `AnimClass`
+  （`SkinnedMeshComponent.cpp` / `SkeletalMeshComponent.cpp` 里没有对应 `DOREPLIFETIME`，
+  `SetSkeletalMesh` / `SetAnimInstanceClass` 都只写本端），各能力组件的蒙太奇字段也没有 `Replicated`。
+  所以「切角色换模型 / 动画蓝图 / 蒙太奇」不能只在服务器做：本项目把选择放在
+  `APlayerCharacter::CharacterAdaptorClass`（`TSubclassOf<UCharacterAdaptor>`，普通
+  `DOREPLIFETIME`：所有端，含模拟代理），每个端在 `BeginPlay` 读适配器蓝图 CDO 本地应用；
+  服务器运行时换类时客户端靠 `OnRep_CharacterAdaptorClass` 重新应用，只有服务器能写这个属性。
+- [2026-10-17] **Blueprint 子类资产是「类」，对象引用属性（`TObjectPtr<T>`）选不到它**：想让角色蓝图
+  直接指定一个「适配器蓝图」（用户的原话就是这么设想的），属性必须声明成 `TSubclassOf<T>`；
+  数据用 `TSubclassOf::GetDefaultObject()` 读 CDO 即可（适配器只读，不必 `NewObject`）。
+  `TObjectPtr<T>` 的路线对应的是 Data Asset **实例**（右键 Miscellaneous → Data Asset），两者互不兼容。
+- [2026-10-17] `TSubclassOf<T>::Get()` / `GetDefaultObject()` 需要 `T` 的**完整类型**
+  （`SubclassOf.h` 里用了 `T::StaticClass()`）：头文件里只前向声明 `UAnimInstance` 时，调用 `.Get()` 的
+  .cpp 会报 `incomplete type 'UAnimInstance' named in nested name specifier`，要 include
+  `Animation/AnimInstance.h`。
+- [2026-10-17] **同一个蒙太奇资产切 Section 的正确 API 是 `Montage_JumpToSection`（在现有实例上跳），
+  不是再次 `Montage_Play`**。`Montage_PlayInternal`（`AnimInstance.cpp:2392-2456`）默认
+  `bStopAllMontages = true`，会先 `StopAllMontagesByGroupName` 把旧实例按组停掉；旧实例的
+  `OnMontageEnded(bInterrupted=true)` 要等淡出结束（默认约 0.2s）才广播，而不是在 `Montage_Play` 返回前。
+  因此「用 `bAdvancingCombo` 标记包住 `Montage_Play`」只能挡同步事件、挡不住这个延迟事件；
+  再用**资产指针**判断「结束的是不是当前段」时，同一资产的新旧实例指针相同，无法区分。
+  跨蒙太奇时资产指针不同，延迟结束会被正确忽略——所以只有「一个蒙太奇 + 多 Section」的配置会中招。
+  见 bug-084。
 
 ## Do-Not-Repeat
 
@@ -568,6 +594,16 @@
   `else if (Settings->bOverride_InventoryCapacity)` 顺手把另一项也覆盖掉——另一项自己的开关就永远读不到
   （本次 `bOverride_QuickBarCapacity` 就这样成了死属性）。ini 里「值写了但没写 bOverride_*」同样是静默失效。
   见 bug-076、bug-052。
+- [2026-10-17] **不要只在服务器应用角色外观资源**（骨骼网格体 / 动画蓝图 / 各组件蒙太奇都不复制）：
+  适配器蓝图类在角色蓝图的类默认值里指定，每个端（含模拟代理）在 `BeginPlay` 读 CDO 本地应用；
+  服务器运行时换类时靠复制的 `CharacterAdaptorClass` + `OnRep_CharacterAdaptorClass` 再应用。
+  只在服务器切资源 = 别人看到的还是旧角色。见 Decision Log 的「角色适配器」条。
+- [2026-10-17] **不要用「重新 `Montage_Play` 同一个蒙太奇资产」实现「切到下一个 Section」**：
+  默认 `bStopAllMontages=true` 会停掉旧实例，其 `OnMontageEnded(bInterrupted=true)` 延迟约 0.2s 才到，
+  此时 `bAdvancingCombo` 早已复位；`OnAttackMontageEnded` 只按资产指针归属，同资产新旧实例无法区分，
+  攻击链会被误判结束、段位复位，之后每次点击都从 S0 起手。正确做法：先用
+  `AnimInst->Montage_IsPlaying(Data.Montage)` 判断，已在播就对**同一实例** `Montage_JumpToSection`
+  （段间硬切）。见 bug-084。
 
 ## Decision Log
 
@@ -783,3 +819,22 @@
   客户端的「Pawn 还没到」用 `APlayerController::OnPossessedPawnChanged` 补第二枪（见 bug-075）。
   与前一条 Decision（控件构造早于角色 `BeginPlay` 是预期窗口，不要加初始化顺序 hack）一致：
   这次也没有去插「谁先跑」的调度，而是让消费方对「未初始化状态」天然免疫。
+- [2026-10-17] **角色专属资源（骨骼网格体 / 动画蓝图 / 各组件蒙太奇）收进 `UCharacterAdaptor`
+  （UDataAsset 蓝图类），在角色蓝图（不是 Controller）的类默认值里用
+  `TSubclassOf<UCharacterAdaptor>` 指定**：
+  每新增一个角色做一个适配器蓝图，数据放在它的 CDO；`APlayerCharacter::BeginPlay` 在每一端
+  读 CDO 本地应用。服务器运行时换类时，复制的 `CharacterAdaptorClass` 通过
+  `OnRep_CharacterAdaptorClass` 通知所有端（含模拟代理）重新应用。
+  用 `TSubclassOf` 而不是对象引用，是因为用户要直接指定「适配器蓝图类」，而对象属性槽只接受
+  资源实例（蓝图资产本身是类）。理由：换角色只改角色蓝图的一个槽位，不用逐项改组件；
+  且网格 / 动画蓝图 / 蒙太奇都不在引擎的复制列表里，必须每端本地应用。
+  语义边界：网格体 / `AnimClass` 留空 = 保留角色蓝图默认值（WARNING），蒙太奇留空 = **明确清空**
+  （防止从 A 角色切到 B 角色时继续播 A 的动画）；适配器只放资源，冷却 / 伤害 / 速度等数值仍归
+  各组件自己的 `UDeveloperSettings` / ini（见强制约束 6）。
+- [2026-10-17] **「一个蒙太奇 + 多个 SectionName」的连击切段选「同实例 `Montage_JumpToSection`」，
+  不选「重播同一资产」**：前者不新建 `FAnimMontageInstance`、不触发旧实例的延迟
+  `OnMontageEnded`，代价是段间**硬切**（同资产没法用 `Montage_PlayWithBlendIn` 做交叉淡入）；
+  后者就是 bug-084 的成因。跨蒙太奇的连击仍走 `Montage_PlayWithBlendIn`，淡入时长照旧用上一段已播
+  时长（0.05~0.2s）——不同资产指针能正确过滤旧蒙太奇的延迟结束事件。
+  设计含义：单蒙太奇多段时，**连击通知点（`UAnimNotify_Combo`）应放在每段动作已经打出去的位置**，
+  因为切段是立即硬切、没有淡入过渡来掩盖抽帧。

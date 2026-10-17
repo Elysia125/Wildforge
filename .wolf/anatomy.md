@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-11T11:05:09.083Z
-> Files: 92 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-17T14:41:17.159Z
+> Files: 97 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -11,7 +11,7 @@
 - `.ignore` (~30 tok)
 - `CLAUDE.local.md` — CLAUDE.LOCAL.md (~1605 tok)
 - `CLAUDE.LOCAL.md` — CLAUDE.LOCAL.md (~1424 tok)
-- `CLAUDE.md` — CLAUDE.md (~2439 tok)
+- `CLAUDE.md` — CLAUDE.md (~2556 tok)
 - `README.md` — Project documentation (~11 tok)
 - `Wildforge.code-workspace` (~4460 tok)
 - `Wildforge.uproject` (~124 tok)
@@ -23,7 +23,10 @@
 - `wf_wolf_record.js` — fs: eolOf (~992 tok)
 - `wf-crawl-check-msvc.ps1` — 单 TU 真编译级检查（cl.exe /Zs 语法检查），用 UBT 自己生成的 MSVC 形态 obj.rsp + 真实的 MSVC PCH。 (~980 tok)
 - `wf-crawl-check.ps1` — 单 TU 真编译级检查（clang-cl -fsyntax-only），针对本次 UBT 生成的 MSVC 形态 obj.rsp。 (~835 tok)
-- `wf-syntax-check.ps1` — New: probe (~537 tok)
+- `wf-probe-attack.ps1` (~384 tok)
+- `wf-syntax-attack.ps1` (~167 tok)
+- `wf-syntax-check.ps1` (~199 tok)
+- `wf-syntax-check2.ps1` (~191 tok)
 
 ## Config/
 
@@ -43,6 +46,10 @@
 
 - `BaseCharacter.cpp` — ABaseCharacter 实现：构造函数只做两件事（bReplicates=true + 创建 UCharacterAttributes），BeginPlay/Tick/SetupPlayerInputComponent 均为空壳并各留一条生命周期日志。**加速与闪现已整体搬迁到 USprintBoostComponent / UBlinkComponent**，本文件不再有任何速度/位移逻辑 (~250 tok)
 
+## Source/Wildforge/Private/Character/Adaptor/
+
+- `CharacterAdaptor.cpp` — GetDebugString 实现：把网格体/动画蓝图/各组件蒙太奇的配置情况拼成一行日志快照（空资源显示「未配置」） (~400 tok)
+
 ## Source/Wildforge/Private/Character/AnimNotify/
 
 - `AnimNotifyAttackHit.cpp` — 命中帧通知实现：判 `MeshComp->GetOwner()->HasAuthority()` 才调 PerformDamageTrace（表现层特效各端本地调 PlayAttackEffects） (~250 tok)
@@ -50,7 +57,7 @@
 
 ## Source/Wildforge/Private/Character/Components/
 
-- `AttackComponent.cpp` — 攻击组件实现：权威判定 + 蒙太奇分段连击 + 伤害扫描；BeginPlay 先调 ApplyGameplaySettingsOverrides（只有权威端读 ini），8 项调参走 COND_InitialOnly 复制 (~7600 tok)
+- `AttackComponent.cpp` — 攻击组件实现：服务器权威起手/连击/结束，Multicast 同步蒙太奇与特效；同一蒙太奇多 Section 用 Montage_JumpToSection 硬切，跨蒙太奇用 Montage_PlayWithBlendIn（bug-084） (~8005 tok)
 - `BlinkComponent.cpp` — 闪现实现：Sweep + 落点校验全在权威端；**新增 BeginPlay**（唯一职责是应用 ini 覆盖），4 项调参 COND_InitialOnly（含原先根本没复制的 BlinkCooldown） (~5300 tok)
 - `CharacterAttributes.cpp` — 属性组件实现：DOREPLIFETIME + OnRep 广播委托，SetHealth/SetMaxHealth 带 Clamp (~900 tok)
 - `CrawlingComponent.cpp` — 趴下实现：姿态/过渡状态机 + 速度镜像（一律经 SprintBoostComponent::SetBaseMaxSpeed）；BeginPlay 先应用 5 项 ini 覆盖、再订阅动画回调 (~10500 tok)
@@ -60,7 +67,7 @@
 
 ## Source/Wildforge/Private/Character/Player/
 
-- `PlayerCharacter.cpp` — 玩家角色：构造函数装配组件、BeginPlay 里订阅移动门控事件并在**权威端**初始化背包/快捷栏容器（背包与快捷栏的容量各自独立判断 bOverride_InventoryCapacity / bOverride_QuickBarCapacity，见 bug-076）、PostNetInit 打印客户端生效值 (~6400 tok)
+- `PlayerCharacter.cpp` — 玩家角色实现：BeginPlay 订阅各组件事件做移动门控 + 权威端初始化背包/快捷栏 + 每一端在 BeginPlay 应用 CharacterAdaptorClass（读适配器蓝图 CDO）；GetLifetimeReplicatedProps 复制适配器类，ApplyCharacterAdaptorClass（仅服务器）/ OnRep_CharacterAdaptorClass 应用，ApplyCharacterAdaptorResources 把网格体/AnimClass/各组件蒙太奇逐项写进本地并打详细 [角色适配器] 日志 (~11700 tok)
 
 ## Source/Wildforge/Private/Core/
 
@@ -102,6 +109,10 @@
 
 - `BaseCharacter.h` — ABaseCharacter（ACharacter 子类）：只负责「所有角色都存在」的两件事——bReplicates=true + 持有 UCharacterAttributes；**加速与闪现已拆成独立组件挂到 APlayerCharacter**（本类不再有任何速度/位移 API，旧蓝图节点需重连 GetSprintBoostComponent/GetBlinkComponent） (~800 tok)
 
+## Source/Wildforge/Public/Character/Adaptor/
+
+- `CharacterAdaptor.h` — UCharacterAdaptor（UDataAsset，BlueprintType/Blueprintable）：**一个角色一份**的资源集合——骨骼网格体/动画蓝图/可选网格相对变换/攻击蒙太奇列表/翻滚/滑行/加速/闪现/趴下的蒙太奇与 Section；在角色蓝图类默认值里以 TSubclassOf 指定适配器蓝图类，APlayerCharacter 每端读 CDO 应用；网格与 AnimClass 留空=保留蓝图默认值，蒙太奇留空=明确清空；只放资源不放可调数值 (~1500 tok)
+
 ## Source/Wildforge/Public/Character/AnimNotify/
 
 - `AnimNotifyAttackHit.h` — UAnimNotify_AttackHit：命中帧通知（实现在 .cpp 里判权威端后调 PerformDamageTrace，各端本地调 PlayAttackEffects） (~120 tok)
@@ -120,7 +131,7 @@
 
 ## Source/Wildforge/Public/Character/Player/
 
-- `PlayerCharacter.h` — 玩家角色：把玩家专用的「能力组件」+ 背包装配在一起；InventoryCapacity 只是基线（ini 可覆盖），新增 PostNetInit 覆写（只读日志，验证调参复制链路） (~3700 tok)
+- `PlayerCharacter.h` — 玩家角色：把玩家专用的「能力组件」装配在一起；**新增 EditDefaultsOnly 的 CharacterAdaptorClass（TSubclassOf<UCharacterAdaptor>，在角色蓝图类默认值指定）、GetCharacterAdaptorClass / ApplyCharacterAdaptorClass（仅服务器）与 ApplyCharacterAdaptorClassLocal / ApplyCharacterAdaptorResources**，适配器应用到网格/攻击/翻滚/滑行/加速/闪现/趴下（不碰玩法数值） (~4500 tok)
 
 ## Source/Wildforge/Public/Character/Settings/
 

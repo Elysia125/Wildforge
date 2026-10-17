@@ -46,6 +46,7 @@ Wildforge 是一个 **Unreal Engine 5.7** 的第一人称游戏（源自 First P
 - `ABaseCharacter`（`Character/BaseCharacter.h`）——继承 `ACharacter`，`bReplicates = true`，拥有 `UCharacterAttributes` 组件。
 - `UCharacterAttributes`（`Character/Components/`）——使用 `DOREPLIFETIME` 复制（生命值对所有客户端可见，用于血条），并用 `ReplicatedUsing` 的 OnRep 广播 `FOnHealthChanged`/`FOnMaxHealthChanged` 供 UI 使用。Setter 标记为 `BlueprintAuthorityOnly`。
 - `APlayerCharacter`（`Character/Player/`）——拥有 `UPlayerInventory`（初始化为 30 格）。声明了服务器 RPC（`Server_RemoveItemAtSlot`、`Server_RemoveItem`、`Server_SwapSlots`），其 `_Validate` 只做廉价的参数检查。**客户端从不向服务器发送物品数据（`FItemInformation`）**——以此防止伪造，真正的越界检查在容器内部完成。
+- `UCharacterAdaptor`（`Character/Adaptor/`）——**一个角色一份**的 `UDataAsset` 蓝图类：骨骼网格体、动画蓝图、可选网格相对变换，以及攻击/翻滚/滑行/加速/闪现/趴下的蒙太奇与 Section。在**角色蓝图**的类默认值 `Character|Adaptor → Character Adaptor Class` 里指定（`APlayerCharacter` 的属性类型是 `TSubclassOf<UCharacterAdaptor>`，直接接受适配器蓝图类）。`APlayerCharacter::BeginPlay` 在每一端本地读取适配器蓝图 CDO 并应用资源；服务器运行时换适配器时，适配器类复制到所有端（含模拟代理）并触发 `OnRep` 重新应用——UE 5.7 的 `USkeletalMeshComponent` 不复制网格体/动画蓝图。网格体/动画蓝图留空 = 保留蓝图默认值，蒙太奇留空 = 明确清空；适配器只放资源，数值仍走各组件的 ini 配置。
 
 **物品系统**（`ItemSystem/`）
 - `FItemInformation`（`Structs/ItemInfo.h`）——继承 `FTableRowBase` 的物品定义；运行时定义来自 `Content/ItemSystem/DataTables/` 下的 `DT_Items` 数据表。

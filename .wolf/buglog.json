@@ -1491,6 +1491,124 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-10-11T11:05:09.099Z"
+    },
+    {
+      "id": "bug-078",
+      "timestamp": "2026-10-17T13:11:17.941Z",
+      "error_message": "Wrong return value",
+      "file": "Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+      "root_cause": "Was returning: Inventory.Get(); }",
+      "fix": "Now returns: CharacterAdaptor.Get();",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "h"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-17T13:11:17.941Z"
+    },
+    {
+      "id": "bug-079",
+      "timestamp": "2026-10-17T13:11:44.843Z",
+      "error_message": "Null/undefined access in ",
+      "file": "Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-17T13:11:44.843Z"
+    },
+    {
+      "id": "bug-080",
+      "timestamp": "2026-10-17T13:11:58.608Z",
+      "error_message": "Null/undefined access in ",
+      "file": "Source/Wildforge/Private/Core/WildforgePlayerController.cpp",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-17T13:11:58.608Z"
+    },
+    {
+      "id": "bug-081",
+      "timestamp": "2026-10-17T13:16:00.000Z",
+      "error_message": "clang-cl -fsyntax-only: PlayerCharacter.cpp(203,28): error: incomplete type 'UAnimInstance' named in nested name specifier (instantiated from TSubclassOf<UAnimInstance>::Get)",
+      "file": "Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+      "root_cause": "CharacterAdaptor.h 只前向声明 UAnimInstance；TSubclassOf<T>::Get() 内部使用 T::StaticClass()（SubclassOf.h:111），需要完整类型。PlayerCharacter.cpp 调用了 Adaptor->AnimClass.Get()，但未 include Animation/AnimInstance.h。",
+      "fix": "在 PlayerCharacter.cpp 增加 #include \"Animation/AnimInstance.h\"（头文件里仍保持前向声明，避免把 AnimInstance 头扩散到所有包含方）。",
+      "tags": [
+        "build",
+        "clang",
+        "adaptor",
+        "animinstance",
+        "incomplete-type"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-17T13:16:00.000Z"
+    },
+    {
+      "id": "bug-082",
+      "timestamp": "2026-10-17T13:26:53.256Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 18→32 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "h"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-17T13:26:53.257Z"
+    },
+    {
+      "id": "bug-083",
+      "timestamp": "2026-10-17T13:27:18.106Z",
+      "error_message": "Incorrect value in code",
+      "file": "CLAUDE.md",
+      "root_cause": "Had `AWildforgePlayerController`",
+      "fix": "Changed to `Character|Adaptor → Character Adaptor Class`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-17T13:27:18.106Z"
+    },
+    {
+      "id": "bug-084",
+      "timestamp": "2026-10-17T14:10:00.000Z",
+      "error_message": "未到连击触发点再次点击攻击时攻击从头开始；到达连击点切段后约 0.2s 攻击链就结束，之后连击窗口永远打不开（配置为 1 个蒙太奇 + 3 个 SectionName）",
+      "file": "Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+      "root_cause": "连击切段的目标与当前在播的是同一个蒙太奇资产，PlayAttackMontageInternal 仍调用 Montage_Play。Montage_PlayInternal 默认 bStopAllMontages=true，先按组停掉旧实例；旧实例的 OnMontageEnded(bInterrupted=true) 要等约 0.2s 淡出结束才广播，此时 bAdvancingCombo 早已复位（它只覆盖 AdvanceAttackChain 的同步调用）。OnAttackMontageEnded 只用 ActiveAttackMontage 资产指针做归属判断，同一蒙太奇的新旧实例指针相同、无法区分，旧实例的结束被当成当前段结束 → FinishAttackChain 提前复位段位；此后每次点击都从 S0 起手，而连击通知约在 1s 后才到，那时 bIsAttacking 已为 false，连击窗口永远等不到。",
+      "fix": "PlayAttackMontageInternal 在 Montage_Play 之前先判断 AnimInst->Montage_IsPlaying(Data.Montage)：目标蒙太奇已在播时，在同一个 FAnimMontageInstance 上调用 Montage_JumpToSection，不新建实例、不产生旧实例的 OnMontageEnded，段间为硬切；跨蒙太奇仍走 Montage_PlayWithBlendIn/Montage_Play（不同资产指针可正确过滤旧资产的延迟结束）。AdvanceAttackChain 增加同一蒙太奇判定与日志，同蒙太奇切段不再计算/使用淡入时长。",
+      "tags": [
+        "attack",
+        "combo",
+        "montage",
+        "section",
+        "onmontageended",
+        "animinstance",
+        "stale-event"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-17T14:10:00.000Z"
     }
   ]
 }

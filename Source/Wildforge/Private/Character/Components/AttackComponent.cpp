@@ -360,6 +360,13 @@ bool UAttackComponent::AdvanceAttackChain(float PrevSegmentStartTime) {
   // 上下限是设计器可配参数（ComboBlendInMinTime / ComboBlendInMaxTime）；
   // 这里再夹一次 [0, ...] 并保证 上界 >= 下界，免得两个值被配反时 Clamp
   // 拿到反向区间（语义会反转成「恒取下界」）。
+  //
+  // ⚠️ 同一蒙太奇内的 Section 连击（一个蒙太奇 + 多个 SectionNames）用不到这个
+  // 淡入：PlayAttackMontageInternal 会在**同一个实例**上 Montage_JumpToSection。
+  // 重新 Montage_Play 同一个资产会停掉旧实例，并在淡出结束后补一个
+  // OnMontageEnded(bInterrupted=true)，把刚切过去的段误判成「攻击结束」
+  // （详见 PlayAttackMontageInternal 里的注释）。跨蒙太奇时仍然用交叉淡入。
+  const bool bSameMontageAsActive = ActiveAttackMontage == Candidate->Montage;
   const float PrevSegmentElapsed =
       GetWorld()->GetTimeSeconds() - PrevSegmentStartTime;
   const float BlendInLower = FMath::Max(0.0f, ComboBlendInMinTime);
@@ -368,9 +375,18 @@ bool UAttackComponent::AdvanceAttackChain(float PrevSegmentStartTime) {
   const float FadeInTime =
       FMath::Clamp(PrevSegmentElapsed, BlendInLower, BlendInUpper);
 
-  WFLOG_INFO("[攻击] 连击切段：M%d/S%d（%s），交叉淡入 %.3fs。宿主 %s",
-             NextMontage, NextSection, *Candidate->Montage->GetName(), FadeInTime,
-             GetOwner() ? *GetOwner()->GetName() : TEXT("None"));
+  if (bSameMontageAsActive) {
+    WFLOG_INFO("[攻击] 连击切段：同一蒙太奇 %s 内跳 M%d/S%d（Section=%s），"
+               "硬切（不重新 Montage_Play）。宿主 %s",
+               *Candidate->Montage->GetName(), NextMontage, NextSection,
+               *Candidate->SectionNames[NextSection].ToString(),
+               GetOwner() ? *GetOwner()->GetName() : TEXT("None"));
+  } else {
+    WFLOG_INFO("[攻击] 连击切段：M%d/S%d（%s），交叉淡入 %.3fs。宿主 %s",
+               NextMontage, NextSection, *Candidate->Montage->GetName(),
+               FadeInTime,
+               GetOwner() ? *GetOwner()->GetName() : TEXT("None"));
+  }
 
   Multicast_PlayAttackMontage(NextMontage, NextSection, FadeInTime);
   if (ActiveAttackMontage == nullptr) {
@@ -440,6 +456,44 @@ bool UAttackComponent::PlayAttackMontageInternal(int32 InMontageIndex,
       this, &UAttackComponent::OnAttackMontageEnded);
   AnimInst->OnMontageEnded.AddDynamic(this,
                                       &UAttackComponent::OnAttackMontageEnded);
+
+  // ===== 同一蒙太奇多 Section：必须跳 Section，不能重新 Montage_Play =====
+  //
+  // `AttackMontageList` 只配一个蒙太奇、`SectionNames` 配多段时，连击切段的目标
+  // 与当前在播的是**同一个资产**。此时若照常调用 Montage_Play：
+  //   * `Montage_PlayInternal` 会先 `StopAllMontagesByGroupName`（默认
+  //     `bStopAllMontages = true`），把正在播的旧实例以淡出方式停掉；
+  //   * 旧实例的 `OnMontageEnded(bInterrupted=true)` 要等淡出结束（约 0.2s）才广播，
+  //     那时 `bAdvancingCombo` 早已复位（它只覆盖 AdvanceAttackChain 的同步调用）；
+  //   * `OnAttackMontageEnded` 用**资产指针**判断「是不是当前段」，同一蒙太奇的新旧
+  //     实例指针完全相同，无法区分 → 旧实例的结束被当成当前段结束，提前
+  //     `FinishAttackChain` 并复位段位。
+  // 表现：连击后约 0.2s 攻击链突然结束；之后再点只能从 S0 重新起手，连击窗口
+  // 永远等不到（连击通知通常在 1s 之后）。
+  //
+  // 正确做法：目标蒙太奇已经在播时，在**同一实例**上 `Montage_JumpToSection`。
+  // 不新建实例 → 不会产生旧实例的结束事件；段与段之间是硬切（同资产无法用
+  // Montage_PlayWithBlendIn 做淡入，否则又会回到上面的问题）。
+  // 跨蒙太奇（不同资产）仍走 Montage_Play：旧资产的 OnMontageEnded 因资产指针
+  // 不同会被 `OnAttackMontageEnded` 忽略，延迟到达不影响归属判断。
+  if (AnimInst->Montage_IsPlaying(Data.Montage)) {
+    const FName TargetSection = Data.SectionNames[InSectionIndex];
+    if (!TargetSection.IsNone()) {
+      AnimInst->Montage_JumpToSection(TargetSection, Data.Montage);
+      WFLOG_INFO("[攻击] %s 续播同一蒙太奇 %s：跳到 Section %s"
+                 "（MontageIndex=%d, SectionIndex=%d）。",
+                 *OwnerChar->GetName(), *Data.Montage->GetName(),
+                 *TargetSection.ToString(), InMontageIndex, InSectionIndex);
+    } else {
+      WFLOG_WARNING("[攻击] %s 的蒙太奇 %s 已在播，但 SectionNames[%d] 为空，"
+                    "无法跳段（保持当前 Section）。",
+                    *OwnerChar->GetName(), *Data.Montage->GetName(),
+                    InSectionIndex);
+    }
+    // 同一份资产，ActiveAttackMontage 不需要变；写回一次保证它非空。
+    ActiveAttackMontage = Data.Montage;
+    return true;
+  }
 
   // 交叉淡入：连击立刻切段时用它做衔接（0 = 硬切，起手时就是这样）
   const float PlayLength =

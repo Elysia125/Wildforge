@@ -570,3 +570,58 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+
+## Session: 2026-10-17 21:09
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:11 | Created Source/Wildforge/Public/Character/Adaptor/CharacterAdaptor.h | — | ~1268 |
+| 21:11 | Created Source/Wildforge/Private/Character/Adaptor/CharacterAdaptor.cpp | — | ~392 |
+| 21:11 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | 4→6 lines | ~26 |
+| 21:11 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | expanded (+19 lines) | ~250 |
+| 21:11 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | 4→9 lines | ~74 |
+| 21:11 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | expanded (+20 lines) | ~256 |
+| 21:11 | Edited Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp | 5→10 lines | ~106 |
+| 21:11 | Edited Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp | added 19 condition(s) | ~2455 |
+| 21:11 | Edited Source/Wildforge/Public/Core/WildforgePlayerController.h | expanded (+41 lines) | ~467 |
+| 21:11 | Edited Source/Wildforge/Private/Core/WildforgePlayerController.cpp | added 3 condition(s) | ~730 |
+| 21:12 | Created C:/Users/xf317/AppData/Local/Temp/wf-syntax-check.ps1 | — | ~199 |
+| 21:13 | Edited Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp | 2→3 lines | ~36 |
+| 21:13 | Edited Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp | 4→4 lines | ~51 |
+| 21:15 | 新增 UCharacterAdaptor（UDataAsset）：每角色一份的骨骼网格体/动画蓝图/各组件蒙太奇与 Section | Source/Wildforge/Public/Character/Adaptor/CharacterAdaptor.h, Private/.../CharacterAdaptor.cpp | 完成 | ~3k |
+| 21:15 | APlayerCharacter 增加复制属性 CharacterAdaptor + ApplyCharacterAdaptor/OnRep + 逐项资源应用 | Source/Wildforge/Public/Character/Player/PlayerCharacter.h, Private/.../PlayerCharacter.cpp | 完成 | ~7k |
+| 21:15 | AWildforgePlayerController 在 BeginPlay/OnPossessedPawnChanged 把适配器应用到 Pawn | Source/Wildforge/Public/Core/WildforgePlayerController.h, Private/.../WildforgePlayerController.cpp | 完成 | ~2k |
+| 21:15 | UHT + clang-cl 语法检查（CharacterAdaptor/PlayerCharacter/WildforgePlayerController） | - | UHT 成功；3/3 EXIT=0；编辑器运行中未做完整链接，需 Live Coding 验证 | ~2k |
+| 21:15 | Edited CLAUDE.md | 1→2 lines | ~187 |
+| 21:16 | Session end: 14 writes across 8 files (CharacterAdaptor.h, CharacterAdaptor.cpp, PlayerCharacter.h, PlayerCharacter.cpp, WildforgePlayerController.h) | 13 reads | ~47406 tok |
+
+## Session: 2026-10-17 21:24
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:26 | Edited Source/Wildforge/Public/Character/Adaptor/CharacterAdaptor.h | 37→40 lines | ~374 |
+| 21:26 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | expanded (+14 lines) | ~348 |
+| 21:26 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | OnRep_CharacterAdaptor() → OnRep_CharacterAdaptorClass() | ~42 |
+| 21:26 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | 19→19 lines | ~207 |
+| 21:27 | Edited Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp | modified ApplyCharacterAdaptorClass() | ~788 |
+| 21:27 | Edited Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp | modified BeginPlay() | ~106 |
+| 21:27 | Edited CLAUDE.md | inline fix | ~125 |
+| 21:28 | Created C:/Users/xf317/AppData/Local/Temp/wf-syntax-check2.ps1 | — | ~191 |
+| 21:28 | 按用户要求把角色适配器从控制器收回角色：git checkout 还原 WildforgePlayerController.h/.cpp | Source/Wildforge/Public/Core/WildforgePlayerController.h, Source/Wildforge/Private/Core/WildforgePlayerController.cpp | 完成 | ~1500 |
+| 21:28 | 适配器改为角色蓝图类默认值：属性 TSubclassOf<UCharacterAdaptor> CharacterAdaptorClass（EditDefaultsOnly+ReplicatedUsing），BeginPlay 每端读 CDO 应用，服务器 ApplyCharacterAdaptorClass，客户端 OnRep 重新应用 | PlayerCharacter.h/.cpp, CharacterAdaptor.h | 完成，UHT 通过 | ~6000 |
+| 21:28 | 更新 CLAUDE.md 角色层说明与 .wolf/cerebrum.md（User Preferences/Key Learnings/Do-Not-Repeat/Decision Log）、.wolf/anatomy.md 条目 | CLAUDE.md, .wolf/* | 完成 | ~2500 |
+| 21:28 | 验证：GenerateClangDatabase（UHT 7 files）Succeeded；clang-cl -fsyntax-only CharacterAdaptor.cpp / PlayerCharacter.cpp 均 EXIT=0 | Source/Wildforge/Character/Adaptor, Source/Wildforge/Character/Player | 通过 | ~1200 |
+| 21:29 | Session end: 8 writes across 5 files (CharacterAdaptor.h, PlayerCharacter.h, PlayerCharacter.cpp, CLAUDE.md, wf-syntax-check2.ps1) | 5 reads | ~20737 tok |
+| 22:39 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | added 1 condition(s) | ~407 |
+| 22:39 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | added 2 condition(s) | ~536 |
+
+## Session: 2026-10-17 22:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:40 | Created C:/Users/xf317/AppData/Local/Temp/wf-syntax-attack.ps1 | — | ~167 |
+| 22:40 | Created C:/Users/xf317/AppData/Local/Temp/wf-probe-attack.ps1 | — | ~323 |
+| 22:41 | Created C:/Users/xf317/AppData/Local/Temp/wf-probe-attack.ps1 | — | ~384 |
+| 22:42 | 修复连击同蒙太奇重播导致的攻击链提前结束（bug-084） | Source/Wildforge/Private/Character/Components/AttackComponent.cpp | 同蒙太奇改用 Montage_JumpToSection；clang-cl 语法检查 EXIT=0（含探针对照） | ~400 |
+| 22:42 | 记录 bug-084 与连击切段结论 | .wolf/buglog.json, .wolf/cerebrum.md | buglog 新增 bug-084；cerebrum 增 Key Learnings/Do-Not-Repeat/Decision Log 各一条 | ~300 |
+| 22:42 | Session end: 3 writes across 2 files (wf-syntax-attack.ps1, wf-probe-attack.ps1) | 1 reads | ~8942 tok |
