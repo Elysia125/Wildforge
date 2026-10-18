@@ -670,3 +670,81 @@
 | 00:59 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | "攻击被取消（跳跃打断）" → "攻击被取消" | ~10 |
 | 01:03 | 按用户要求移除 C++ 跳跃打断（APlayerCharacter::Jump 覆写/声明），保留组件取消 RPC 供蓝图接线 | PlayerCharacter.h/.cpp, AttackComponent.h/.cpp | 已移除；UHT 成功 | ~2500 |
 | 01:04 | 再次编译级语法验证 | AttackComponent.cpp, PlayerCharacter.cpp | clang-cl -fsyntax-only EXIT=0 | ~1200 |
+
+## Session: 2026-10-18 22:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:18 | Edited Wildforge.uproject | 5→9 lines | ~34 |
+| 23:19 | Created Saved/Python/wf_bp_dump.py | — | ~2540 |
+| 23:21 | Created Saved/Python/wf_bp_dump2.py | — | ~2377 |
+| 23:23 | Created Saved/Python/wf_probe.py | — | ~610 |
+
+## Session: 2026-10-18 23:24
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:25 | Created Saved/Python/wf_repcheck.py | — | ~643 |
+| 23:25 | Created Saved/Python/wf_spawncheck.py | — | ~846 |
+| 23:30 | 诊断拾取武器客户端不附着：BP_SpearPickup 的 SpearSkeletalMesh bReplicates=false，组件 Attach 不复制；推荐改为 Attach Actor To Component | Saved/Python/repcheck.txt, Saved/Python/spawncheck.txt, .wolf/buglog.json | 根因已确认，蓝图改动待用户执行 | ~6k |
+| 23:28 | Created Saved/Python/wf_export.py | — | ~497 |
+| 23:29 | Created Saved/Python/wf_spear_defaults.py | — | ~493 |
+| 23:30 | Session end: 4 writes across 4 files (wf_repcheck.py, wf_spawncheck.py, wf_export.py, wf_spear_defaults.py) | 4 reads | ~2479 tok |
+
+## Session: 2026-10-18 00:04
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-18 00:09
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-18 00:14
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:14 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | modified UAttackComponent() | ~95 |
+| 00:15 | 定位武器 AttackComponent 无法攻击：关卡武器无 owning connection，Server_Attack 被引擎丢弃；补 SetIsReplicatedByDefault(true)；clang-cl 语法检查通过（含阳性对照） | AttackComponent.cpp; buglog.json; cerebrum.md | fixed | ~500 |
+| 00:16 | Session end: 1 writes across 1 files (AttackComponent.cpp) | 2 reads | ~9102 tok |
+| 00:21 | Created Source/Wildforge/Public/Character/Components/WeaponAttackProfile.h | — | ~436 |
+| 00:21 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | 3→5 lines | ~22 |
+| 00:21 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | "Multicast_PlayAttackMonta" → "Multicast_PlayAttackMonta" | ~22 |
+| 00:21 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | expanded (+31 lines) | ~370 |
+| 00:21 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | 11→14 lines | ~139 |
+| 00:21 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | 4→4 lines | ~62 |
+| 00:21 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | 2→6 lines | ~55 |
+| 00:21 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | 3→3 lines | ~58 |
+| 00:21 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | 2→7 lines | ~52 |
+| 00:21 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | 6→7 lines | ~74 |
+| 00:21 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | 4→9 lines | ~90 |
+| 00:22 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | added 5 condition(s) | ~692 |
+| 00:22 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | added 1 condition(s) | ~436 |
+| 00:22 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | modified AdvanceAttackSection() | ~353 |
+| 00:22 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | 1→2 lines | ~40 |
+| 00:22 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | modified PlayAttackMontage_Implementation() | ~209 |
+| 00:22 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | 2→2 lines | ~24 |
+| 00:22 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | modified if() | ~391 |
+| 00:22 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | modified Multicast_PlayAttackMontage_Implementation() | ~172 |
+| 00:22 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | 2→2 lines | ~20 |
+| 00:22 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | modified WFLOG_WARNING() | ~67 |
+| 00:22 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | modified GetName() | ~129 |
+| 00:22 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | 3→4 lines | ~72 |
+| 00:22 | Edited Source/Wildforge/Public/Character/Adaptor/CharacterAdaptor.h | 4→5 lines | ~79 |
+| 00:25 | 实现多武器攻击：新增 UWeaponAttackProfile；AttackComponent 增加复制的 WeaponAttackProfile + Set/Clear；Multicast 改传蒙太奇资产 + Section；UHT 通过、clang-cl 语法检查 EXIT=0 | WeaponAttackProfile.h; AttackComponent.h/.cpp; CharacterAdaptor.h | done | ~900 |
+| 00:24 | Edited CLAUDE.md | 1→2 lines | ~237 |
+| 00:24 | Session end: 26 writes across 5 files (AttackComponent.cpp, WeaponAttackProfile.h, AttackComponent.h, CharacterAdaptor.h, CLAUDE.md) | 6 reads | ~20463 tok |
+| 00:41 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | 10→15 lines | ~189 |
+
+## Session: 2026-10-18 00:41
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:42 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | modified SetWeaponAttackProfile() | ~317 |
+| 00:42 | Edited Source/Wildforge/Private/Character/Components/AttackComponent.cpp | added 1 condition(s) | ~248 |
+| 00:42 | Edited Source/Wildforge/Public/Character/Components/WeaponAttackProfile.h | expanded (+7 lines) | ~284 |
+| 00:44 | Edited CLAUDE.md | inline fix | ~83 |
+| 00:44 | 武器招式表属性改为 TSubclassOf（蓝图类资产无法赋给 TObjectPtr，用户纠正）：Set/Clear/OnRep/GetEffective 全走 GetDefaultObject()；UHT + clang-cl 语法检查通过（含阳性对照） | AttackComponent.h/.cpp, WeaponAttackProfile.h | 编译验证 EXIT=0 | ~6000 |
+| 00:44 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | 4→4 lines | ~57 |
+| 00:44 | Session end: 5 writes across 4 files (AttackComponent.cpp, WeaponAttackProfile.h, CLAUDE.md, AttackComponent.h) | 3 reads | ~15908 tok |

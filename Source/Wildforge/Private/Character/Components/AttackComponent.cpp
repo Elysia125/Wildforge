@@ -3,6 +3,7 @@
 #include "Character/Components/AttackComponent.h"
 
 #include "Animation/AnimInstance.h"
+#include "Character/Components/WeaponAttackProfile.h"
 #include "CollisionQueryParams.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Character/Settings/AttackComponentSettings.h"
@@ -36,6 +37,11 @@
 UAttackComponent::UAttackComponent() {
   // 攻击流程是事件驱动（蒙太奇 / 动画通知 / RPC），不需要每帧 Tick
   PrimaryComponentTick.bCanEverTick = false;
+
+  // 组件参与复制（前提：宿主 Actor 的 bReplicates 也为 true）。
+  // 缺了这行下面所有 DOREPLIFETIME_* 都等于没写——bCanAttack 等状态到不了客户端，
+  // 客户端既看不到战斗状态，也无法据此做输入门控。
+  SetIsReplicatedByDefault(true);
 }
 
 void UAttackComponent::GetLifetimeReplicatedProps(
@@ -55,6 +61,11 @@ void UAttackComponent::GetLifetimeReplicatedProps(
   DOREPLIFETIME_CONDITION(UAttackComponent, LastAttackTime, COND_SimulatedOnly);
   DOREPLIFETIME_CONDITION(UAttackComponent, ActiveAttackMontage,
                           COND_SimulatedOnly);
+
+  // 当前武器招式表（资产引用）。拾取武器时服务器会换，不能 COND_InitialOnly；
+  // 发往所有连接：模拟代理也要能查询当前武器（表现层 / 调试），
+  // 但推进哪一段始终由服务器决定。
+  DOREPLIFETIME(UAttackComponent, WeaponAttackProfile);
 
   // 调参（类默认值 = 基线，可被 UAttackComponentSettings 的 ini 覆盖）。
   //
@@ -160,6 +171,91 @@ void UAttackComponent::ApplyGameplaySettingsOverrides() {
              AttackTraceHeightOffset);
 }
 
+// ===== 武器招式表 =====
+// 武器不挂攻击组件：拾取时由武器的服务器分支把招式表写到角色身上。
+// 这样 Server RPC 仍有 owning connection，蒙太奇也仍然播在角色的 AnimInstance 上。
+
+void UAttackComponent::SetWeaponAttackProfile(
+    TSubclassOf<UWeaponAttackProfile> InProfileClass) {
+  WF_ATTACK_AUTHORITY_GUARD(void());
+
+  const FString Who = GetOwner() ? GetOwner()->GetName() : TEXT("None");
+
+  // 切换招式表时先取消旧攻击：连击段位是按旧列表推进的，直接换表会让下标
+  // 指向新表里不相干的段（甚至下一次起手从半路开始）。
+  if (bIsAttacking) {
+    WFLOG_INFO("[攻击] 切换武器招式：先取消正在进行的攻击链。宿主 %s", *Who);
+    CancelAttack();
+  }
+
+  WeaponAttackProfile = InProfileClass;
+
+  // 无论旧状态如何，换表后都从第一段重新起手。
+  AttackMontageIndex = 0;
+  MontageSectionIndex = 0;
+
+  // 数据放在配置类资产的 CDO 里（与适配器同一套约定），这里读它只为记日志。
+  // GetDefaultObject() 对空类安全，返回 nullptr。
+  const UWeaponAttackProfile *Profile = InProfileClass.GetDefaultObject();
+  const int32 MontageCount =
+      Profile ? Profile->AttackMontageList.Num() : 0;
+  WFLOG_INFO("[攻击] 切换武器攻击配置：%s（蒙太奇条目 %d）。段位重置为 M0/S0。"
+             "宿主 %s",
+             InProfileClass ? *InProfileClass->GetName() : TEXT("None"),
+             MontageCount, *Who);
+
+  if (InProfileClass != nullptr && MontageCount == 0) {
+    WFLOG_WARNING("[攻击] 武器配置 %s 的 AttackMontageList 为空，将回退到角色"
+                  "默认招式（UCharacterAdaptor::AttackMontageList）。宿主 %s",
+                  *InProfileClass->GetName(), *Who);
+  }
+}
+
+void UAttackComponent::ClearWeaponAttackProfile() {
+  WF_ATTACK_AUTHORITY_GUARD(void());
+
+  const FString Who = GetOwner() ? GetOwner()->GetName() : TEXT("None");
+  if (WeaponAttackProfile == nullptr) {
+    WFLOG_INFO("[攻击] ClearWeaponAttackProfile：当前没有武器配置，忽略。宿主 %s",
+               *Who);
+    return;
+  }
+
+  if (bIsAttacking) {
+    WFLOG_INFO("[攻击] 清空武器招式：先取消正在进行的攻击链。宿主 %s", *Who);
+    CancelAttack();
+  }
+
+  WFLOG_INFO("[攻击] 清空武器攻击配置（%s），回退到角色默认招式。宿主 %s",
+             *WeaponAttackProfile->GetName(), *Who);
+  WeaponAttackProfile = nullptr;
+  AttackMontageIndex = 0;
+  MontageSectionIndex = 0;
+}
+
+void UAttackComponent::OnRep_WeaponAttackProfile() {
+  const UWeaponAttackProfile *Profile = WeaponAttackProfile.GetDefaultObject();
+  WFLOG_INFO("[攻击] 武器攻击配置复制到达（%s）：%s（蒙太奇条目 %d）。宿主 %s",
+             IsAuthoritativeForActorComponent(this) ? TEXT("服务器")
+                                                    : TEXT("客户端"),
+             WeaponAttackProfile ? *WeaponAttackProfile->GetName()
+                                 : TEXT("None"),
+             Profile ? Profile->AttackMontageList.Num() : 0,
+             GetOwner() ? *GetOwner()->GetName() : TEXT("None"));
+}
+
+const TArray<FAttackMontageData> &
+UAttackComponent::GetEffectiveAttackMontageList() const {
+  // 武器配置存在且确实配了招式 → 武器覆盖；否则回退到角色默认（徒手）招式。
+  if (const UWeaponAttackProfile *Profile =
+          WeaponAttackProfile.GetDefaultObject()) {
+    if (Profile->AttackMontageList.Num() > 0) {
+      return Profile->AttackMontageList;
+    }
+  }
+  return AttackMontageList;
+}
+
 void UAttackComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) {
   // 组件销毁 / 角色销毁时清掉兜底定时器，避免回调打到半销毁的对象上
   if (UWorld *World = GetWorld()) {
@@ -192,9 +288,10 @@ void UAttackComponent::TickComponent(
 FString UAttackComponent::GetAttackStateDebugString() const {
   return FString::Printf(
       TEXT("bIsAttacking=%d bCanCombo=%d MontageIndex=%d SectionIndex=%d "
-           "ActiveMontage=%s 距本段开始=%.3fs"),
+           "WeaponProfile=%s ActiveMontage=%s 距本段开始=%.3fs"),
       bIsAttacking ? 1 : 0, bCanCombo ? 1 : 0, AttackMontageIndex,
       MontageSectionIndex,
+      WeaponAttackProfile ? *WeaponAttackProfile->GetName() : TEXT("None"),
       ActiveAttackMontage ? *ActiveAttackMontage->GetName() : TEXT("None"),
       GetWorld() ? GetWorld()->GetTimeSeconds() - LastAttackTime : -1.0f);
 }
@@ -277,23 +374,41 @@ bool UAttackComponent::Attack_Implementation(bool bIsInputDriven) {
     return false;
   }
 
-  const int32 StartMontage = AttackMontageList.IsValidIndex(AttackMontageIndex)
+  // 从「当前生效的招式表」取起手段：有武器配置用武器表，否则用角色默认表。
+  const TArray<FAttackMontageData> &Montages = GetEffectiveAttackMontageList();
+  const int32 StartMontage = Montages.IsValidIndex(AttackMontageIndex)
                                  ? AttackMontageIndex
                                  : 0;
   const int32 StartSection = MontageSectionIndex;
+  const FAttackMontageData *StartData =
+      Montages.IsValidIndex(StartMontage) ? &Montages[StartMontage] : nullptr;
+  if (StartData == nullptr || StartData->Montage == nullptr ||
+      !StartData->SectionNames.IsValidIndex(StartSection)) {
+    // 起手前就校验，别把无效参数发出去再靠 ActiveAttackMontage 为空回滚：
+    // 此时玩法状态还没动，直接拒绝即可。
+    WFLOG_WARNING("[攻击] 起手被拒：当前招式表没有可播的 M%d/S%d 段"
+                  "（共 %d 个蒙太奇条目，武器配置=%s）。宿主 %s",
+                  StartMontage, StartSection, Montages.Num(),
+                  WeaponAttackProfile ? *WeaponAttackProfile->GetName()
+                                      : TEXT("None"),
+                  *Who);
+    return false;
+  }
+  const FName StartSectionName = StartData->SectionNames[StartSection];
 
   bIsAttacking = true;
   LastAttackTime = Now;
   bCanCombo = false;
 
-  WFLOG_INFO("[攻击] 起手：播 M%d/S%d（列表 %d 个蒙太奇条目）。宿主 %s",
-             StartMontage, StartSection, AttackMontageList.Num(), *Who);
+  WFLOG_INFO("[攻击] 起手：播 %s（M%d/S%d，Section=%s，列表 %d 个条目）。宿主 %s",
+             *StartData->Montage->GetName(), StartMontage, StartSection,
+             *StartSectionName.ToString(), Montages.Num(), *Who);
 
   // Multicast 会在服务器本地与所有客户端各执行一次（服务器那次是本地执行，
   // 不额外发 RPC），所以这里**不需要**再单独调一次 PlayAttackMontage——
   // 那会让同一段蒙太奇在服务器上被 Montage_Play 两次。
   // 起手用硬切（淡入 0）：从待机动作切进攻击要干脆，交叉淡入反而糊。
-  Multicast_PlayAttackMontage(StartMontage, StartSection,
+  Multicast_PlayAttackMontage(StartData->Montage, StartSectionName,
                               /*InFadeInTime=*/0.0f);
 
   if (ActiveAttackMontage == nullptr) {
@@ -316,35 +431,36 @@ bool UAttackComponent::Attack_Implementation(bool bIsInputDriven) {
 }
 
 void UAttackComponent::AdvanceAttackSection() {
+  const TArray<FAttackMontageData> &Montages = GetEffectiveAttackMontageList();
   MontageSectionIndex++;
-  if (AttackMontageList.IsValidIndex(AttackMontageIndex) &&
+  if (Montages.IsValidIndex(AttackMontageIndex) &&
       MontageSectionIndex >=
-          AttackMontageList[AttackMontageIndex].SectionNames.Num()) {
+          Montages[AttackMontageIndex].SectionNames.Num()) {
     MontageSectionIndex = 0;
     AttackMontageIndex++;
-    if (AttackMontageIndex >= AttackMontageList.Num()) {
+    if (AttackMontageIndex >= Montages.Num()) {
       AttackMontageIndex = 0;
     }
   }
 }
 
 bool UAttackComponent::AdvanceAttackChain(float PrevSegmentStartTime) {
-  // 当前下标已经指向「下一段」（起手 / 上一次接招之后立刻推进过）
-  const int32 NextMontage = AttackMontageList.IsValidIndex(AttackMontageIndex)
+  // 当前下标已经指向「下一段」（起手 / 上一次接招之后立刻推进过）。
+  // 用当前生效的招式表：拾取武器后这里必须按武器表推进。
+  const TArray<FAttackMontageData> &Montages = GetEffectiveAttackMontageList();
+  const int32 NextMontage = Montages.IsValidIndex(AttackMontageIndex)
                                 ? AttackMontageIndex
                                 : 0;
   const int32 NextSection = MontageSectionIndex;
 
   const FAttackMontageData *Candidate =
-      AttackMontageList.IsValidIndex(NextMontage)
-          ? &AttackMontageList[NextMontage]
-          : nullptr;
+      Montages.IsValidIndex(NextMontage) ? &Montages[NextMontage] : nullptr;
   if (Candidate == nullptr || Candidate->Montage == nullptr ||
       !Candidate->SectionNames.IsValidIndex(NextSection)) {
     WFLOG_WARNING("[攻击] 连击找不到下一段：M%d 越界=%d，蒙太奇为空=%d，"
                   "SectionNames 数=%d（要 SectionIndex=%d）。宿主 %s",
                   NextMontage,
-                  AttackMontageList.IsValidIndex(NextMontage) ? 0 : 1,
+                  Montages.IsValidIndex(NextMontage) ? 0 : 1,
                   (Candidate && Candidate->Montage) ? 0 : 1,
                   Candidate ? Candidate->SectionNames.Num() : -1, NextSection,
                   GetOwner() ? *GetOwner()->GetName() : TEXT("None"));
@@ -388,7 +504,8 @@ bool UAttackComponent::AdvanceAttackChain(float PrevSegmentStartTime) {
                GetOwner() ? *GetOwner()->GetName() : TEXT("None"));
   }
 
-  Multicast_PlayAttackMontage(NextMontage, NextSection, FadeInTime);
+  const FName NextSectionName = Candidate->SectionNames[NextSection];
+  Multicast_PlayAttackMontage(Candidate->Montage, NextSectionName, FadeInTime);
   if (ActiveAttackMontage == nullptr) {
     WFLOG_WARNING("[攻击] 连击切段失败：Multicast 之后 ActiveAttackMontage 仍为"
                   "空（M%d/S%d）。宿主 %s",
@@ -403,36 +520,20 @@ bool UAttackComponent::AdvanceAttackChain(float PrevSegmentStartTime) {
   return true;
 }
 
-bool UAttackComponent::PlayAttackMontage_Implementation(int32 InMontageIndex,
-                                                        int32 InSectionIndex,
-                                                        float InFadeInTime) {
+bool UAttackComponent::PlayAttackMontage_Implementation(
+    UAnimMontage *InMontage, FName InSectionName, float InFadeInTime) {
   WF_ATTACK_AUTHORITY_GUARD(false);
-  return PlayAttackMontageInternal(InMontageIndex, InSectionIndex,
-                                   InFadeInTime);
+  return PlayAttackMontageInternal(InMontage, InSectionName, InFadeInTime);
 }
 
-bool UAttackComponent::PlayAttackMontageInternal(int32 InMontageIndex,
-                                                 int32 InSectionIndex,
+bool UAttackComponent::PlayAttackMontageInternal(UAnimMontage *InMontage,
+                                                 FName InSectionName,
                                                  float InFadeInTime) {
-  if (!AttackMontageList.IsValidIndex(InMontageIndex)) {
-    WFLOG_WARNING("PlayAttackMontage: MontageIndex %d 越界（列表 %d 项），"
-                  "攻击未播放。",
-                  InMontageIndex, AttackMontageList.Num());
-    return false;
-  }
-
-  const FAttackMontageData &Data = AttackMontageList[InMontageIndex];
-  if (Data.Montage == nullptr) {
-    WFLOG_WARNING("PlayAttackMontage: AttackMontageList[%d] 没有配蒙太奇，"
-                  "攻击未播放。",
-                  InMontageIndex);
-    return false;
-  }
-  if (!Data.SectionNames.IsValidIndex(InSectionIndex)) {
-    WFLOG_WARNING("PlayAttackMontage: %s 没有第 %d 个 Section（共 %d 个），"
-                  "攻击未播放。",
-                  *Data.Montage->GetName(), InSectionIndex,
-                  Data.SectionNames.Num());
+  // 参数是「资产 + Section 名」，不再查本地招式表：服务器已经把这一段解析好，
+  // 客户端照着播即可（不同武器各有各的招式表，本地下标不一定对得上）。
+  if (InMontage == nullptr) {
+    WFLOG_WARNING("PlayAttackMontage: 蒙太奇为空，攻击未播放。宿主 %s",
+                  GetOwner() ? *GetOwner()->GetName() : TEXT("None"));
     return false;
   }
 
@@ -459,8 +560,8 @@ bool UAttackComponent::PlayAttackMontageInternal(int32 InMontageIndex,
 
   // ===== 同一蒙太奇多 Section：必须跳 Section，不能重新 Montage_Play =====
   //
-  // `AttackMontageList` 只配一个蒙太奇、`SectionNames` 配多段时，连击切段的目标
-  // 与当前在播的是**同一个资产**。此时若照常调用 Montage_Play：
+  // 招式表只配一个蒙太奇、`SectionNames` 配多段时，连击切段的目标与当前在播的
+  // 是**同一个资产**。此时若照常调用 Montage_Play：
   //   * `Montage_PlayInternal` 会先 `StopAllMontagesByGroupName`（默认
   //     `bStopAllMontages = true`），把正在播的旧实例以淡出方式停掉；
   //   * 旧实例的 `OnMontageEnded(bInterrupted=true)` 要等淡出结束（约 0.2s）才广播，
@@ -476,62 +577,59 @@ bool UAttackComponent::PlayAttackMontageInternal(int32 InMontageIndex,
   // Montage_PlayWithBlendIn 做淡入，否则又会回到上面的问题）。
   // 跨蒙太奇（不同资产）仍走 Montage_Play：旧资产的 OnMontageEnded 因资产指针
   // 不同会被 `OnAttackMontageEnded` 忽略，延迟到达不影响归属判断。
-  if (AnimInst->Montage_IsPlaying(Data.Montage)) {
-    const FName TargetSection = Data.SectionNames[InSectionIndex];
-    if (!TargetSection.IsNone()) {
-      AnimInst->Montage_JumpToSection(TargetSection, Data.Montage);
-      WFLOG_INFO("[攻击] %s 续播同一蒙太奇 %s：跳到 Section %s"
-                 "（MontageIndex=%d, SectionIndex=%d）。",
-                 *OwnerChar->GetName(), *Data.Montage->GetName(),
-                 *TargetSection.ToString(), InMontageIndex, InSectionIndex);
+  if (AnimInst->Montage_IsPlaying(InMontage)) {
+    if (!InSectionName.IsNone()) {
+      AnimInst->Montage_JumpToSection(InSectionName, InMontage);
+      WFLOG_INFO("[攻击] %s 续播同一蒙太奇 %s：跳到 Section %s。",
+                 *OwnerChar->GetName(), *InMontage->GetName(),
+                 *InSectionName.ToString());
     } else {
-      WFLOG_WARNING("[攻击] %s 的蒙太奇 %s 已在播，但 SectionNames[%d] 为空，"
+      WFLOG_WARNING("[攻击] %s 的蒙太奇 %s 已在播，但目标 Section 为空，"
                     "无法跳段（保持当前 Section）。",
-                    *OwnerChar->GetName(), *Data.Montage->GetName(),
-                    InSectionIndex);
+                    *OwnerChar->GetName(), *InMontage->GetName());
     }
     // 同一份资产，ActiveAttackMontage 不需要变；写回一次保证它非空。
-    ActiveAttackMontage = Data.Montage;
+    ActiveAttackMontage = InMontage;
     return true;
   }
 
   // 交叉淡入：连击立刻切段时用它做衔接（0 = 硬切，起手时就是这样）
   const float PlayLength =
       InFadeInTime > 0.0f ? AnimInst->Montage_PlayWithBlendIn(
-                                Data.Montage, FAlphaBlendArgs(InFadeInTime))
-                          : AnimInst->Montage_Play(Data.Montage);
+                                InMontage, FAlphaBlendArgs(InFadeInTime))
+                          : AnimInst->Montage_Play(InMontage);
   if (PlayLength <= 0.0f) {
     // 播放失败（该蒙太奇没在动的状态被拒等）：不置位，让调用方回滚
     WFLOG_WARNING("PlayAttackMontage: %s 播放失败（返回 %.2f）。",
-                  *Data.Montage->GetName(), PlayLength);
+                  *InMontage->GetName(), PlayLength);
     ActiveAttackMontage = nullptr;
     return false;
   }
-  if (!Data.SectionNames[InSectionIndex].IsNone()) {
-    AnimInst->Montage_JumpToSection(Data.SectionNames[InSectionIndex],
-                                    Data.Montage);
+  if (!InSectionName.IsNone()) {
+    AnimInst->Montage_JumpToSection(InSectionName, InMontage);
   }
 
   // 记录「本段在播哪个蒙太奇」：结束回调只认这个，不要用会提前推进的下标去查表
-  ActiveAttackMontage = Data.Montage;
-  WFLOG_INFO("%s 播放攻击蒙太奇 %s（MontageIndex=%d, SectionIndex=%d, "
-             "时长 %.2fs）。",
-             *OwnerChar->GetName(), *Data.Montage->GetName(), InMontageIndex,
-             InSectionIndex, PlayLength);
+  ActiveAttackMontage = InMontage;
+  WFLOG_INFO("%s 播放攻击蒙太奇 %s（Section=%s，时长 %.2fs）。",
+             *OwnerChar->GetName(), *InMontage->GetName(),
+             *InSectionName.ToString(), PlayLength);
   return true;
 }
 
 void UAttackComponent::Multicast_PlayAttackMontage_Implementation(
-    int32 InMontageIndex, int32 InSectionIndex, float InFadeInTime) {
+    UAnimMontage *InMontage, FName InSectionName, float InFadeInTime) {
   const bool bAuthority = IsAuthoritativeForActorComponent(this);
-  WFLOG_INFO("[攻击] Multicast_PlayAttackMontage 到达（%s）：M%d/S%d，淡入 %.3fs",
-             bAuthority ? TEXT("服务器") : TEXT("客户端"), InMontageIndex,
-             InSectionIndex, InFadeInTime);
+  WFLOG_INFO("[攻击] Multicast_PlayAttackMontage 到达（%s）：%s / Section=%s，"
+             "淡入 %.3fs",
+             bAuthority ? TEXT("服务器") : TEXT("客户端"),
+             InMontage ? *InMontage->GetName() : TEXT("None"),
+             *InSectionName.ToString(), InFadeInTime);
 
   if (bAuthority) {
     // 服务器本地那一次：走权威入口（带门禁）。功能上等价于直接调内核
     // （门禁在权威端必然通过），差别只是多一次检查与一条日志。
-    PlayAttackMontage(InMontageIndex, InSectionIndex, InFadeInTime);
+    PlayAttackMontage(InMontage, InSectionName, InFadeInTime);
   } else {
     // 客户端分支：**只写「本端在播哪个蒙太奇」这个表现层标记**
     // （PlayAttackMontageInternal 会写 ActiveAttackMontage，供 OnAttackMontageEnded
@@ -541,7 +639,7 @@ void UAttackComponent::Multicast_PlayAttackMontage_Implementation(
     // 为什么这里不调带门禁的权威入口：Multicast 在客户端本地被调用时（引擎允许），
     // 门禁会记一条 ERROR 并**拒绝播放**；而这里的语义应该是「退化成纯本地表现」。
     // 参数由服务器随 RPC 带来，所以客户端与服务器播的一定是同一段。
-    PlayAttackMontageInternal(InMontageIndex, InSectionIndex, InFadeInTime);
+    PlayAttackMontageInternal(InMontage, InSectionName, InFadeInTime);
   }
 
   if (ActiveAttackMontage != nullptr) {
@@ -556,8 +654,9 @@ void UAttackComponent::Multicast_PlayAttackMontage_Implementation(
                *GetAttackStateDebugString());
   } else {
     WFLOG_WARNING("[攻击] Multicast_PlayAttackMontage：蒙太奇没播起来，"
-                  "不广播 OnAttackStarted（M%d/S%d）",
-                  InMontageIndex, InSectionIndex);
+                  "不广播 OnAttackStarted（%s / Section=%s）",
+                  InMontage ? *InMontage->GetName() : TEXT("None"),
+                  *InSectionName.ToString());
   }
 }
 
@@ -693,8 +792,9 @@ void UAttackComponent::ResetAttackState_Implementation() {
 }
 
 float UAttackComponent::GetMontagePlayLength(int32 InMontageIndex) const {
-  if (AttackMontageList.IsValidIndex(InMontageIndex)) {
-    const UAnimMontage *Montage = AttackMontageList[InMontageIndex].Montage;
+  const TArray<FAttackMontageData> &Montages = GetEffectiveAttackMontageList();
+  if (Montages.IsValidIndex(InMontageIndex)) {
+    const UAnimMontage *Montage = Montages[InMontageIndex].Montage;
     if (Montage != nullptr) {
       // 注意用 GetPlayLength()：UE 5.7 里直接读 SequenceLength 已被弃用，
       // 而且它还是 protected（直接访问编译不过）

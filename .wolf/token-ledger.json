@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-10-05T10:52:46.081Z",
   "lifetime": {
-    "total_tokens_estimated": 236157,
-    "total_reads": 96,
-    "total_writes": 188,
-    "total_sessions": 40,
-    "anatomy_hits": 63,
-    "anatomy_misses": 33,
-    "repeated_reads_blocked": 27,
-    "estimated_savings_vs_bare_cli": 110851
+    "total_tokens_estimated": 284233,
+    "total_reads": 114,
+    "total_writes": 224,
+    "total_sessions": 46,
+    "anatomy_hits": 72,
+    "anatomy_misses": 42,
+    "repeated_reads_blocked": 37,
+    "estimated_savings_vs_bare_cli": 201805
   },
   "sessions": [
     {
@@ -1863,6 +1863,378 @@
         "writes_count": 0,
         "repeated_reads_blocked": 0,
         "anatomy_lookups": 1
+      }
+    },
+    {
+      "id": "session-2026-10-18-2213",
+      "started": "2026-10-18T14:13:14.721Z",
+      "ended": "2026-10-18T15:07:17.255Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Wildforge.uproject",
+          "tokens_estimated": 124,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Source/Editor/UnrealEd/Private/Commandlets/DumpBlueprintsInfoCommandlet.cpp",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Source/Editor/UnrealEd/Private/Commandlets/TextAssetCommandlet.cpp",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [],
+      "totals": {
+        "input_tokens_estimated": 124,
+        "output_tokens_estimated": 0,
+        "reads_count": 3,
+        "writes_count": 0,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 1
+      }
+    },
+    {
+      "id": "session-2026-10-18-2324",
+      "started": "2026-10-18T15:24:40.765Z",
+      "ended": "2026-10-18T15:30:15.763Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/Python/repcheck.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/Python/spawncheck.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/Python/export_character.txt",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/Python/export_spear.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/Python/wf_repcheck.py",
+          "tokens_estimated": 643,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/Python/wf_spawncheck.py",
+          "tokens_estimated": 846,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/Python/wf_export.py",
+          "tokens_estimated": 497,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/Python/wf_spear_defaults.py",
+          "tokens_estimated": 493,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 2479,
+        "reads_count": 4,
+        "writes_count": 4,
+        "repeated_reads_blocked": 1,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-10-18-0014",
+      "started": "2026-10-18T16:14:03.291Z",
+      "ended": "2026-10-18T16:16:17.961Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+          "tokens_estimated": 9000,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/AttackComponent.cpp.obj.rsp",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+          "tokens_estimated": 102,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 9000,
+        "output_tokens_estimated": 102,
+        "reads_count": 2,
+        "writes_count": 1,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 1
+      }
+    },
+    {
+      "id": "session-2026-10-18-0014",
+      "started": "2026-10-18T16:14:03.291Z",
+      "ended": "2026-10-18T16:24:42.529Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+          "tokens_estimated": 9906,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/AttackComponent.cpp.obj.rsp",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/AttackComponent.h",
+          "tokens_estimated": 4200,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Adaptor/CharacterAdaptor.h",
+          "tokens_estimated": 1500,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/structs/AttackMontageData.h",
+          "tokens_estimated": 150,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/Python/export_spear.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+          "tokens_estimated": 102,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/WeaponAttackProfile.h",
+          "tokens_estimated": 467,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/AttackComponent.h",
+          "tokens_estimated": 24,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/AttackComponent.h",
+          "tokens_estimated": 23,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/AttackComponent.h",
+          "tokens_estimated": 397,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/AttackComponent.h",
+          "tokens_estimated": 149,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/AttackComponent.h",
+          "tokens_estimated": 66,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/AttackComponent.h",
+          "tokens_estimated": 59,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/AttackComponent.h",
+          "tokens_estimated": 62,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/AttackComponent.h",
+          "tokens_estimated": 55,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+          "tokens_estimated": 79,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+          "tokens_estimated": 96,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+          "tokens_estimated": 742,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+          "tokens_estimated": 467,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+          "tokens_estimated": 378,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+          "tokens_estimated": 43,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+          "tokens_estimated": 224,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+          "tokens_estimated": 25,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+          "tokens_estimated": 419,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+          "tokens_estimated": 184,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+          "tokens_estimated": 22,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+          "tokens_estimated": 71,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+          "tokens_estimated": 138,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+          "tokens_estimated": 77,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Adaptor/CharacterAdaptor.h",
+          "tokens_estimated": 84,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/CLAUDE.md",
+          "tokens_estimated": 254,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 15756,
+        "output_tokens_estimated": 4707,
+        "reads_count": 6,
+        "writes_count": 26,
+        "repeated_reads_blocked": 9,
+        "anatomy_lookups": 4
+      }
+    },
+    {
+      "id": "session-2026-10-18-0041",
+      "started": "2026-10-18T16:41:59.528Z",
+      "ended": "2026-10-18T16:44:50.976Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+          "tokens_estimated": 9800,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/WeaponAttackProfile.h",
+          "tokens_estimated": 450,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/AttackComponent.h",
+          "tokens_estimated": 4600,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+          "tokens_estimated": 339,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+          "tokens_estimated": 265,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/WeaponAttackProfile.h",
+          "tokens_estimated": 305,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/CLAUDE.md",
+          "tokens_estimated": 88,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/AttackComponent.h",
+          "tokens_estimated": 61,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 14850,
+        "output_tokens_estimated": 1058,
+        "reads_count": 3,
+        "writes_count": 5,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 3
       }
     }
   ],

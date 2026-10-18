@@ -413,6 +413,40 @@
   再用**资产指针**判断「结束的是不是当前段」时，同一资产的新旧实例指针相同，无法区分。
   跨蒙太奇时资产指针不同，延迟结束会被正确忽略——所以只有「一个蒙太奇 + 多 Section」的配置会中招。
   见 bug-084。
+- [2026-10-18] **组件级 Attach 只在被附着组件自身 `bReplicates=true` 时才复制**：`USceneComponent`
+  确实注册了 `AttachParent`/`AttachSocketName`/`RelativeLocation` 等（`SceneComponent.cpp:3992-4017`），
+  客户端在 `PostRepNotifies` 里按 `KeepRelativeTransform` 重建（`SceneComponent.cpp:3875-3916`）——
+  但前提是该组件属于 owner 的复制子对象列表。Blueprint 的 SCS 组件默认 `Component Replicates=false`
+  （实测 `BP_SpearPickup` 的 `SpearSkeletalMesh`/`DefaultSceneRoot`/`Box`/`Attack` 全是 false），
+  此时附着变化只留在服务器。`AActor::AttachmentReplication` 只处理 **RootComponent**
+  （`ActorReplication.cpp:420-500`；`Actor.cpp:2001-2025` 的注册条件），`bReplicateMovement` 也只复制根。
+  跨 actor 挂武器首选 **Attach Actor To Component**（把整个 pickup actor 挂到 socket），
+  由引擎的 actor 附着复制负责；只有确实只想移动某个子组件时才去勾 Component Replicates。见 bug-092。
+- [2026-10-19] **Server RPC 需要 owning connection**：客户端往一个没有 PlayerController owner 的
+  关卡 actor（如地上的 `BP_SpearPickup`）发 Server RPC，引擎只打一条
+  `UNetDriver::ProcessRemoteFunction: No owning connection for actor ... Function Server_Attack will not be processed.`
+  然后**静默丢弃**——客户端本地看起来一切正常，服务器根本没收到。武器 / 拾取物不是输入入口。
+- [2026-10-19] **`UAttackComponent` 假定宿主是 `ACharacter`**：`PlayAttackMontageInternal` 在
+  `AttackComponent.cpp:444` 处 `Cast<ACharacter>(GetOwner())` 失败即 return，蒙太奇播不了；
+  伤害判定（`PerformDamageTrace_Implementation`）也从宿主位置/朝向发出。所以它只能挂在角色上，
+  不能挂武器。见 bug-093。
+- [2026-10-19] **`UActorComponent` 的 `DOREPLIFETIME_*` 只有在构造函数调过
+  `SetIsReplicatedByDefault(true)` 后才生效**（等价于 `bReplicates=true`）；漏了不会报错，
+  只会让该组件所有复制属性静默失效。`UAttackComponent` 长期漏了这一行（本次补上），
+  新建组件时照抄 `LandRollComponent.cpp` / `SprintBoostComponent.cpp` 的构造函数。
+- [2026-10-19] **`UAttackComponent::AttackMontageList` 是 `COND_InitialOnly` 的服务器配置**，
+  由 `APlayerCharacter::BeginPlay` 从 `UCharacterAdaptor` CDO 写入（PlayerCharacter.cpp:243-246）。
+  运行时（拾取武器时）只改服务器这一份不会复制——多武器的差异因此走
+  `UWeaponAttackProfile` 资产 + 组件上的复制引用，而不是直接改这个数组。
+- [2026-10-19] **多武器招式 = 复制到角色上的 `UWeaponAttackProfile`（类引用）+ Multicast 直接传资产**：
+  `UAttackComponent::WeaponAttackProfile` 用 `DOREPLIFETIME`（所有端），服务器在武器拾取时写入；
+  `Multicast_PlayAttackMontage(UAnimMontage*, FName Section, float Fade)` 把**服务器解析好的资产**
+  发出去，客户端不按本地招式表下标反查。原因：RPC 与属性复制不保证顺序，且不同武器两张表里
+  同一个下标指向完全不同的蒙太奇；传资产才能保证两端播同一段。
+- [2026-10-19] **`UWeaponAttackProfile` 属性必须是 `TSubclassOf<>`，不能是 `TObjectPtr<>`**（用户当场纠正）：
+  内容浏览器里「Blueprint Class → WeaponAttackProfile」建出来的是**类资产**（如 `DA_SpearAttackProfile`），
+  `TObjectPtr` 的 Object Reference 槽位选不到它；类引用槽位（Blueprint 变量选 `WeaponAttackProfile Class Reference`）
+  才能指向该蓝图类，数据读 CDO。与 `UCharacterAdaptor` 同一条约定，见上面 [2026-10-17] 那条和 bug-099。
 
 ## Do-Not-Repeat
 
@@ -622,6 +656,22 @@
   攻击链会被误判结束、段位复位，之后每次点击都从 S0 起手。正确做法：先用
   `AnimInst->Montage_IsPlaying(Data.Montage)` 判断，已在播就对**同一实例** `Montage_JumpToSection`
   （段间硬切）。见 bug-084。
+- [2026-10-18] **不要再把「把别的 actor 的子组件 Attach 到角色骨骼」当作会复制的拾取方案**：
+  `Attach Component To Component` 只在被附着组件自己勾了 Component Replicates 时才复制，
+  BP 组件默认不勾。跨 actor 挂武器/拾取物请用 **Attach Actor To Component**（目标传 actor），
+  并让 root 不复制，让 `AActor::AttachmentReplication` 走引擎默认路径。见 bug-092。
+- [2026-10-19] **不要把 `UAttackComponent` 挂到武器/拾取物上、也不要在输入里调武器的
+  `RequestAttack()`**：关卡 actor 没有 owning connection，Server RPC 会被静默丢弃；即使执行到，
+  非 `ACharacter` 宿主也播不了蒙太奇。攻击组件只挂角色，武器只负责外观/碰撞/拾取。见 bug-093。
+- [2026-10-19] **新建 `UActorComponent` 子类不要漏 `SetIsReplicatedByDefault(true)`**：
+  漏了之后该类所有 `DOREPLIFETIME_*` 都是死代码且没有任何报错。见 bug-093。
+- [2026-10-19] **不要用「运行时只在服务器改 `AttackMontageList` / 段位下标」来实现不同武器**：
+  该数组不复制，客户端也不该按本地下标猜蒙太奇。武器差异一律走 `UWeaponAttackProfile`，
+  由 Multicast 把服务器解析好的资产 + Section 名带给客户端。见 Decision Log。
+- [2026-10-19] **配置资产是 Blueprint 子类时，属性不要写成 `TObjectPtr<T>`**：蓝图类资产是 `UClass`，
+  Object Reference 槽位选不到它，蓝图里也没有对应变量类型。一律用 `TSubclassOf<T>`，数据读 CDO
+  （`TSubclassOf::GetDefaultObject()`）。先想清楚用户建的是「Data Asset 实例」还是「Blueprint Class」。
+  见 bug-101。
 
 ## Decision Log
 
@@ -863,3 +913,16 @@
   （服务器），再由 `Multicast_CancelAttack` 在每端停蒙太奇并走 `FinishAttackChain`。理由：带根运动的攻击
   需要 `MOVE_Walking`（MOVE_None 会丢根运动），且跳跃应当能打断攻击。门控判据用每端本地的
   `MovementLockHolders`，不用 `COND_SimulatedOnly` 的 `bIsAttacking`。见 bug-090 / bug-091。
+- [2026-10-19] **攻击权威固定在角色身上，武器只做表现层**：输入永远调用角色自身
+  `AttackComponent->RequestAttack()`，不按「手上有没有武器」切换组件来源；不同武器的招式差异
+  通过 `UCharacterAdaptor::AttackMontageList`（每端 BeginPlay 应用）表达。理由：Server RPC 需要
+  角色这个有连接 owner 的 actor；蒙太奇、动画通知、伤害轨迹、移动锁都天然属于角色。
+  将来多武器需要运行时切换招式时，再加「复制的当前攻击配置（DataAsset/结构体）」由角色组件读取，
+  而不是把 AttackComponent 复制到武器 actor 上。见 bug-093。
+- [2026-10-19] **不同武器的差异建模为 `UWeaponAttackProfile` 蓝图子类（`TSubclassOf` 类引用）+
+  角色攻击组件上的复制属性，不给武器挂 AttackComponent**：拾取时武器在自己的服务器分支调
+  `SetWeaponAttackProfile()`（传配置蓝图类，数据读 CDO），攻击组件按「武器表非空 → 用它，
+  否则回退角色适配器默认表」选择；
+  换表会先取消当前攻击并重置连击段位。`Multicast_PlayAttackMontage` 相应改为传
+  「蒙太奇资产 + Section 名」，客户端不再依赖本地招式表下标。理由：Server RPC 需要角色这个
+  owning connection、蒙太奇必须播在角色 `AnimInstance`，且武器配置可独立复用/打包。

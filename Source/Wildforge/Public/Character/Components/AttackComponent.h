@@ -13,6 +13,8 @@
 
 #include "AttackComponent.generated.h"
 
+class UWeaponAttackProfile;
+
 // 攻击生命周期通知。
 // 两个都是「本地广播」：服务器与每个客户端各自在自己的机器上收到。
 // 之所以能这样，是因为蒙太奇播放被 Multicast_PlayAttackMontage 同步到了所有端
@@ -32,7 +34,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAttackStarted);
  * | 伤害判定 `PerformDamageTrace()` | 服务器 | ✗ | 由动画通知在服务器触发 |
  * | 调参（`AttackDamage`/`AttackRange`…） | 服务器读 ini 后写入 | 只读（复制下来） | 类默认值兜底 + `COND_InitialOnly` |
  * | 攻击状态 `bIsAttacking` / 连击窗口 / 选段下标 / 在播蒙太奇 | 服务器写 | 只读（复制下来） | `DOREPLIFETIME_CONDITION(COND_SimulatedOnly)` |
- * | 蒙太奇播放 | 服务器发起 | 跟随（但不写状态） | `Multicast_PlayAttackMontage(段位)` |
+ * | 蒙太奇播放 | 服务器发起 | 跟随（但不写状态） | `Multicast_PlayAttackMontage(蒙太奇 + Section)` |
  * | 特效 `PlayAttackEffects()` | 服务器发起 | 跟随 | `Multicast_PlayAttackEffects` |
  * | 取消攻击链 `CancelAttack()` | 服务器 | ✗（改调 `Server_CancelAttack`） | `Multicast_CancelAttack` |
  *
@@ -131,8 +133,44 @@ public:
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "Attack")
   float AttackDamage = 10.0f;
 
+  // 角色默认（徒手）招式表。由 `UCharacterAdaptor::AttackMontageList` 在每个端
+  // BeginPlay 应用；装了武器后由 `WeaponAttackProfile` 覆盖。
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack")
   TArray<FAttackMontageData> AttackMontageList;
+
+  // ===== 武器招式（服务器权威）=====
+  //
+  // 不同武器 = 不同的 `UWeaponAttackProfile` 蓝图子类（类引用），拾取时由武器
+  // 在自己的服务器分支调用 `SetWeaponAttackProfile()` 写进本组件。**不要**给武器
+  // actor 挂 AttackComponent（它没有 owning connection，Server RPC 会被丢弃；
+  // 蒙太奇也必须播在角色身上，见 bug-093）。
+  //
+  // 这个引用复制给所有端：模拟代理也能在调试/UI 里看到当前武器；
+  // 但玩法判定（推进哪一段）只在服务器读它。
+
+  // 当前武器的招式表**类**；空 = 用 `AttackMontageList`（徒手默认招式）。
+  // 用 `TSubclassOf`（类引用）而不是对象引用：内容浏览器里「Blueprint Class →
+  // WeaponAttackProfile」建出来的是**类资产**，`TObjectPtr<T>` 属性选不到它；
+  // 类引用则可以直接指向这个蓝图类，数据读它的 CDO（与 `UCharacterAdaptor`
+  // 在角色蓝图里指定适配器蓝图类完全同一套约定）。
+  UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly,
+            ReplicatedUsing = OnRep_WeaponAttackProfile, Category = "Attack|Weapon")
+  TSubclassOf<UWeaponAttackProfile> WeaponAttackProfile;
+
+  // 设置当前武器招式（由武器拾取流程在服务器调用）。
+  // 正在攻击时会先取消旧攻击链——段位下标是按旧列表推进的，直接换表会越界
+  // 或播到错误的段。
+  UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Attack|Weapon")
+  void SetWeaponAttackProfile(
+      TSubclassOf<UWeaponAttackProfile> InProfileClass);
+
+  // 清空武器招式（丢弃 / 切换武器），回退到角色默认招式。
+  UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Attack|Weapon")
+  void ClearWeaponAttackProfile();
+
+  // 当前生效的招式表：武器配置非空且列表非空 → 武器列表；否则 → 默认列表。
+  // 非 UFUNCTION（返回 const 引用）；UI / 调试 C++ 代码可直接调用。
+  const TArray<FAttackMontageData> &GetEffectiveAttackMontageList() const;
 
   // ===== 伤害检测参数（服务器权威：检测只在服务器跑，客户端改了也没用）=====
 
@@ -220,6 +258,11 @@ protected:
   // Called when the game starts
   virtual void BeginPlay() override;
 
+  // 武器招式表复制到达（客户端）。只记日志：客户端播放哪一段完全由
+  // Multicast 带来的资产决定，这里不写任何玩法状态。
+  UFUNCTION()
+  void OnRep_WeaponAttackProfile();
+
   // 读取 UAttackComponentSettings 的 ini 覆盖并写进本组件。
   // **只在权威端执行**（客户端那份值由上面那些 `COND_InitialOnly` 属性复制下来）；
   // 没有勾任何 override 时是安全空操作，只打一条「用类默认值」的日志。
@@ -229,12 +272,15 @@ protected:
   // **只负责播放**：不改段位下标、不广播（广播与下标推进由调用方负责），
   // 所以它可以在「起手」与「连击切段」两条路径上复用。
   //
+  // 参数直接是资产 + Section 名（而不是招式表下标）：服务器用当前武器配置
+  // 解析出这一段，客户端收到的就是同一个资产，不依赖两端列表一致。
+  //
   // `InFadeInTime` > 0 时用 `Montage_PlayWithBlendIn` 与上一段做交叉淡入
   // （连击立刻切段时用，硬切会看到抽帧）；0 = 硬切（起手）。
   //
   // 返回是否真的播了。
   UFUNCTION(BlueprintNativeEvent, BlueprintAuthorityOnly, Category = "Attack")
-  bool PlayAttackMontage(int32 InMontageIndex, int32 InSectionIndex,
+  bool PlayAttackMontage(UAnimMontage *InMontage, FName InSectionName,
                          float InFadeInTime);
 
   // 服务器在整条攻击链结束时复位攻击状态（含关掉连击窗口与清掉输入标记）。
@@ -256,7 +302,7 @@ protected:
 
   // PlayAttackMontage 的无门禁内核：服务器与客户端都走它（客户端只播动画、
   // 不写任何玩法状态）。权威入口与 Multicast 都转发到这里，避免逻辑写两份。
-  bool PlayAttackMontageInternal(int32 InMontageIndex, int32 InSectionIndex,
+  bool PlayAttackMontageInternal(UAnimMontage *InMontage, FName InSectionName,
                                  float InFadeInTime);
 
   // 把玩法状态推进到「下一段」（纯逻辑，不播动画）：段用完就换下一个蒙太奇。
@@ -362,8 +408,12 @@ public:
   // 引擎默认**不复制蒙太奇播放**（`FRepRootMotionMontage` 只复制 RootMotion 那一段的状态），
   // 所以想让客户端也看到攻击动画，必须显式 Multicast。
   //
-  // 参数直接把「播哪一段」带过去，客户端**不读**复制的下标来决定播什么：
-  // RPC 与属性复制谁先到不保证，靠读下标会让客户端偶尔播错段。
+  // 参数直接把**蒙太奇资产 + Section 名**带过去，客户端不靠本地的招式表下标
+  // 反查：
+  //   * RPC 与属性复制谁先到不保证，靠读下标会让客户端偶尔播错段；
+  //   * 不同武器各有各的招式表，客户端本地那份可能还没切过来（拾取瞬间），
+  //     下标在两张表里指向的蒙太奇可以完全不同。
+  // 把资产本身发过去，客户端播的一定是服务器正在打的那一段。
   //
   // ⚠️ 这两个 `_Implementation` **不能加「非权威端就忽略」的门禁**：Multicast 在每个端
   // 都会执行，客户端那一次是**正常接收**；门禁会让客户端永远看不到攻击动画与特效。
@@ -372,7 +422,7 @@ public:
   // 所以「客户端自己调用」只作用于本机，没有刷屏风险。实现里只做表现、不写玩法状态。
 
   UFUNCTION(NetMulticast, Reliable, BlueprintCallable, Category = "Attack|RPC")
-  void Multicast_PlayAttackMontage(int32 InMontageIndex, int32 InSectionIndex,
+  void Multicast_PlayAttackMontage(UAnimMontage *InMontage, FName InSectionName,
                                    float InFadeInTime);
 
   UFUNCTION(NetMulticast, Reliable, BlueprintCallable, Category = "Attack|RPC")

@@ -1732,6 +1732,201 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-10-17T17:02:00.000Z"
+    },
+    {
+      "id": "bug-092",
+      "timestamp": "2026-10-18T15:30:00.000Z",
+      "error_message": "拾取武器的客户端看不到自己拾取的武器，武器仍显示在地上；服务端能看到武器已附着在角色骨骼体上。",
+      "file": "Content/Core/BP_WildforgeCharacter.uasset; Content/Characters/NewMoon/Mesh/Armor/BP_SpearPickup.uasset",
+      "root_cause": "BP_SpearPickup 的 ActorBeginOverlap 用 Switch Has Authority 只在服务器调用接口函数 Pickup Spear；角色函数用 Attach Component To Component 把 BP_SpearPickup 的 SpearSkeletalMesh（SCS 子组件）挂到 CharacterMesh0 的 socket。经无头 Python 实测：SpearSkeletalMesh 的 Component Replicates(bReplicates)=false（DefaultSceneRoot/Box/Attack 同样为 false），该组件的 AttachParent/AttachSocketName/RelativeTransform 根本不在复制列表里；而 AActor::AttachmentReplication 只由 RootComponent 的附着生成（ActorReplication.cpp:420-500; Actor.cpp:2001-2025），bReplicateMovement 也只复制根的 ReplicatedMovement。于是服务器上 mesh 跟着 socket，客户端仍保持蓝图默认的 DefaultSceneRoot 下、关卡摆放位置，看起来还在地上。",
+      "fix": "推荐把角色的 Pickup Spear 改为 Attach Actor To Component：Target=SpearActor（接口已有该参数）、Parent=CharacterMesh0、SocketName=SocketName、Location/Rotation Rule=Snap to Target；角色/武器 actor 都 bReplicates=true 且武器根 DefaultSceneRoot 不复制，AActor::AttachmentReplication 会携带附着关系并在客户端 OnRep_AttachmentReplication 中重建（Actor.cpp:2690-2716）。备选最小改动：在 BP_SpearPickup 的 SpearSkeletalMesh 上勾选 Component Replicates=true，让 USceneComponent 复制的 AttachParent/AttachSocketName/Relative* 在客户端 PostRepNotifies 中重建附着（SceneComponent.cpp:3992-4017、3875-3916）；但只移动 mesh 组件，actor 根与 Box 留在原地。",
+      "tags": [
+        "attachment",
+        "replication",
+        "blueprint",
+        "component",
+        "actor",
+        "pickup",
+        "client",
+        "socket"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-18T15:30:00.000Z"
+    },
+    {
+      "id": "bug-093",
+      "timestamp": "2026-10-18T16:15:00.000Z",
+      "error_message": "在武器 BP_SpearPickup 上挂 AttackComponent，蓝图攻击时先判断 WouponActor 是否为空、不为空就调用武器的 RequestAttack，结果无法攻击；用户怀疑是 GetWorld 为空。",
+      "file": "Source/Wildforge/Private/Character/Components/AttackComponent.cpp; Content/Core/BP_WildforgeCharacter.uasset; Content/Characters/NewMoon/Mesh/Armor/BP_SpearPickup.uasset",
+      "root_cause": "蓝图走的是 GetComponentByClass(WouponActor, AttackComponent) → RequestAttack() → Server_Attack()。BP_SpearPickup 是关卡里摆放的 actor，没有 owning PlayerController，客户端发往它的 Server RPC 被引擎直接丢弃，日志重复 8 次：UNetDriver::ProcessRemoteFunction: No owning connection for actor BP_SpearPickup_C_... Function Server_Attack will not be processed. 这不是 GetWorld 的问题（所有日志里都没有“World 为空”）。即使监听服务器上真的执行到武器的组件，PlayAttackMontageInternal 也要求宿主是 ACharacter（AttackComponent.cpp:444 Cast<ACharacter>(GetOwner())），武器宿主会直接 return，伤害判定也从宿主位置/朝向发出。另有独立缺陷：UAttackComponent 构造函数从未调用 SetIsReplicatedByDefault(true)，导致 GetLifetimeReplicatedProps 里注册的所有 DOREPLIFETIME_* 都是死代码（实测角色/武器上的 AttackComponent 均 replicates=False）。",
+      "fix": "1) AttackComponent.cpp 构造函数补 SetIsReplicatedByDefault(true)，让攻击状态/配置真正复制。2) 改实现逻辑：攻击权威始终在角色身上——蓝图输入无条件调用角色自身 AttackComponent 的 RequestAttack()；BP_SpearPickup 不再挂 AttackComponent。3) 多武器实现：新增 UWeaponAttackProfile（UDataAsset，招式表），AttackComponent 增加复制的 WeaponAttackProfile 引用 + SetWeaponAttackProfile/ClearWeaponAttackProfile（BlueprintAuthorityOnly，切表时取消旧攻击并重置段位）；拾取武器的服务器分支调用该函数。4) Multicast_PlayAttackMontage 改为传 UAnimMontage* + FName Section（不再传下标），客户端播放服务器解析好的资产，不依赖本地招式表。角色适配器的 AttackMontageList 保留为默认（徒手）招式。已用 clang-cl -fsyntax-only 对 AttackComponent.cpp 验证通过（EXIT=0，并做过注入错误的阳性对照）。",
+      "tags": [
+        "attack",
+        "component",
+        "replication",
+        "rpc",
+        "owning-connection",
+        "pawn",
+        "weapon",
+        "blueprint",
+        "authority"
+      ],
+      "related_bugs": [
+        "bug-092"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-18T16:15:00.000Z"
+    },
+    {
+      "id": "bug-094",
+      "timestamp": "2026-10-18T16:21:42.274Z",
+      "error_message": "Incorrect value in code",
+      "file": "Source/Wildforge/Public/Character/Components/AttackComponent.h",
+      "root_cause": "Had `Multicast_PlayAttackMontage(段位)`",
+      "fix": "Changed to `Multicast_PlayAttackMontage(蒙太奇 + Section)`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "h"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-18T16:21:42.274Z"
+    },
+    {
+      "id": "bug-095",
+      "timestamp": "2026-10-18T16:22:07.919Z",
+      "error_message": "Null/undefined access in ",
+      "file": "Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-18T16:22:07.919Z"
+    },
+    {
+      "id": "bug-096",
+      "timestamp": "2026-10-18T16:22:18.598Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 18→36 lines (4 removed) | Also: bool UAttackComponent::PlayAttackMontage_Implement; int32 InSectionIndex, | Also: \"不广播 OnAttackStarted（M%d/S%d）\",; InMontageIndex, InSectionIndex);",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-10-18T16:22:44.996Z"
+    },
+    {
+      "id": "bug-097",
+      "timestamp": "2026-10-18T16:22:37.698Z",
+      "error_message": "Incorrect value in code",
+      "file": "Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+      "root_cause": "Had `AttackMontageList`",
+      "fix": "Changed to `SectionNames`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-18T16:22:37.698Z"
+    },
+    {
+      "id": "bug-098",
+      "timestamp": "2026-10-18T16:22:52.475Z",
+      "error_message": "Wrong condition in logic",
+      "file": "Source/Wildforge/Private/Character/Components/AttackComponent.cpp",
+      "root_cause": "Condition was: if (AttackMontageList.IsValidIndex(InMontageIndex)",
+      "fix": "Changed to: if (Montages.IsValidIndex(InMontageIndex)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-18T16:22:52.475Z"
+    },
+    {
+      "id": "bug-099",
+      "timestamp": "2026-10-18T16:41:15.885Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Public/Character/Components/AttackComponent.h",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 10→15 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "h"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-18T16:41:15.885Z"
+    },
+    {
+      "id": "bug-100",
+      "timestamp": "2026-10-18T16:42:17.524Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Public/Character/Components/WeaponAttackProfile.h",
+      "root_cause": "10 lines replaced/restructured",
+      "fix": "Rewrote 22→29 lines (10 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "h"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-18T16:42:17.524Z"
+    },
+    {
+      "id": "bug-101",
+      "timestamp": "2026-10-18T16:43:54.369Z",
+      "error_message": "用户：'编译后在类默认值里指向 DA_SpearAttackProfile，你这个怎么可能将一个蓝图类赋给 Object Reference'",
+      "file": "Source/Wildforge/Public/Character/Components/AttackComponent.h / Source/Wildforge/Private/Character/Components/AttackComponent.cpp / Source/Wildforge/Public/Character/Components/WeaponAttackProfile.h",
+      "root_cause": "UAttackComponent::WeaponAttackProfile 原声明为 TObjectPtr<UWeaponAttackProfile>（Object Reference）。用户在内容浏览器里建的是 Blueprint Class -> WeaponAttackProfile 的蓝图类资产（DA_SpearAttackProfile），它是 UClass，无法赋给对象引用属性槽位；蓝图里也没有可指向它的 Object Reference 变量。",
+      "fix": "把 WeaponAttackProfile 改为 TSubclassOf<UWeaponAttackProfile>（复制、Set/Clear/OnRep/GetEffectiveAttackMontageList 全部改为通过 GetDefaultObject() 读 CDO）；蓝图变量改选 WeaponAttackProfile Class Reference；武器服务器分支把该类传给 SetWeaponAttackProfile。与 UCharacterAdaptor 的 TSubclassOf 约定一致。",
+      "tags": [
+        "unreal",
+        "blueprint",
+        "TSubclassOf",
+        "TObjectPtr",
+        "weapon",
+        "attack",
+        "replication"
+      ],
+      "related_bugs": [
+        "bug-093"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-18T16:43:54.369Z"
+    },
+    {
+      "id": "bug-102",
+      "timestamp": "2026-10-18T16:44:05.242Z",
+      "error_message": "Incorrect value in code",
+      "file": "CLAUDE.md",
+      "root_cause": "Had `SetWeaponAttackProfile()`",
+      "fix": "Changed to `TSubclassOf`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-18T16:44:05.242Z"
     }
   ]
 }

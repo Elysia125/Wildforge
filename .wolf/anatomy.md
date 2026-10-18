@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-17T16:59:54.510Z
-> Files: 97 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-18T16:44:30.962Z
+> Files: 98 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -11,7 +11,7 @@
 - `.ignore` (~30 tok)
 - `CLAUDE.local.md` — CLAUDE.LOCAL.md (~1605 tok)
 - `CLAUDE.LOCAL.md` — CLAUDE.LOCAL.md (~1424 tok)
-- `CLAUDE.md` — CLAUDE.md (~2556 tok)
+- `CLAUDE.md` — CLAUDE.md (~2680 tok)
 - `README.md` — Project documentation (~11 tok)
 - `Wildforge.code-workspace` (~4460 tok)
 - `Wildforge.uproject` (~124 tok)
@@ -57,7 +57,7 @@
 
 ## Source/Wildforge/Private/Character/Components/
 
-- `AttackComponent.cpp` — 攻击组件实现（服务器权威）：冷却/连击/超时；`Multicast_PlayAttackMontage` 记录 `bLocalAttackPresentationActive`；`FinishAttackChain` 只在权威端 `ResetAttackState` 并保证 Started/Finished 严格配对；`CancelAttack` / `Server_CancelAttack` / `Multicast_CancelAttack` 提供取消入口（输入接线由蓝图负责） (~9000 tok)
+- `AttackComponent.cpp` — 攻击组件实现：服务器权威攻击链 + Multicast 蒙太奇（携带资产+Section）；武器招式表走 `TSubclassOf<UWeaponAttackProfile>` 的 CDO（Set/Clear/OnRep）；ini 覆盖/伤害轨迹/移动锁 (~9800 tok)
 - `BlinkComponent.cpp` — 闪现实现：Sweep + 落点校验全在权威端；**新增 BeginPlay**（唯一职责是应用 ini 覆盖），4 项调参 COND_InitialOnly（含原先根本没复制的 BlinkCooldown） (~5300 tok)
 - `CharacterAttributes.cpp` — 属性组件实现：DOREPLIFETIME + OnRep 广播委托，SetHealth/SetMaxHealth 带 Clamp (~900 tok)
 - `CrawlingComponent.cpp` — 趴下实现：姿态/过渡状态机 + 速度镜像（一律经 SprintBoostComponent::SetBaseMaxSpeed）；BeginPlay 先应用 5 项 ini 覆盖、再订阅动画回调 (~10500 tok)
@@ -111,7 +111,7 @@
 
 ## Source/Wildforge/Public/Character/Adaptor/
 
-- `CharacterAdaptor.h` — UCharacterAdaptor（UDataAsset，BlueprintType/Blueprintable）：**一个角色一份**的资源集合——骨骼网格体/动画蓝图/可选网格相对变换/攻击蒙太奇列表/翻滚/滑行/加速/闪现/趴下的蒙太奇与 Section；在角色蓝图类默认值里以 TSubclassOf 指定适配器蓝图类，APlayerCharacter 每端读 CDO 应用；网格与 AnimClass 留空=保留蓝图默认值，蒙太奇留空=明确清空；只放资源不放可调数值 (~1500 tok)
+- `CharacterAdaptor.h` — UCharacterAdaptor（UDataAsset，BlueprintType/Blueprintable）：**一个角色一份**的资源集合——骨骼网格体/动画蓝图/可选网格相对变换/默认（徒手）攻击蒙太奇列表/翻滚/滑行/加速/闪现/趴下的蒙太奇与 Section；在角色蓝图类默认值里以 TSubclassOf 指定适配器蓝图类，APlayerCharacter 每端读 CDO 应用；网格与 AnimClass 留空=保留蓝图默认值，蒙太奇留空=明确清空；只放资源不放可调数值 (~1500 tok)
 
 ## Source/Wildforge/Public/Character/AnimNotify/
 
@@ -120,7 +120,7 @@
 
 ## Source/Wildforge/Public/Character/Components/
 
-- `AttackComponent.h` — 攻击组件（服务器权威）：冷却/连击/超时与 `OnAttackStarted`/`OnAttackFinished` 广播（订阅者据此落/放移动输入锁）；`CancelAttack`（BlueprintAuthorityOnly）+ `Server_CancelAttack` / `Multicast_CancelAttack` 供蓝图接线取消；`bLocalAttackPresentationActive` 保证 Started/Finished 配对 (~4200 tok)
+- `AttackComponent.h` — 攻击组件（服务器权威）。 (~4575 tok)
 - `BlinkComponent.h` — 点按闪现组件（服务器权威）：距离/冷却/播速带 Replicated（COND_InitialOnly）；新增 protected BeginPlay + ApplyGameplaySettingsOverrides（本组件原先没有 BeginPlay） (~2500 tok)
 - `CharacterAttributes.h` — UCharacterAttributes：复制 Health/MaxHealth（ReplicatedUsing OnRep 广播 FOnHealthChanged/FOnMaxHealthChanged），Setter 为 BlueprintAuthorityOnly，且 SetHealth/SetMaxHealth 内联加非权威端门禁（IsAuthoritativeForActorComponent + WFLOG_ERROR） (~900 tok)
 - `CrawlingComponent.h` — 趴下（爬行）组件（服务器权威）：爬行速度/奔跑阈值/播速带 Replicated + ini 覆盖；速度改写一律经 USprintBoostComponent::SetBaseMaxSpeed (~5100 tok)
@@ -128,6 +128,7 @@
 - `SlideComponent.h` — 滑行（低姿态冲刺滑铲）组件（服务器权威）：14 项调参带 Replicated（COND_InitialOnly）+ ini 覆盖；两端各跑同一份速度曲线所以必须复制 (~5600 tok)
 - `SprintBoostComponent.h` — 加速（长按冲刺）组件（服务器权威）：时长/方向门控/夹角/播速带 Replicated + ini 覆盖；MaxWalkSpeed 由本组件独占 (~6900 tok)
 - `structs/AttackMontageData.h` — FAttackMontageData：Montage + SectionNames（TArray<FName>，默认 {NAME_None}），攻击蒙太奇分段数据 (~150 tok)
+- `WeaponAttackProfile.h` — 武器攻击配置：**一件武器一份**的招式表；做成蓝图子类（Class Reference/TSubclassOf，数据读 CDO），`AttackMontageList` 非空时覆盖角色默认表 (~550 tok)
 
 ## Source/Wildforge/Public/Character/Player/
 
