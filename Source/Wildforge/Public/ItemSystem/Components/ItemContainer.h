@@ -5,10 +5,15 @@
 #include "CoreMinimal.h"
 
 #include "Components/ActorComponent.h"
+#include "ItemSystem/Enums/ContainerAccessMode.h"
 #include "ItemSystem/Enums/ContainerType.h"
 #include "ItemSystem/Structs/ItemInfo.h"
+#include "UObject/CoreNetTypes.h"
 
 #include "ItemContainer.generated.h"
+
+class APlayerController;
+class APlayerState;
 
 // 容器内容发生任何变化时广播（服务端修改后、客户端 OnRep_Slots 后），供 UI 刷新
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnContainerChanged);
@@ -60,6 +65,22 @@ private:
   // Quantity < 0 表示全部扣除。返回实际扣除的数量；不广播。
   int32 RemoveByItemIDInternal(int32 ItemID, int32 Quantity);
 
+  // 把「已占用槽位」从 ItemIDToSlot 索引里摘掉（不碰 Slots / UsedCount）。
+  // 供 RemoveItemAtSlotInternal / SwapSlots / MoveItemToContainer 共用。
+  void DetachOccupiedSlotFromIndex(int32 SlotIndex);
+
+  // 把「已占用槽位」重新挂回 ItemIDToSlot 索引（不碰 Slots / UsedCount）。
+  void AttachOccupiedSlotToIndex(int32 SlotIndex);
+
+  // 往一个确认空闲的槽位写入物品，并同步 FreeSlots / ItemIDToSlot / UsedCount。
+  // 不广播。跨容器转移的目标落位用它，避免在调用方重复维护四份派生状态。
+  bool PlaceItemInEmptySlotInternal(int32 SlotIndex, const FItemInformation &Item);
+
+  // 当前 Server RPC 的调用者（容器所属 Pawn 的 Controller）是否有权限。
+  // 没有拥有者（世界箱子）时返回 true：这类 RPC 由引擎的 owning connection
+  // 规则丢弃，真正的跨容器入口是玩家身上的 UContainerInteractionComponent。
+  bool CanCurrentRpcCallerAccess() const;
+
 public:
   // 容器内容变化时广播；Blueprint 也可绑定
   UPROPERTY(BlueprintAssignable, Category = "ItemContainer")
@@ -81,8 +102,52 @@ protected:
   virtual void BeginPlay() override;
 
   int32 FindEmptySlot() const;
-  
+
   void setContainerType(EContainerType InContainerType) { ContainerType = InContainerType; }
+
+  // ===== 访问权限（服务器权威，随容器复制） =====
+  // 权限只决定「谁可以打开 / 改动这个容器」，不负责隐藏内容：
+  // 内容数组的复制条件由 GetContentsReplicationCondition() 按**类**决定。
+  UPROPERTY(EditAnywhere, Replicated, BlueprintGetter = GetAccessMode,
+            Category = "ItemContainer|Access")
+  EContainerAccessMode AccessMode = EContainerAccessMode::OwnerOnly;
+
+  // 拥有者身份。用 APlayerState 而不是 APlayerController：
+  // PlayerController 只在本地玩家所在的客户端存在，不能作为跨端比较的复制标识；
+  // PlayerState 对所有客户端都可见，两端比较的是同一份对象。
+  // 为空时回退到「容器所在 Pawn 的 Controller」（玩家背包 / 快捷栏就是这种）。
+  UPROPERTY(EditAnywhere, Replicated, BlueprintReadOnly,
+            Category = "ItemContainer|Access")
+  TObjectPtr<APlayerState> AccessOwner = nullptr;
+
+  // Whitelist 模式下额外允许的玩家。空数组是合法状态。
+  UPROPERTY(EditAnywhere, Replicated, BlueprintReadOnly,
+            Category = "ItemContainer|Access")
+  TArray<TObjectPtr<APlayerState>> AllowedPlayers;
+
+  /**
+   * 内容数组（Slots / SlotOccupied）的复制条件。
+   *
+   * ⚠️ `GetLifetimeReplicatedProps` 只在**类的 CDO** 上调用一次
+   * （`FRepLayout::InitFromClass`，RepLayout.cpp:6220-6221），复制布局按类缓存，
+   * 所以这里只能按**类**分支，不能按实例 / 运行时状态分支。
+   *   - 玩家背包 / 快捷栏（默认）：COND_OwnerOnly，内容只发给拥有者；
+   *   - 世界容器（UStorageContainer）：COND_None，发给所有相关客户端，
+   *     否则没有 owning connection 的箱子谁的内容都收不到，UI 无法显示。
+   *
+   * 安全边界：世界容器的内容对范围内所有客户端可见（这是显示所必需的），
+   * 权限（AccessMode）负责门控**交互**，不是内存可见性。需要严格按客户端
+   * 保密时，必须自定义复制（例如按白名单逐连接发送），不要指望这个条件。
+   */
+  virtual ELifetimeCondition GetContentsReplicationCondition() const {
+    return COND_OwnerOnly;
+  }
+
+  // 解析容器天然的拥有者：容器所在 Pawn 的 Controller。
+  // 世界箱子没有 Controller（或 owner 是 PlayerController 时直接返回它），
+  // 此时需要显式设置 AccessOwner。
+  APlayerController *ResolveOwningPlayerController() const;
+
 public:
   // Called every frame
   virtual void
@@ -165,6 +230,26 @@ public:
             Category = "ItemContainer")
   bool MoveOrMergeItem(int32 FromSlot, int32 ToSlot);
 
+  /**
+   * 跨容器转移（服务器权威）：把本容器 FromSlot 的物品移动到
+   * TargetContainer 的 ToSlot。
+   *
+   * 放置语义与 MoveOrMergeItem 一致，只是目标换成了另一个容器：
+   *   - 目标空槽 -> 移动；
+   *   - 同 ItemID + 可堆叠 + 目标未满 -> 合并，装不下的余数留在源槽位；
+   *   - 其它情况 -> 两个槽位交换。
+   *
+   * 调用方（玩家交互组件）负责校验两个容器的访问权限与交互距离；
+   * 本函数只维护两个容器的数据不变式（FreeSlots / ItemIDToSlot / UsedCount）
+   * 并分别广播 OnContainerChanged。
+   *
+   * 源与目标相同的时候直接转调 MoveOrMergeItem，不复制一套规则。
+   */
+  UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly,
+            Category = "ItemContainer")
+  bool MoveItemToContainer(int32 FromSlot, UItemContainer *TargetContainer,
+                           int32 ToSlot);
+
   UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly,
             Category = "ItemContainer")
   void ClearContainer();
@@ -212,6 +297,66 @@ public:
 
   // 注意：InitializeContainer / ResizeContainer 不收客户端 RPC，
   // 它们只保留为 BlueprintAuthorityOnly，由服务器/游戏流程调用。
+
+  // ===== 访问权限查询 / 配置 =====
+
+  /**
+   * 玩家是否有权访问本容器（权限 + 拥有者解析）。
+   *
+   * 纯本地判定：不检查距离、不检查「容器是否正被打开」，也不做任何 RPC。
+   * 客户端可以直接用它做 UI 预检；服务器必须在真正的交互 RPC 里**重新调用**
+   * 一遍，不能相信客户端传来的结论。
+   */
+  UFUNCTION(BlueprintPure, Category = "ItemContainer|Access",
+            meta = (BlueprintThreadSafe))
+  bool HasAccess(APlayerController *Player) const;
+
+  /** 玩家是否是本容器的拥有者（不考虑 AccessMode）。 */
+  UFUNCTION(BlueprintPure, Category = "ItemContainer|Access",
+            meta = (BlueprintThreadSafe))
+  bool IsOwnedBy(APlayerController *Player) const;
+
+  /**
+   * 最终权限判定（BlueprintNativeEvent）：默认按 AccessMode / AccessOwner /
+   * AllowedPlayers 计算。蓝图子类可以覆写它接入任务系统、公会、钥匙道具等
+   * 外部规则；覆写后建议在无法判定时调用父类实现。
+   */
+  UFUNCTION(BlueprintNativeEvent, BlueprintPure,
+            Category = "ItemContainer|Access")
+  bool CanBeAccessedBy(APlayerController *Player) const;
+  virtual bool CanBeAccessedBy_Implementation(
+      APlayerController *Player) const;
+
+  UFUNCTION(BlueprintPure, Category = "ItemContainer|Access",
+            meta = (BlueprintThreadSafe))
+  EContainerAccessMode GetAccessMode() const { return AccessMode; }
+
+  /** 服务器设置权限模式；内容与权限都不会因此改变，只广播一次刷新 UI。 */
+  UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly,
+            Category = "ItemContainer|Access")
+  void SetAccessMode(EContainerAccessMode InAccessMode);
+
+  /** 服务器设置拥有者（PlayerState 是跨端复制的身份标识）。 */
+  UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly,
+            Category = "ItemContainer|Access")
+  void SetAccessOwner(APlayerState *InOwner);
+
+  /** 服务器设置拥有者（便捷入口：从 PlayerController 取 PlayerState）。 */
+  UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly,
+            Category = "ItemContainer|Access")
+  void SetAccessOwnerController(APlayerController *InOwner);
+
+  UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly,
+            Category = "ItemContainer|Access")
+  void AddAllowedPlayer(APlayerState *Player);
+
+  UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly,
+            Category = "ItemContainer|Access")
+  void RemoveAllowedPlayer(APlayerState *Player);
+
+  UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly,
+            Category = "ItemContainer|Access")
+  void ClearAllowedPlayers();
 
   UFUNCTION(BlueprintPure, Category = "ItemContainer")
   EContainerType GetContainerType() const { return ContainerType; }

@@ -14,6 +14,7 @@ class UTextBlock;
 class UProgressBar;
 class USizeBox;
 class UOverlay;
+class UContainerInteractionComponent;
 
 UCLASS()
 class WILDFORGE_API UInventorySlotWidget : public UUserWidget {
@@ -249,4 +250,19 @@ private:
 
   // 要显示的数据与当前状态是否完全一致（用来跳过无谓的 Slate 写入）
   bool IsSameAsCurrentData(const FItemInformation &Item) const;
+
+  /**
+   * 本地拖拽落点预检：源 / 目标容器都存在，且玩家对两者都有访问权限。
+   *
+   * 只用于悬停高亮（`NativeOnDragOver` / `NativeOnDragEnter`）与落点分支，
+   * **不查距离**——距离在真正落下（`NativeOnDrop` → `CanInteractWith`）与
+   * 服务器 RPC 里校验。悬停阶段查距离会在鼠标扫过远处格子时刷满 WARNING。
+   *
+   * 客户端预检只是 UI 的事：服务器在 `Server_MoveItemBetweenContainers` 里
+   * 会重新校验权限、距离与槽位，不能把这里的返回值当作安全边界。
+   */
+  bool CanAcceptInventoryDrag(UDragDropOperation *InOperation) const;
+
+  /** 本控件所属玩家角色上的容器交互组件（跨容器 RPC 的唯一通道）；没有则返回空。 */
+  UContainerInteractionComponent *GetOwningInteractionComponent() const;
 };

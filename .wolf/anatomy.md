@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-18T16:44:30.962Z
-> Files: 98 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-21T16:10:05.399Z
+> Files: 110 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -67,7 +67,7 @@
 
 ## Source/Wildforge/Private/Character/Player/
 
-- `PlayerCharacter.cpp` — 玩家角色实现：能力组件装配与按来源记账的移动锁；攻击走**输入软锁**（`HandleAttackStarted` 传 `bDisableMovement=false`），`IsMoveInputIgnored()` 在攻击锁存在时只拦蓝图 `AddMovementInput`，保留根运动与跳跃；跳跃打断攻击由蓝图调用 `Server_CancelAttack`，C++ 不覆写 `Jump()` (~9200 tok)
+- `PlayerCharacter.cpp` — 实现：构造函数装配 Inventory/QuickContainer/ContainerInteractionComponent 与各能力组件；BeginPlay 应用适配器、订阅移动门控事件、权威端读 PlayerCharacterSettings 初始化背包/快捷栏；PostNetInit 打印客户端生效配置；移动锁按来源集合记账（软锁不碰移动组件，硬锁只留给定身） (~9500 tok)
 
 ## Source/Wildforge/Private/Core/
 
@@ -80,19 +80,21 @@
 
 ## Source/Wildforge/Private/ItemSystem/Components/
 
-- `ItemContainer.cpp` — Fill out your copyright notice in the Description page of Project Settings. (~5406 tok)
+- `ContainerInteractionComponent.cpp` — 实现：BeginPlay 权威端读 UContainerInteractionSettings；EndPlay 权威端关闭当前宝箱、客户端先清空 ActiveContainer 再走 OnRep（避免析构期重复发关闭 RPC）；OnRep_ActiveContainer → UpdateChestWindow（仅本地 PC：按宝箱 ChestWindowClass 建 UChestWindowWidget，Initialize 后 AddToViewport(10) + GameAndUI + 光标）→ 广播；DestroyChestWindow 恢复 GameOnly/隐藏光标（背包仍开时保留）；Server_RequestOpenContainer 校验 PC/Pawn/权限/距离 → Chest->OpenChest（失败保留原活动容器）→ 关闭前一个宝箱 → SetActiveContainer；Server_RequestCloseContainer 调 Chest->CloseChest 后清空；Server_MoveItemBetweenContainers 双端权限+距离校验后 MoveItemToContainer (~4400 tok)
+- `ItemContainer.cpp` — 实现：Slots/SlotOccupied 的复制条件由 virtual GetContentsReplicationCondition 决定（基类 COND_OwnerOnly，StorageContainer 覆写 COND_None）；AccessMode/AccessOwner/AllowedPlayers 复制 + HasAccess/CanBeAccessedBy(BlueprintNativeEvent)/权威 setter；MoveItemToContainer 支持移动/合并/交换并双端广播；所有 Server_* 先过 CanCurrentRpcCallerAccess；派生索引 FreeSlots/ItemIDToSlot/UsedCount 服务器维护、客户端 RebuildDerivedState (~10000 tok)
 - `PlayerInventory.cpp` — UPlayerInventory 实现（固定容器类型为 PlayerInventory） (~100 tok)
 - `QuickContainer.cpp` — UQuickContainer 实现：遍历快捷键配置，在拥有者 Actor 上按函数名动态绑定输入按键（FInputActionHandlerDynamicSignature），使用 WFLOG_* 记录配置、绑定失败与成功 (~404 tok)
+- `StorageContainer.cpp` — include "ItemSystem/Components/StorageContainer.h" (~78 tok)
 
 ## Source/Wildforge/Private/ItemSystem/Database/
 
-- `ItemDatabaseSubsystem.cpp` — 子系统实现：Initialize 从 UItemSystemSettings 取 ItemTable 并 LoadSynchronous，GetRowMap 构建 int 键缓存；日志走 WFLOG_* (~1200 tok)
+- `ItemDatabaseSubsystem.cpp` — 实现：Initialize 从 UItemSystemSettings 同步加载 DT_Items；EnsureIndex/BuildIndex 按「行内 ItemID，0 则回退行名数字」建 ItemID→定义索引（重复取先出现者，行结构非 FItemInformation 记 ERROR）；GetItemDefinition/FindItem O(1) 查找；GetAllItemIDs 供宝箱等服务器流程遍历筛选 (~900 tok)
 - `ItemSystemSettings.cpp` — UItemSystemSettings 实现（仅包含头，无额外逻辑） (~60 tok)
 
 ## Source/Wildforge/Private/ItemSystem/UI/
 
 - `InventorySlotDragDropOperation.cpp` — 拖拽操作实现：RestoreSourceWidget() 经弱引用 Pin 到源控件后 SetRenderOpacity(1.f)（失效即跳过） (~150 tok)
-- `InventorySlotWidget.cpp` — 单格实现：InitializeSlot 绑定 (容器,索引) 并退订/重订 + 首次拉取（OwningContainer 为 TWeakObjectPtr，使用点先 Get() 判空，见 bug-064），HandleContainerChanged→RefreshFromContainer（GetItemAtSlot 拉取；本格没变直接返回，空槽不为空才 ClearSlot），UnbindFromContainer 在换绑/NativeDestruct 时退订；显示数据是控件状态（CurrentItem/bHasItemData），RefreshFromState() 是「状态 → 外观」唯一出口（NativeConstruct 也调它，构造/重建都能重放，别再手工 TakeWidget；附加文本也在这里重放，所以「默认折叠」由空文本状态承担，不在 UMG 里配）；SetItemData 只写状态+重画（不要写数量早退，会连图标一起跳过）、ClearSlot 清状态+重画；RefreshSlotStyleColor 首次执行时懒抓设计器 BrushColor 作 NormalSlotColor，未高亮时还原它（别再硬编码默认色，见 bug-015）；NativeOnDragDetected 视觉类为空/指向原生类时退回 GetClass()、只 CreateWidget+InitializeSlot，创建 UInventorySlotDragDropOperation（回填 SourceContainer/SourceSlotIndex/SourceWidget）并半透明；NativeOnDrop 复位源控件显示（SetRenderOpacity，只复位透明度，着色由 Enter/Leave 平衡）→ 同槽/跨容器早退 → 发 Server_MoveOrMerge；DragOver 只接受本系统拖拽、Enter/Leave 高亮（SetHighlight_Implementation 染色）；SetButtomExtraText/CollapseButtomExtraText 只改 ButtomExtraTextContent 再走 RefreshButtomExtraText（空文本=折叠；与物品数据无关，ClearSlot 不清它），每条都记 WFLOG_INFO (~4100 tok)
+- `InventorySlotWidget.cpp` — 单格控件实现：状态重放（Slate 重建安全）、每格按 (容器, 索引) 拉取并跳过未变数据；拖拽起点/落点做 HasAccess 预检，落点经 UContainerInteractionComponent::Server_MoveItemBetweenContainers 统一走服务器（同容器也走），无组件时同容器回退 Server_MoveOrMerge；悬停只查权限不查距离以免刷日志 (~6200 tok)
 - `InventoryUserWidget.cpp` — include "ItemSystem/UI/InventoryUserWidget.h" (~1914 tok)
 - `ItemContainerGrid.cpp` — 网格实现：InitializeGrid 里 `InSlotsPerRow <= 0` 表示沿用控件自己的 SlotsPerRow（WBP 设计器里配的列数，调用方硬编码会把它冲掉），统一夹到 >= 1（LayoutSlots 拿它当除数）；NativeConstruct **无条件**以拥有者 Pawn 的实时查找结果重解析容器（不再 `if(!Container)` 跳过——非空≠有效；对继承的失效弱引用记警告，见 bug-064）；HandleContainerChanged 只做结构（容量变化才 EnsureSlotCount+LayoutSlots）；RefreshGrid 为全量入口；EnsureSlotCount 目标数 [0,512] 夹紧后补建时当场 InitializeSlot、移除时先 UnbindFromContainer (~1800 tok)
 - `QuickBarWidget.cpp` — 快捷栏：InitializeGrid（绑快捷键，**不依赖**槽位控件是否已建出）+ HandleContainerChanged 重写（容量到位时把 SlotsPerRow 校正为容量＝单行，再补按键标签）+ RefreshHotkeyLabels（文本没变不写）+ SetupHotkeyBindings/HandleHotkeyTriggered（Enhanced Input 动态建 Action 并在 Owner 上 FindFunction） (~2900 tok)
@@ -104,6 +106,14 @@
 ## Source/Wildforge/Private/Utils/
 
 - `WildforgeLog.cpp` — 实现：FWildforgeLogDevice（FOutputDevice）按等级分派到 3 个 FLevelFileWriter（各含 FAsyncWriter 后台线程 + 独立锁），UTF-8 无 BOM，跨日切目录；仅此处允许内部 UE_LOG(LogWildforge, …) (~1600 tok)
+
+## Source/Wildforge/Private/World/
+
+- `ChestActor.cpp` — 实现：构造时建 UStorageContainer 并 bReplicates；复制 ChestLevel/ChestWindowClass/bIsOpened；BeginPlay 仅权威端读 UChestSettings（容量/战利品数量）→ SetAccessMode → 初始化容器（已有容量则跳过，避免清空）→ GenerateLoot；GenerateLoot 按等级稀有度池（Common→C/U，Rare→R/E，Legendary→E/L）从 DT_Items 筛 ItemID、Fisher-Yates 洗牌、RandRange 取件数、AddItemByID 逐个放入；SetChestLevel/SetOpenedState 在服务器手动补 OnRep；OpenChest 校验权限/窗口类/容器状态并维护 ActiveUsers（首个打开者才播开箱）；CloseChest 移除打开者、空集才播关箱、null Player=强制关闭 (~3600 tok)
+
+## Source/Wildforge/Private/World/UI/
+
+- `ChestWindowWidget.cpp` — 实现：InitializeChestWindow 存弱引用并把容器交给 BindWidgetOptional 的 ItemContainerGrid（缺控件 WARNING、空容器 ERROR），最后调蓝图 OnChestWindowInitialized；RequestCloseChest 沿「OwningPlayer → Pawn 上的 UContainerInteractionComponent → Server_RequestCloseContainer」发关闭（世界 Actor 无 owning connection，见 bug-093），容器已非 ActiveContainer / 关卡销毁中时静默返回；NativeDestruct 兜底再请求一次 (~900 tok)
 
 ## Source/Wildforge/Public/Character/
 
@@ -132,7 +142,7 @@
 
 ## Source/Wildforge/Public/Character/Player/
 
-- `PlayerCharacter.h` — 玩家角色：把玩家专用的「能力组件」装配在一起；移动门控按来源记账（`MovementLockHolders`），攻击走软锁并覆写 `IsMoveInputIgnored()` 只拦移动输入以保留根运动；跳跃打断由蓝图调用攻击组件的 `Server_CancelAttack`（C++ 不覆写 `Jump()`） (~4600 tok)
+- `PlayerCharacter.h` — 玩家角色装配点：背包/快捷栏/容器交互组件 + 攻击/翻滚/加速/滑行/趴下组件；移动锁按来源集合记账（TSet + 硬锁子集），IsMoveInputIgnored 实现攻击输入锁；适配器 TSubclassOf 复制到所有端；GetContainerInteractionComponent 是宝箱打开/跨容器拖拽入口 (~5000 tok)
 
 ## Source/Wildforge/Public/Character/Settings/
 
@@ -155,20 +165,28 @@
 
 ## Source/Wildforge/Public/ItemSystem/Components/
 
-- `ItemContainer.h` — 服务器权威物品容器组件：复制 Slots/SlotOccupied + 派生索引(FreeSlots/ItemIDToSlot/UsedCount)；增/删(AddItemStack/AddItemByID；RemoveItem 按槽位、RemoveAllItem 按 ItemID，均带 Quantity 默认 -1=全部)/整理/调整大小/查询 API；MoveOrMergeItem(From,To) 提供拖拽「放置」语义（同 ItemID 可堆叠且目标未满→合并、余数留源槽，否则交换）；OnContainerChanged 委托 + Server_* RPC（含 Server_MoveOrMerge） (~2900 tok)
-- `PlayerInventory.h` — UPlayerInventory：UItemContainer 子类，构造时固定容器类型为 PlayerInventory (~300 tok)
+- `ContainerInteractionComponent.h` — 玩家侧容器交互通道（挂 APlayerCharacter，每玩家一份）：Server_RequestOpen/CloseContainer + Server_MoveItemBetweenContainers 三个 RPC；ActiveContainer（COND_OwnerOnly + RepNotify）+ OnActiveContainerChanged；宝箱窗口生命周期也在本组件（Transient ChestWindow、bAppliedChestInputMode、EndPlay 关箱）；MaxInteractionDistance 权威端读 ini 后 COND_InitialOnly 复制；文档含世界 Actor 无 owning connection 的信任边界说明 (~2100 tok)
+- `ItemContainer.h` — 容器核心：复制数组 Slots/SlotOccupied + 非复制派生索引；复制条件走 virtual GetContentsReplicationCondition（GetLifetimeReplicatedProps 只在 CDO 上调用，只能按类选）；访问权限 AccessMode/AccessOwner/AllowedPlayers + HasAccess/CanBeAccessedBy；MoveItemToContainer 跨容器移动/合并/交换；修改函数 BlueprintAuthorityOnly + 权威门禁 (~4200 tok)
+- `PlayerInventory.h` — UPlayerInventory：UItemContainer 子类，构造时固定容器类型为 PlayerInventory；内容复制条件继承基类 COND_OwnerOnly (~300 tok)
+- `StorageContainer.h` — 世界容器组件（UItemContainer 子类，构造锁定 WorldStorage + 内容复制覆写为 COND_None）；**保持通用**：宝箱等级 / 战利品 / 开箱表现都在 AChestActor，不要往这里加宝箱专属字段 (~520 tok)
 
 ## Source/Wildforge/Public/ItemSystem/Database/
 
-- `ItemDatabaseSubsystem.h` — 物品定义数据库（GameInstanceSubsystem）：单一真相源，从项目设置取表 + int 键懒缓存 (~900 tok)
+- `ItemDatabaseSubsystem.h` — 物品定义数据库（单一真相源）：Get/FindItem/GetItemDefinition/GetItemTable/GetAllItemIDs（遍历全部 ItemID，供掉落表按稀有度筛选）；ItemIndex + CachedTable 懒构建；服务器与客户端都可用 (~600 tok)
 - `ItemSystemSettings.h` — UDeveloperSettings（Project Settings > Game > Item System）：TSoftObjectPtr<UDataTable> ItemTable，配置驱动物品表 (~500 tok)
 
 ## Source/Wildforge/Public/ItemSystem/Enums/
 
-- `ContainerType.h` — EContainerType 枚举（PlayerStorage/PlayerInventory/…） (~200 tok)
+- `ChestLevel.h` — EChestLevel（Common/Rare/Legendary，普通/稀有/传奇）；归属 AChestActor（不是 UStorageContainer）；枚举值进入复制与存档，只追加不重排 (~180 tok)
+- `ContainerAccessMode.h` — EContainerAccessMode：OwnerOnly/Public/Whitelist/Locked；只回答「玩家 P 能否访问容器 C」，不负责内容可见性（那由复制条件决定） (~350 tok)
+- `ContainerType.h` — EContainerType：PlayerInventory/PlayerHotbar/PlayerStorage/PlayerArmor + 末尾追加 WorldStorage（不改变已有枚举值） (~150 tok)
 - `ItemArmor.h` — EItemArmor 枚举 (~150 tok)
 - `ItemRarity.h` — EItemRarity 枚举（Common…） (~150 tok)
 - `ItemType.h` — EItemType 枚举（Other/…） (~200 tok)
+
+## Source/Wildforge/Public/ItemSystem/Settings/
+
+- `ContainerInteractionSettings.h` — UContainerInteractionSettings（Project Settings > Game > 容器交互）：bOverride_MaxInteractionDistance + MaxInteractionDistance（ClampMin 0）；仅权威端读 ini，客户端只认 COND_InitialOnly 复制值 (~450 tok)
 
 ## Source/Wildforge/Public/ItemSystem/Structs/
 
@@ -179,7 +197,7 @@
 ## Source/Wildforge/Public/ItemSystem/UI/
 
 - `InventorySlotDragDropOperation.h` — 拖拽操作（UDragDropOperation）：SourceSlotIndex/SourceContainerType/ItemInfo/SourceContainer + TWeakObjectPtr<UUserWidget> SourceWidget（弱引用避免源控件被网格刷新销毁后悬空）与 RestoreSourceWidget() 兜底复位，供 NativeOnDrop 判定来源并恢复显示 (~700 tok)
-- `InventorySlotWidget.h` — 单个格子控件：SetButtomExtraText / CollapseButtomExtraText / **GetButtomExtraText**（给外部去重，避免重复写 Slate 与日志）、InitializeSlot / SetHighlight（BlueprintNativeEvent）与一组 NativeOnDrag*/Mouse 回调 (~2300 tok)
+- `InventorySlotWidget.h` — 单格控件：BindWidget 子控件 + 选中/高亮染色（基准色首次从设计器抓取，见 bug-015）；InitializeSlot/UnbindFromContainer/RefreshFromContainer 状态重放；拖拽 CanAcceptInventoryDrag（权限预检）与 GetOwningInteractionComponent；容器用 TWeakObjectPtr（bug-064） (~2700 tok)
 - `InventoryUserWidget.h` — 背包主界面：FInventoryThemeConfig 主题结构体；InitializeInventory/ShowInventoryPage/ShowCraftPage；BindWidget 按钮/Tab/WidgetSwitcher/ItemContainerGrid/动画；主题美化 ApplyInitialThemeStyles；**ItemContainer 为 TWeakObjectPtr（使用点先 Get()，见 bug-064）** (~2200 tok)
 - `ItemContainerGrid.h` — 网格基类：InitializeGrid / RefreshGrid / SetSlotsPerRow / GetContainer；HandleContainerChanged 为 **virtual**（子类可补结构变化后的收尾，如快捷栏按键标签）；容器用 TWeakObjectPtr (~860 tok)
 - `QuickBarWidget.h` — 容器结构变化（容量到位 / 增删槽位）后的收尾：先把「每行个数」校正为容量 (~534 tok)
@@ -193,3 +211,15 @@
 - `ComponentAuthorityGuard.h` — **WF_COMPONENT_AUTHORITY_GUARD(ReturnValue)**：UActorComponent 子类通用的开发期权威门禁宏（非权威端 WFLOG_ERROR + `return ReturnValue`，void 用 `void()`），供 SprintBoost/Blink 等新组件统一使用；内含「组件里不能写 HasAuthority（C3861）」的说明。（曾存在的 `AuthorityGuard.h` / `WF_AUTHORITY_GUARD` 已被用户删除——与本文档功能重复、仓库内无任何 TU 引用，不要恢复） (~400 tok)
 - `WildforgeAuthority.h` — 权威端判断辅助（inline）：IsAuthoritativeForActorComponent(UActorComponent*) = GetOwner()->HasAuthority()；供组件子类使用（HasAuthority 是 AActor 的方法，组件上没有，直接写会 C3861） (~350 tok)
 - `WildforgeLog.h` — 日志工具（UBlueprintFunctionLibrary）：Info/Warning/Error/WFLOG_* 宏；注册接口 WildforgeLogging::RegisterFileOutput；文件输出走异步设备 (FAsyncWriter) (~1000 tok)
+
+## Source/Wildforge/Public/World/
+
+- `ChestActor.h` — 可交互宝箱（bReplicates）：EChestLevel 放 Actor（驱动掉落/表现/UI，**不进** UStorageContainer）+ UStorageContainer + ChestWindowClass（TSubclassOf<UChestWindowWidget>，蓝图类默认值指定）+ AccessMode；OpenChest/CloseChest（BlueprintAuthorityOnly）校验权限/窗口类并维护服务器 ActiveUsers（最后一人离开才播关箱）；BP_OnChestOpened/Closed/LevelChanged 蓝图事件；容量与战利品数量可被 UChestSettings ini 覆盖 (~1900 tok)
+
+## Source/Wildforge/Public/World/Settings/
+
+- `ChestSettings.h` — 宝箱（`AChestActor`）的可调数值。 (~583 tok)
+
+## Source/Wildforge/Public/World/UI/
+
+- `ChestWindowWidget.h` — 宝箱窗口的 C++ 基类（必须由蓝图子类指定具体外观）。 (~721 tok)

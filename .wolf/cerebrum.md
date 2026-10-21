@@ -447,6 +447,40 @@
   内容浏览器里「Blueprint Class → WeaponAttackProfile」建出来的是**类资产**（如 `DA_SpearAttackProfile`），
   `TObjectPtr` 的 Object Reference 槽位选不到它；类引用槽位（Blueprint 变量选 `WeaponAttackProfile Class Reference`）
   才能指向该蓝图类，数据读 CDO。与 `UCharacterAdaptor` 同一条约定，见上面 [2026-10-17] 那条和 bug-099。
+- [2026-10-21] **`GetLifetimeReplicatedProps` 只在类 CDO 上调用一次**（`FRepLayout::InitFromClass`，
+  RepLayout.cpp:6220-6221），所以 `DOREPLIFETIME_CONDITION` 的条件是**类级**的，不能按实例选。
+  需要在同一基类下换复制条件时用虚函数：`UItemContainer::GetContentsReplicationCondition()`
+  （基类 `COND_OwnerOnly`）由 `UStorageContainer` 覆写为 `COND_None`；不要加一个「看起来能按实例
+  切换」的 bool，它只会让 CDO 的条件决定所有实例。
+- [2026-10-21] **世界容器（关卡 actor / 服务器生成、无 owning 连接）的两条硬约束**：
+  内容数组若沿用 `COND_OwnerOnly`，没有任何客户端收得到（箱子 UI 永远是空的），必须用
+  `COND_None`（`UStorageContainer`）；容器自己的 `Server_*` RPC 没有拥有连接，引擎会**静默丢弃**
+  （bug-093），交互 RPC 必须挂在玩家角色上（`UContainerInteractionComponent`）。
+- [2026-10-21] **权限身份用 `APlayerState*`，不要用 `APlayerController*`**：后者只在本地客户端
+  存在，服务器与其它客户端比较不到；`APlayerState` 在所有端都是同一个复制对象。容器未显式指定
+  `AccessOwner` 时，拥有者回退为「容器所在 Pawn 的 Controller」，所以玩家背包 / 快捷栏无需额外配置
+  就能互相访问。
+- [2026-10-22] **宝箱等级 / 掉落 / 开合表现全部归 `AChestActor`，`UStorageContainer` 保持通用**：
+  等级→稀有度池映射在 `ChestActor.cpp` 的匿名命名空间（Common→Common/Uncommon，Rare→Rare/Epic，
+  Legendary→Epic/Legendary），同池等概率、Fisher-Yates 保证一箱不重复抽同一 ItemID；数量与容量
+  默认值走 `UChestSettings`（Project Settings > Game > 宝箱），单箱可在类默认值覆盖。`ChestLevel`
+  与 `ChestWindowClass` 都 `DOREPLIFETIME`；客户端 `BeginPlay` 不初始化容器、不生成掉落，只等复制。
+- [2026-10-22] **`TSubclassOf<T>` 的属性/返回值可以在头文件里前置声明 T，但在 .cpp 里做 `if (!X)`、
+  `IsChildOf` 等判断前必须 include 完整头文件**：这些写法会实例化 `T::StaticClass()`，只看见前向声明时
+  MSVC 报 `C2027 使用了未定义类型`（落在 SubclassOf.h）+ `C2672 StaticClass`。见 bug-108。
+- [2026-10-22] **宝箱窗口的创建与关闭都由玩家交互组件中转**：拥有者客户端在 `OnRep_ActiveContainer`
+  里按宝箱的 `ChestWindowClass` 创建窗口（`CreateWidget` → `InitializeChestWindow` →
+  `AddToViewport(10)` → GameAndUI + 光标）；关闭时窗口沿「OwningPlayer → Pawn 上的
+  `UContainerInteractionComponent` → `Server_RequestCloseContainer`」发请求，服务器调
+  `AChestActor::CloseChest`，`bIsOpened` 复制回各端后 `OnRep_bIsOpened` 调 `BP_OnChestClosed`。
+  世界 Actor 没有 owning connection，窗口不能直接对它发 Server RPC（bug-093）。
+- [2026-10-22] **多个玩家同时查看同一个宝箱要用服务器端 `ActiveUsers` 集合**：
+  `TSet<TWeakObjectPtr<APlayerController>>` 不复制；第一个打开者才切 `bIsOpened=true`（播开箱），
+  最后一个离开才切 false（播关箱）；每次打开/关闭前清理失效 PC。单个 bool 会让第一个关窗的玩家
+  替仍在查看的人把箱子「关」上。
+- [2026-10-22] **`OpenChest` 在没有 `ChestWindowClass` 时必须拒绝**：否则玩家会进入「有活动容器
+  但客户端建不出窗口」的卡死状态；容器未初始化（容量 0）同理。窗口类为空属于配置错误，记 ERROR
+  并在服务器入口拦住，不要留给客户端兜底。
 
 ## Do-Not-Repeat
 
@@ -672,6 +706,12 @@
   Object Reference 槽位选不到它，蓝图里也没有对应变量类型。一律用 `TSubclassOf<T>`，数据读 CDO
   （`TSubclassOf::GetDefaultObject()`）。先想清楚用户建的是「Data Asset 实例」还是「Blueprint Class」。
   见 bug-101。
+- [2026-10-22] **`TSubclassOf<T>` 在 .cpp 里做空判断 / 类型判断前必须 include T 的完整头文件**：
+  `if (!Class)` 会实例化 `T::StaticClass()`，只靠头文件里的前置声明会报
+  `C2027 使用了未定义类型`（SubclassOf.h）+ `C2672 StaticClass`。见 bug-108。
+- [2026-10-22] **不要再把宝箱等级 / 战利品规则加回 `UStorageContainer`**：等级属于 `AChestActor`，
+  容器组件要保持通用（尸体、熔炉、掉落箱都能复用）。掉落筛选走
+  `UItemDatabaseSubsystem::GetAllItemIDs` + 稀有度池，不要在容器里写宝箱逻辑。
 
 ## Decision Log
 
@@ -926,3 +966,39 @@
   换表会先取消当前攻击并重置连击段位。`Multicast_PlayAttackMontage` 相应改为传
   「蒙太奇资产 + Section 名」，客户端不再依赖本地招式表下标。理由：Server RPC 需要角色这个
   owning connection、蒙太奇必须播在角色 `AnimInstance`，且武器配置可独立复用/打包。
+- [2026-10-21] **容器访问权限 = `UItemContainer` 上的 `AccessMode`（OwnerOnly / Public /
+  Whitelist / Locked）+ `AccessOwner`（PlayerState）+ `AllowedPlayers`**，入口是
+  `HasAccess(PlayerController)` / `CanBeAccessedBy`（BlueprintNativeEvent，可被蓝图子类覆写）。
+  权限只回答「能不能打开 / 改动」，**内容可见性由复制条件单独决定**：玩家容器 `COND_OwnerOnly`，
+  世界容器 `COND_None`。这样「别人看得到箱子里的东西」与「别人能不能拿」解耦。
+- [2026-10-21] **宝箱 / 跨容器交互的 RPC 放在玩家角色上的 `UContainerInteractionComponent`，
+  不放在容器上**：世界宝箱没有 owning connection，容器自己的 Server RPC 会被引擎静默丢弃
+  （bug-093）。服务器在 RPC 里重新校验「调用者确实是本角色的 Controller」「双方 `HasAccess`」
+  「两个容器都在交互距离内」（玩家自己的容器与角色同 Actor，免距离）。
+- [2026-10-21] **同容器与跨容器拖拽统一走 `Server_MoveItemBetweenContainers`**（单机 / 监听服务器
+  与联机是同一条服务器路径）；合并 / 交换规则下沉到 `UItemContainer::MoveItemToContainer`，
+  UI 只做本地权限预检、悬停高亮与视觉复位。没有交互组件时保留旧路径：同容器回退
+  `Server_MoveOrMerge`，跨容器拒绝并记 WARNING。
+- [2026-10-21] **世界容器单独做 `UStorageContainer` 子类**（内容 `COND_None`），默认 `OwnerOnly`
+  且未指定拥有者 = 谁都打不开（安全默认值）；公共宝箱/掉落箱由策划显式改成 `Public`。
+  交互距离 `MaxInteractionDistance` 放 `UContainerInteractionSettings`（ini），仅权威端读取、
+  夹紧后 `COND_InitialOnly` 下发给客户端。
+- [2026-10-22] **宝箱等级 `EChestLevel`（Common/Rare/Legendary）放在 `AChestActor` 上，
+  不放在 `UStorageContainer`**（2026-10-21 曾短暂放在容器上，同日改回）：等级同时驱动掉落
+  稀有度、开箱动画、窗口配色，属于「宝箱」这个概念；容器组件要复用于尸体 / 熔炉 / 掉落箱，
+  不能被宝箱规则污染。等级作为 `AChestActor` 的复制属性（`DOREPLIFETIME`），变化时
+  `OnRep_ChestLevel` 调 `BP_OnChestLevelChanged` 刷新表现，不会重抽已生成的战利品。
+  枚举值会进入网络复制与存档，新增档位只能追加、不能重排。
+- [2026-10-22] **宝箱战利品 = 服务器 `BeginPlay` 按等级稀有度池从 `DT_Items` 随机抽**：
+  Common→Common/Uncommon、Rare→Rare/Epic、Legendary→Epic/Legendary；同池等概率，
+  Fisher-Yates 洗牌保证一箱不重复 ItemID，件数 `LootCountMin..Max`；容量与件数的全局默认值
+  走 `UChestSettings`（ini），单箱可在类默认值覆盖。只从 `UItemDatabaseSubsystem::GetAllItemIDs`
+  取 ItemID 再 `AddItemByID`，不缓存 `FItemInformation` 指针。
+- [2026-10-22] **宝箱窗口类由宝箱蓝图指定**：C++ 只提供 abstract `UChestWindowWidget` 基类
+  （可选 `ItemContainerGrid` + `OnChestWindowInitialized` 蓝图事件），`AChestActor` 上
+  `TSubclassOf<UChestWindowWidget> ChestWindowClass`（复制）；服务器 `OpenChest` 校验非空，
+  拥有者客户端在 `OnRep_ActiveContainer` 里创建 / 销毁窗口，避免「有活动容器但没有窗口」的卡死。
+- [2026-10-22] **开 / 关箱表现由复制的 `bIsOpened` 驱动，多查看者用服务器 `ActiveUsers`**：
+  首个打开者置 true（`BP_OnChestOpened`），最后一名离开置 false（`BP_OnChestClosed`）；
+  `ActiveUsers` 不复制（客户端只关心 `bIsOpened`），后加入的客户端也能通过初始复制看到正确状态。
+  关闭走玩家交互组件 `Server_RequestCloseContainer`（世界 Actor 无 owning connection，见 bug-093）。

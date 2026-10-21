@@ -2,8 +2,12 @@
 
 #include "ItemSystem/Components/ItemContainer.h"
 
+#include "GameFramework/Pawn.h"
+#include "GameFramework/PlayerController.h"
+#include "GameFramework/PlayerState.h"
 #include "ItemSystem/Database/ItemDatabaseSubsystem.h"
 #include "Net/UnrealNetwork.h"
+#include "Utils/WildforgeAuthority.h"
 #include "Utils/WildforgeLog.h"
 #include "Utils/ComponentAuthorityGuard.h"
 
@@ -22,10 +26,243 @@ void UItemContainer::GetLifetimeReplicatedProps(
     TArray<FLifetimeProperty> &OutLifetimeProps) const {
   Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-  // 仅复制给拥有者（玩家背包隐私）。通用容器（箱子等）如需要额外可见性，
-  // 在子类重写本函数并按需调整条件。
-  DOREPLIFETIME_CONDITION(UItemContainer, Slots, COND_OwnerOnly);
-  DOREPLIFETIME_CONDITION(UItemContainer, SlotOccupied, COND_OwnerOnly);
+  // 内容的可见性由**类**决定（见 GetContentsReplicationCondition 的注释）：
+  //   - 玩家背包 / 快捷栏：COND_OwnerOnly（隐私）；
+  //   - 世界容器（UStorageContainer）：COND_None（范围内所有客户端，UI 才能显示）。
+  // 权限（AccessMode）只门控交互，不负责隐藏内存里的数据。
+  FDoRepLifetimeParams SlotsParams;
+  SlotsParams.Condition = GetContentsReplicationCondition();
+  DOREPLIFETIME_WITH_PARAMS(UItemContainer, Slots, SlotsParams);
+
+  FDoRepLifetimeParams OccupiedParams;
+  OccupiedParams.Condition = GetContentsReplicationCondition();
+  DOREPLIFETIME_WITH_PARAMS(UItemContainer, SlotOccupied, OccupiedParams);
+
+  // 权限数据很小，而且所有可能显示 / 交互的端都要读：不加 condition。
+  DOREPLIFETIME(UItemContainer, AccessMode);
+  DOREPLIFETIME(UItemContainer, AccessOwner);
+  DOREPLIFETIME(UItemContainer, AllowedPlayers);
+}
+
+// ===== 访问权限 =====
+
+APlayerController *UItemContainer::ResolveOwningPlayerController() const {
+  AActor *OwnerActor = GetOwner();
+  if (!OwnerActor) {
+    return nullptr;
+  }
+
+  // 箱子的 owner 有时会被设置成 PlayerController（例如由某个玩家生成）：
+  // 这时它本身就是那个玩家的身份，直接返回。
+  if (APlayerController *OwningController =
+          Cast<APlayerController>(OwnerActor)) {
+    return OwningController;
+  }
+
+  // 玩家背包 / 快捷栏在角色的 Pawn 上：拥有者就是控制这个 Pawn 的 Controller。
+  // 服务器端与拥有者客户端都能取到；模拟代理上 GetController() 为空（正确：
+  // 别的玩家不能访问）。
+  if (APawn *OwningPawn = Cast<APawn>(OwnerActor)) {
+    return Cast<APlayerController>(OwningPawn->GetController());
+  }
+
+  return nullptr;
+}
+
+bool UItemContainer::IsOwnedBy(APlayerController *Player) const {
+  if (!Player) {
+    return false;
+  }
+
+  // 显式指定的 AccessOwner 优先：它用 PlayerState 作为复制身份，
+  // 两端比较的是同一份对象（PlayerController 只在本地客户端存在）。
+  if (AccessOwner != nullptr) {
+    return AccessOwner == Player->GetPlayerState<APlayerState>();
+  }
+
+  // 没显式指定时，容器所在 Pawn 的 Controller 就是拥有者。
+  return ResolveOwningPlayerController() == Player;
+}
+
+bool UItemContainer::CanBeAccessedBy_Implementation(
+    APlayerController *Player) const {
+  if (!Player) {
+    return false;
+  }
+
+  switch (AccessMode) {
+  case EContainerAccessMode::Public:
+    return true;
+
+  case EContainerAccessMode::Locked:
+    return false;
+
+  case EContainerAccessMode::OwnerOnly:
+    return IsOwnedBy(Player);
+
+  case EContainerAccessMode::Whitelist: {
+    if (IsOwnedBy(Player)) {
+      return true;
+    }
+    const APlayerState *PlayerState = Player->GetPlayerState<APlayerState>();
+    if (!PlayerState) {
+      return false;
+    }
+    return AllowedPlayers.ContainsByPredicate(
+        [PlayerState](const TObjectPtr<APlayerState> &Entry) {
+          return Entry.Get() == PlayerState;
+        });
+  }
+
+  default:
+    // 新增了模式但忘了实现：安全默认值 = 拒绝。
+    return false;
+  }
+}
+
+bool UItemContainer::HasAccess(APlayerController *Player) const {
+  if (!Player) {
+    return false;
+  }
+  return CanBeAccessedBy(Player);
+}
+
+void UItemContainer::SetAccessMode(EContainerAccessMode InAccessMode) {
+  WF_COMPONENT_AUTHORITY_GUARD(void());
+  check(IsInGameThread());
+
+  if (AccessMode == InAccessMode) {
+    return;
+  }
+
+  const EContainerAccessMode OldMode = AccessMode;
+  AccessMode = InAccessMode;
+
+  WFLOG_INFO("[容器权限] %s 权限模式 %d -> %d（容器=%s）。",
+             *GetNameSafe(GetOwner()), static_cast<int32>(OldMode),
+             static_cast<int32>(AccessMode), *GetNameSafe(this));
+
+  // 权限变化不改变内容，但 UI 可能显示「可访问 / 锁定」状态，借同一个广播刷新。
+  NotifyContainerChanged();
+}
+
+void UItemContainer::SetAccessOwner(APlayerState *InOwner) {
+  WF_COMPONENT_AUTHORITY_GUARD(void());
+  check(IsInGameThread());
+
+  if (AccessOwner == InOwner) {
+    return;
+  }
+
+  APlayerState *OldOwner = AccessOwner.Get();
+  AccessOwner = InOwner;
+
+  WFLOG_INFO("[容器权限] %s 的拥有者：%s -> %s（容器=%s）。",
+             *GetNameSafe(GetOwner()), *GetNameSafe(OldOwner),
+             *GetNameSafe(InOwner), *GetNameSafe(this));
+
+  NotifyContainerChanged();
+}
+
+void UItemContainer::SetAccessOwnerController(APlayerController *InOwner) {
+  WF_COMPONENT_AUTHORITY_GUARD(void());
+  check(IsInGameThread());
+
+  APlayerState *NewOwner =
+      InOwner ? InOwner->GetPlayerState<APlayerState>() : nullptr;
+  if (InOwner && !NewOwner) {
+    WFLOG_WARNING("[容器权限] %s 无法把玩家 %s 设为拥有者：该 Controller 还没有 "
+                  "PlayerState（可能尚未初始化完成）。",
+                  *GetNameSafe(GetOwner()), *GetNameSafe(InOwner));
+  }
+
+  SetAccessOwner(NewOwner);
+}
+
+void UItemContainer::AddAllowedPlayer(APlayerState *Player) {
+  WF_COMPONENT_AUTHORITY_GUARD(void());
+  check(IsInGameThread());
+
+  if (!Player) {
+    WFLOG_WARNING("[容器权限] %s 收到空的 PlayerState，忽略加入白名单。",
+                  *GetNameSafe(GetOwner()));
+    return;
+  }
+
+  const bool bAlreadyAllowed = AllowedPlayers.ContainsByPredicate(
+      [Player](const TObjectPtr<APlayerState> &Entry) {
+        return Entry.Get() == Player;
+      });
+  if (bAlreadyAllowed) {
+    WFLOG_INFO("[容器权限] %s 已经在 %s 的白名单里，忽略重复加入。",
+               *GetNameSafe(Player), *GetNameSafe(GetOwner()));
+    return;
+  }
+
+  AllowedPlayers.Add(Player);
+  WFLOG_INFO("[容器权限] %s 加入 %s 的白名单（当前 %d 人）。",
+             *GetNameSafe(Player), *GetNameSafe(GetOwner()),
+             AllowedPlayers.Num());
+  NotifyContainerChanged();
+}
+
+void UItemContainer::RemoveAllowedPlayer(APlayerState *Player) {
+  WF_COMPONENT_AUTHORITY_GUARD(void());
+  check(IsInGameThread());
+
+  if (!Player) {
+    return;
+  }
+
+  const int32 RemovedCount = AllowedPlayers.RemoveAll(
+      [Player](const TObjectPtr<APlayerState> &Entry) {
+        return Entry.Get() == Player;
+      });
+  if (RemovedCount == 0) {
+    WFLOG_INFO("[容器权限] %s 不在 %s 的白名单里，忽略移除请求。",
+               *GetNameSafe(Player), *GetNameSafe(GetOwner()));
+    return;
+  }
+
+  WFLOG_INFO("[容器权限] %s 移出 %s 的白名单（剩余 %d 人）。",
+             *GetNameSafe(Player), *GetNameSafe(GetOwner()),
+             AllowedPlayers.Num());
+  NotifyContainerChanged();
+}
+
+void UItemContainer::ClearAllowedPlayers() {
+  WF_COMPONENT_AUTHORITY_GUARD(void());
+  check(IsInGameThread());
+
+  if (AllowedPlayers.Num() == 0) {
+    return;
+  }
+
+  const int32 OldCount = AllowedPlayers.Num();
+  AllowedPlayers.Reset();
+  WFLOG_INFO("[容器权限] %s 清空白名单（原 %d 人）。",
+             *GetNameSafe(GetOwner()), OldCount);
+  NotifyContainerChanged();
+}
+
+bool UItemContainer::CanCurrentRpcCallerAccess() const {
+  APlayerController *Caller = ResolveOwningPlayerController();
+
+  // 世界箱子没有拥有者 Controller：它的 Server RPC 依赖 owning connection，
+  // 引擎本来就会丢弃；真正的跨容器入口是玩家身上的交互组件。这里放行，
+  // 由交互组件做权限 / 距离校验。
+  if (!Caller) {
+    return true;
+  }
+
+  if (HasAccess(Caller)) {
+    return true;
+  }
+
+  WFLOG_WARNING("[容器权限] %s 拒绝了玩家 %s 的 Server RPC（权限模式=%d）。",
+                *GetNameSafe(GetOwner()), *GetNameSafe(Caller),
+                static_cast<int32>(AccessMode));
+  return false;
 }
 
 void UItemContainer::OnRep_Slots() {
@@ -251,17 +488,87 @@ int32 UItemContainer::RemoveByItemIDInternal(int32 ItemID, int32 Quantity) {
   return RemovedTotal;
 }
 
+void UItemContainer::DetachOccupiedSlotFromIndex(int32 SlotIndex) {
+  if (!Slots.IsValidIndex(SlotIndex) ||
+      !SlotOccupied.IsValidIndex(SlotIndex) || !SlotOccupied[SlotIndex]) {
+    WFLOG_WARNING("DetachOccupiedSlotFromIndex[%s]: 槽位 %d 不是有效的已占用槽位，"
+                  "跳过索引摘除。",
+                  *GetNameSafe(GetOwner()), SlotIndex);
+    return;
+  }
+
+  const int32 ItemID = Slots[SlotIndex].ItemID;
+  TArray<int32> *FoundSlots = ItemIDToSlot.Find(ItemID);
+  if (!FoundSlots) {
+    WFLOG_ERROR("DetachOccupiedSlotFromIndex[%s]: 槽位 %d 的 ItemID=%d 不在 "
+                "ItemIDToSlot 索引里（派生状态损坏）。",
+                *GetNameSafe(GetOwner()), SlotIndex, ItemID);
+    return;
+  }
+
+  FoundSlots->Remove(SlotIndex);
+  if (FoundSlots->Num() == 0) {
+    ItemIDToSlot.Remove(ItemID);
+  }
+}
+
+void UItemContainer::AttachOccupiedSlotToIndex(int32 SlotIndex) {
+  if (!Slots.IsValidIndex(SlotIndex) ||
+      !SlotOccupied.IsValidIndex(SlotIndex) || !SlotOccupied[SlotIndex]) {
+    WFLOG_WARNING("AttachOccupiedSlotToIndex[%s]: 槽位 %d 不是有效的已占用槽位，"
+                  "跳过索引挂载。",
+                  *GetNameSafe(GetOwner()), SlotIndex);
+    return;
+  }
+
+  // AddUnique：正常路径不会重复，这里只是防止异常状态把同一个下标挂两次
+  //（重复下标会让 FindItem 返回同一个槽位、RemoveByItemID 重复扣除）。
+  ItemIDToSlot.FindOrAdd(Slots[SlotIndex].ItemID).AddUnique(SlotIndex);
+}
+
+bool UItemContainer::PlaceItemInEmptySlotInternal(
+    int32 SlotIndex, const FItemInformation &Item) {
+  if (!Slots.IsValidIndex(SlotIndex) ||
+      !SlotOccupied.IsValidIndex(SlotIndex)) {
+    WFLOG_WARNING("PlaceItemInEmptySlotInternal[%s]: 槽位 %d 越界（容量=%d），"
+                  "拒绝写入。",
+                  *GetNameSafe(GetOwner()), SlotIndex, Slots.Num());
+    return false;
+  }
+  if (SlotOccupied[SlotIndex]) {
+    WFLOG_WARNING("PlaceItemInEmptySlotInternal[%s]: 槽位 %d 已被占用，"
+                  "拒绝覆盖。",
+                  *GetNameSafe(GetOwner()), SlotIndex);
+    return false;
+  }
+
+  if (Item.ItemID < 0) {
+    // 仍然写入：这是「把已有物品挪走」的原语，丢掉它比保留一个无效项更糟。
+    WFLOG_WARNING("PlaceItemInEmptySlotInternal[%s]: 槽位 %d 写入的 ItemID=%d "
+                  "无效（物品数据可能已损坏），仍按原值保留。",
+                  *GetNameSafe(GetOwner()), SlotIndex, Item.ItemID);
+  }
+
+  Slots[SlotIndex] = Item;
+  SlotOccupied[SlotIndex] = true;
+  AttachOccupiedSlotToIndex(SlotIndex);
+
+  if (FreeSlots.RemoveSingle(SlotIndex) == 0) {
+    WFLOG_WARNING("PlaceItemInEmptySlotInternal[%s]: 槽位 %d 标记为空闲但不在 "
+                  "FreeSlots 里（派生状态不一致），已直接占用。",
+                  *GetNameSafe(GetOwner()), SlotIndex);
+  }
+  ++UsedCount;
+  return true;
+}
+
 bool UItemContainer::RemoveItemAtSlotInternal(int32 SlotIndex) {
   if (!Slots.IsValidIndex(SlotIndex))
     return false;
-  if (!SlotOccupied[SlotIndex])
+  if (!SlotOccupied.IsValidIndex(SlotIndex) || !SlotOccupied[SlotIndex])
     return false;
 
-  const int32 ItemID = Slots[SlotIndex].ItemID;
-  ItemIDToSlot.FindChecked(ItemID).Remove(SlotIndex);
-  if (ItemIDToSlot.FindChecked(ItemID).Num() == 0) {
-    ItemIDToSlot.Remove(ItemID);
-  }
+  DetachOccupiedSlotFromIndex(SlotIndex);
 
   // 清空引用，避免持有 UObject/TSoftObjectPtr 造成额外内存占用
   Slots[SlotIndex] = FItemInformation();
@@ -332,22 +639,34 @@ bool UItemContainer::SwapSlots(int32 SlotA, int32 SlotB) {
   check(IsInGameThread());
   if (!Slots.IsValidIndex(SlotA) || !Slots.IsValidIndex(SlotB))
     return false;
+  if (!SlotOccupied.IsValidIndex(SlotA) ||
+      !SlotOccupied.IsValidIndex(SlotB)) {
+    WFLOG_ERROR("SwapSlots[%s]: SlotOccupied(%d) 与 Slots(%d) 长度不一致，"
+                "无法交换槽位 %d / %d。",
+                *GetNameSafe(GetOwner()), SlotOccupied.Num(), Slots.Num(), SlotA,
+                SlotB);
+    return false;
+  }
   if (SlotA == SlotB)
     return true;
+
+  // 先把两个槽位从 ItemIDToSlot 里摘掉，再交换数据，最后按交换后的物品重新挂回。
+  // 两个槽位都占用时这样做才能正确处理「不同 ItemID 的交换」。
   if (SlotOccupied[SlotA]) {
-    ItemIDToSlot.FindChecked(Slots[SlotA].ItemID).Remove(SlotA);
+    DetachOccupiedSlotFromIndex(SlotA);
   }
   if (SlotOccupied[SlotB]) {
-    ItemIDToSlot.FindChecked(Slots[SlotB].ItemID).Remove(SlotB);
+    DetachOccupiedSlotFromIndex(SlotB);
   }
+
   Swap(Slots[SlotA], Slots[SlotB]);
   Swap(SlotOccupied[SlotA], SlotOccupied[SlotB]);
 
   if (SlotOccupied[SlotA]) {
-    ItemIDToSlot.FindChecked(Slots[SlotA].ItemID).Add(SlotA);
+    AttachOccupiedSlotToIndex(SlotA);
   }
   if (SlotOccupied[SlotB]) {
-    ItemIDToSlot.FindChecked(Slots[SlotB].ItemID).Add(SlotB);
+    AttachOccupiedSlotToIndex(SlotB);
   }
   NotifyContainerChanged();
   return true;
@@ -357,6 +676,14 @@ bool UItemContainer::MoveOrMergeItem(int32 FromSlot, int32 ToSlot) {
   WF_COMPONENT_AUTHORITY_GUARD(false);
   check(IsInGameThread());
   if (!Slots.IsValidIndex(FromSlot) || !Slots.IsValidIndex(ToSlot)) {
+    return false;
+  }
+  if (!SlotOccupied.IsValidIndex(FromSlot) ||
+      !SlotOccupied.IsValidIndex(ToSlot)) {
+    WFLOG_ERROR("MoveOrMergeItem[%s]: SlotOccupied(%d) 与 Slots(%d) 长度不一致，"
+                "无法处理 %d -> %d。",
+                *GetNameSafe(GetOwner()), SlotOccupied.Num(), Slots.Num(),
+                FromSlot, ToSlot);
     return false;
   }
   if (FromSlot == ToSlot) {
@@ -412,6 +739,121 @@ bool UItemContainer::MoveOrMergeItem(int32 FromSlot, int32 ToSlot) {
   }
 
   NotifyContainerChanged();
+  return true;
+}
+
+bool UItemContainer::MoveItemToContainer(int32 FromSlot,
+                                         UItemContainer *TargetContainer,
+                                         int32 ToSlot) {
+  WF_COMPONENT_AUTHORITY_GUARD(false);
+  check(IsInGameThread());
+
+  if (!TargetContainer) {
+    WFLOG_WARNING("[容器] %s 收到空的转移到目标容器，忽略。",
+                  *GetNameSafe(GetOwner()));
+    return false;
+  }
+  if (!IsAuthoritativeForActorComponent(TargetContainer)) {
+    WFLOG_ERROR("[容器] %s 试图把物品转移到非权威端的容器 %s，已拒绝。",
+                *GetNameSafe(GetOwner()),
+                *GetNameSafe(TargetContainer->GetOwner()));
+    return false;
+  }
+  if (!Slots.IsValidIndex(FromSlot) ||
+      !SlotOccupied.IsValidIndex(FromSlot)) {
+    WFLOG_WARNING("[容器] %s 的源槽位 %d 越界（容量=%d），忽略转移。",
+                  *GetNameSafe(GetOwner()), FromSlot, Slots.Num());
+    return false;
+  }
+  if (!SlotOccupied[FromSlot]) {
+    return false; // 源槽位已空（拖拽期间被别处改动），无事可做
+  }
+  if (!TargetContainer->Slots.IsValidIndex(ToSlot) ||
+      !TargetContainer->SlotOccupied.IsValidIndex(ToSlot)) {
+    WFLOG_WARNING("[容器] %s 的目标槽位 %d 越界（容量=%d），忽略转移。",
+                  *GetNameSafe(TargetContainer->GetOwner()), ToSlot,
+                  TargetContainer->Slots.Num());
+    return false;
+  }
+
+  // 同一个容器：直接复用「放置」规则，避免维护两套合并 / 交换逻辑。
+  if (TargetContainer == this) {
+    return MoveOrMergeItem(FromSlot, ToSlot);
+  }
+
+  const FItemInformation SourceItem = Slots[FromSlot];
+  const int32 SourceCount = FMath::Max(1, SourceItem.ItemQuality);
+
+  // 1) 目标为空槽：移动到目标，再释放源槽位。
+  if (!TargetContainer->SlotOccupied[ToSlot]) {
+    if (!TargetContainer->PlaceItemInEmptySlotInternal(ToSlot, SourceItem)) {
+      return false; // 内部已经记了日志
+    }
+
+    if (!RemoveItemAtSlotInternal(FromSlot)) {
+      // 正常情况下不会发生（源槽在入口已确认占用）。真的发生时必须回滚目标，
+      // 否则同一件物品会同时存在于两个容器里（复制 bug，比失败更糟）。
+      TargetContainer->RemoveItemAtSlotInternal(ToSlot);
+      WFLOG_ERROR("[容器] %s[%d] -> %s[%d] 移动时源槽移除失败，已回滚目标槽。",
+                  *GetNameSafe(this), FromSlot,
+                  *GetNameSafe(TargetContainer), ToSlot);
+      return false;
+    }
+
+    NotifyContainerChanged();
+    TargetContainer->NotifyContainerChanged();
+    WFLOG_INFO("[容器] 移动物品：%s[%d] -> %s[%d]（ItemID=%d，数量=%d）。",
+               *GetNameSafe(this), FromSlot, *GetNameSafe(TargetContainer),
+               ToSlot, SourceItem.ItemID, SourceCount);
+    return true;
+  }
+
+  const FItemInformation TargetItem = TargetContainer->Slots[ToSlot];
+  const int32 TargetCount = FMath::Max(1, TargetItem.ItemQuality);
+
+  // 2) 同 ItemID + 可堆叠 + 目标未满：把源数量并入目标，余数留在源槽位。
+  //    与 MoveOrMergeItem 完全同一条规则（只在两个槽位之间重分配数量）。
+  const bool bSameItem = SourceItem.ItemID == TargetItem.ItemID;
+  const bool bStackable = SourceItem.IsStackable && TargetItem.IsStackable;
+  const int32 StackSize =
+      bStackable ? FMath::Max(1, TargetItem.MaxStackSize) : 1;
+
+  if (bSameItem && bStackable && TargetCount < StackSize) {
+    const int32 Move = FMath::Min(SourceCount, StackSize - TargetCount);
+    TargetContainer->Slots[ToSlot].ItemQuality = TargetCount + Move;
+    Slots[FromSlot].ItemQuality = SourceCount - Move;
+
+    if (Slots[FromSlot].ItemQuality <= 0) {
+      RemoveItemAtSlotInternal(FromSlot);
+    }
+
+    NotifyContainerChanged();
+    TargetContainer->NotifyContainerChanged();
+    WFLOG_INFO("[容器] 合并物品：%s[%d] -> %s[%d]（ItemID=%d，移动数量=%d，"
+               "源剩余=%d，目标=%d）。",
+               *GetNameSafe(this), FromSlot, *GetNameSafe(TargetContainer),
+               ToSlot, SourceItem.ItemID, Move,
+               FMath::Max(0, Slots[FromSlot].ItemQuality),
+               TargetContainer->Slots[ToSlot].ItemQuality);
+    return true;
+  }
+
+  // 3) 其它情况：两个槽位交换（不同物品 / 不可堆叠 / 目标已满堆）。
+  //    两边都确认占用，所以 SlotOccupied 不需要交换；只交换物品数据，
+  //    并让两个容器的 ItemIDToSlot 索引按交换后的 ItemID 重新挂载。
+  DetachOccupiedSlotFromIndex(FromSlot);
+  TargetContainer->DetachOccupiedSlotFromIndex(ToSlot);
+
+  Swap(Slots[FromSlot], TargetContainer->Slots[ToSlot]);
+
+  AttachOccupiedSlotToIndex(FromSlot);
+  TargetContainer->AttachOccupiedSlotToIndex(ToSlot);
+
+  NotifyContainerChanged();
+  TargetContainer->NotifyContainerChanged();
+  WFLOG_INFO("[容器] 交换物品：%s[%d] <-> %s[%d]（ItemID %d <-> %d）。",
+             *GetNameSafe(this), FromSlot, *GetNameSafe(TargetContainer),
+             ToSlot, SourceItem.ItemID, TargetItem.ItemID);
   return true;
 }
 
@@ -610,6 +1052,9 @@ bool UItemContainer::Server_AddItem_Validate(int32 ItemID, int32 Quantity) {
 
 void UItemContainer::Server_AddItem_Implementation(int32 ItemID,
                                                    int32 Quantity) {
+  if (!CanCurrentRpcCallerAccess()) {
+    return;
+  }
   AddItemByID(ItemID, Quantity);
 }
 
@@ -621,6 +1066,9 @@ bool UItemContainer::Server_RemoveItem_Validate(int32 SlotIndex,
 
 void UItemContainer::Server_RemoveItem_Implementation(int32 SlotIndex,
                                                       int32 Quantity) {
+  if (!CanCurrentRpcCallerAccess()) {
+    return;
+  }
   RemoveItem(SlotIndex, Quantity);
 }
 
@@ -631,6 +1079,9 @@ bool UItemContainer::Server_RemoveAllItem_Validate(int32 ItemID,
 
 void UItemContainer::Server_RemoveAllItem_Implementation(int32 ItemID,
                                                          int32 Quantity) {
+  if (!CanCurrentRpcCallerAccess()) {
+    return;
+  }
   RemoveAllItem(ItemID, Quantity);
 }
 
@@ -639,6 +1090,9 @@ bool UItemContainer::Server_SwapSlots_Validate(int32 SlotA, int32 SlotB) {
 }
 
 void UItemContainer::Server_SwapSlots_Implementation(int32 SlotA, int32 SlotB) {
+  if (!CanCurrentRpcCallerAccess()) {
+    return;
+  }
   SwapSlots(SlotA, SlotB);
 }
 
@@ -649,17 +1103,26 @@ bool UItemContainer::Server_MoveOrMerge_Validate(int32 FromSlot, int32 ToSlot) {
 
 void UItemContainer::Server_MoveOrMerge_Implementation(int32 FromSlot,
                                                        int32 ToSlot) {
+  if (!CanCurrentRpcCallerAccess()) {
+    return;
+  }
   MoveOrMergeItem(FromSlot, ToSlot);
 }
 
 bool UItemContainer::Server_OrganizeContainer_Validate() { return true; }
 
 void UItemContainer::Server_OrganizeContainer_Implementation() {
+  if (!CanCurrentRpcCallerAccess()) {
+    return;
+  }
   OrganizeContainer();
 }
 
 bool UItemContainer::Server_ClearContainer_Validate() { return true; }
 
 void UItemContainer::Server_ClearContainer_Implementation() {
+  if (!CanCurrentRpcCallerAccess()) {
+    return;
+  }
   ClearContainer();
 }

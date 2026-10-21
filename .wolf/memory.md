@@ -748,3 +748,110 @@
 | 00:44 | 武器招式表属性改为 TSubclassOf（蓝图类资产无法赋给 TObjectPtr，用户纠正）：Set/Clear/OnRep/GetEffective 全走 GetDefaultObject()；UHT + clang-cl 语法检查通过（含阳性对照） | AttackComponent.h/.cpp, WeaponAttackProfile.h | 编译验证 EXIT=0 | ~6000 |
 | 00:44 | Edited Source/Wildforge/Public/Character/Components/AttackComponent.h | 4→4 lines | ~57 |
 | 00:44 | Session end: 5 writes across 4 files (AttackComponent.cpp, WeaponAttackProfile.h, CLAUDE.md, AttackComponent.h) | 3 reads | ~15908 tok |
+
+## Session: 2026-10-21 21:37
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-21 21:46
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:47 | Created Source/Wildforge/Public/ItemSystem/Enums/ContainerAccessMode.h | — | ~270 |
+| 21:47 | Edited Source/Wildforge/Public/ItemSystem/Enums/ContainerType.h | 5→8 lines | ~73 |
+| 21:47 | Edited Source/Wildforge/Public/ItemSystem/Components/ItemContainer.h | 10→15 lines | ~114 |
+| 21:47 | Edited Source/Wildforge/Public/ItemSystem/Components/ItemContainer.h | expanded (+16 lines) | ~223 |
+| 21:47 | Edited Source/Wildforge/Public/ItemSystem/Components/ItemContainer.h | modified setContainerType() | ~477 |
+| 21:47 | Edited Source/Wildforge/Public/ItemSystem/Components/ItemContainer.h | expanded (+20 lines) | ~206 |
+| 21:48 | Edited Source/Wildforge/Public/ItemSystem/Components/ItemContainer.h | expanded (+60 lines) | ~639 |
+| 21:48 | Edited Source/Wildforge/Private/ItemSystem/Components/ItemContainer.cpp | 6→10 lines | ~97 |
+| 21:48 | Edited Source/Wildforge/Private/ItemSystem/Components/ItemContainer.cpp | added 19 condition(s) | ~1783 |
+| 21:48 | Edited Source/Wildforge/Private/ItemSystem/Components/ItemContainer.cpp | added 7 condition(s) | ~787 |
+| 21:48 | Edited Source/Wildforge/Private/ItemSystem/Components/ItemContainer.cpp | added 1 condition(s) | ~287 |
+| 21:48 | Edited Source/Wildforge/Private/ItemSystem/Components/ItemContainer.cpp | added 1 condition(s) | ~184 |
+| 21:48 | Edited Source/Wildforge/Private/ItemSystem/Components/ItemContainer.cpp | added 11 condition(s) | ~1169 |
+| 21:48 | Edited Source/Wildforge/Private/ItemSystem/Components/ItemContainer.cpp | added 1 condition(s) | ~60 |
+| 21:48 | Edited Source/Wildforge/Private/ItemSystem/Components/ItemContainer.cpp | added 1 condition(s) | ~63 |
+| 21:48 | Edited Source/Wildforge/Private/ItemSystem/Components/ItemContainer.cpp | added 1 condition(s) | ~63 |
+| 21:48 | Edited Source/Wildforge/Private/ItemSystem/Components/ItemContainer.cpp | added 1 condition(s) | ~44 |
+| 21:48 | Edited Source/Wildforge/Private/ItemSystem/Components/ItemContainer.cpp | added 1 condition(s) | ~63 |
+| 21:48 | Edited Source/Wildforge/Private/ItemSystem/Components/ItemContainer.cpp | added 1 condition(s) | ~39 |
+| 21:48 | Edited Source/Wildforge/Private/ItemSystem/Components/ItemContainer.cpp | added 1 condition(s) | ~37 |
+| 21:48 | Created Source/Wildforge/Public/ItemSystem/Components/StorageContainer.h | — | ~479 |
+| 21:48 | Created Source/Wildforge/Private/ItemSystem/Components/StorageContainer.cpp | — | ~78 |
+| 21:49 | Created Source/Wildforge/Public/ItemSystem/Settings/ContainerInteractionSettings.h | — | ~398 |
+| 21:49 | Created Source/Wildforge/Public/ItemSystem/Components/ContainerInteractionComponent.h | — | ~1377 |
+| 21:49 | Created Source/Wildforge/Private/ItemSystem/Components/ContainerInteractionComponent.cpp | — | ~2662 |
+
+## Session: 2026-10-21 21:50
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:50 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | 3→4 lines | ~59 |
+| 21:50 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | expanded (+13 lines) | ~169 |
+| 21:50 | Edited Source/Wildforge/Public/Character/Player/PlayerCharacter.h | expanded (+9 lines) | ~153 |
+| 21:50 | Edited Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp | expanded (+7 lines) | ~125 |
+| 21:50 | Edited Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h | 5→6 lines | ~33 |
+| 21:50 | Edited Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h | expanded (+15 lines) | ~168 |
+| 21:50 | Edited Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp | 9→12 lines | ~121 |
+| 21:50 | Edited Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp | added 2 condition(s) | ~232 |
+| 21:50 | Edited Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp | added 2 condition(s) | ~144 |
+| 21:51 | Edited Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp | added 9 condition(s) | ~1586 |
+| 21:51 | Edited Source/Wildforge/Public/ItemSystem/Components/ContainerInteractionComponent.h | expanded (+7 lines) | ~106 |
+| 21:51 | Edited Source/Wildforge/Private/ItemSystem/Components/ContainerInteractionComponent.cpp | Get() → GetActiveContainer() | ~49 |
+| 21:51 | Edited Source/Wildforge/Private/ItemSystem/Components/ContainerInteractionComponent.cpp | inline fix | ~16 |
+| 21:52 | UHT + GenerateClangDatabase | 19 generated files | Result: Succeeded (8.61s) | ~600 |
+| 21:52 | Full build WildforgeEditor Win64 Development | Source/Wildforge | Result: Succeeded (23.67s, 21 actions, 0 errors) | ~1200 |
+| 21:56 | Documented container access model | .wolf/anatomy.md, .wolf/cerebrum.md | AccessMode/OwnerOnly, world-container replication, player-side RPC channel recorded | ~1800 |
+| 21:53 | Session end: 13 writes across 6 files (PlayerCharacter.h, PlayerCharacter.cpp, InventorySlotWidget.h, InventorySlotWidget.cpp, ContainerInteractionComponent.h) | 5 reads | ~24070 tok |
+| 22:20 | Session end: 13 writes across 6 files (PlayerCharacter.h, PlayerCharacter.cpp, InventorySlotWidget.h, InventorySlotWidget.cpp, ContainerInteractionComponent.h) | 5 reads | ~24070 tok |
+| 22:28 | Session end: 13 writes across 6 files (PlayerCharacter.h, PlayerCharacter.cpp, InventorySlotWidget.h, InventorySlotWidget.cpp, ContainerInteractionComponent.h) | 5 reads | ~24070 tok |
+| 22:30 | Session end: 13 writes across 6 files (PlayerCharacter.h, PlayerCharacter.cpp, InventorySlotWidget.h, InventorySlotWidget.cpp, ContainerInteractionComponent.h) | 6 reads | ~34070 tok |
+| 22:43 | Created Source/Wildforge/Public/ItemSystem/Enums/ChestLevel.h | — | ~149 |
+| 22:43 | Edited Source/Wildforge/Public/ItemSystem/Components/StorageContainer.h | 3→4 lines | ~35 |
+| 22:43 | Edited Source/Wildforge/Public/ItemSystem/Components/StorageContainer.h | expanded (+16 lines) | ~154 |
+| 22:43 | Edited Source/Wildforge/Public/ItemSystem/Components/StorageContainer.h | expanded (+9 lines) | ~102 |
+| 22:43 | Created Source/Wildforge/Private/ItemSystem/Components/StorageContainer.cpp | — | ~351 |
+| 22:45 | UHT + GenerateClangDatabase（新增 ChestLevel 枚举） | 5 generated files | Result: Succeeded (21.47s) | ~500 |
+| 22:46 | 全量构建被 Live Coding 阻塞 | WildforgeEditor | Result: Failed (OtherCompilationError)，需在编辑器按 Ctrl+Alt+F11 或关闭编辑器后重试 | ~200 |
+| 22:47 | MSVC 单 TU 语法检查 + 正对照（StorageContainer.cpp） | obj.rsp / 临时探针 | 真实文件 0 错误；探针精确报出追加行 1 个错误，证明检查有效 | ~800 |
+| 22:48 | 记录 ChestLevel 设计 | .wolf/anatomy.md, .wolf/cerebrum.md | 枚举 + 复制属性 + 权威 setter 已归档 | ~400 |
+| 22:44 | Session end: 18 writes across 9 files (PlayerCharacter.h, PlayerCharacter.cpp, InventorySlotWidget.h, InventorySlotWidget.cpp, ContainerInteractionComponent.h) | 10 reads | ~40017 tok |
+
+## Session: 2026-10-21 00:00
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:04 | Edited Source/Wildforge/Public/ItemSystem/Enums/ChestLevel.h | 4→7 lines | ~67 |
+| 00:04 | Created Source/Wildforge/Public/ItemSystem/Components/StorageContainer.h | — | ~522 |
+| 00:04 | Created Source/Wildforge/Private/ItemSystem/Components/StorageContainer.cpp | — | ~78 |
+| 00:04 | Edited Source/Wildforge/Public/ItemSystem/Database/ItemDatabaseSubsystem.h | expanded (+9 lines) | ~111 |
+| 00:04 | Edited Source/Wildforge/Private/ItemSystem/Database/ItemDatabaseSubsystem.cpp | expanded (+6 lines) | ~108 |
+| 00:04 | Created Source/Wildforge/Public/World/Settings/ChestSettings.h | — | ~583 |
+| 00:04 | Created Source/Wildforge/Public/World/UI/ChestWindowWidget.h | — | ~721 |
+| 00:05 | Created Source/Wildforge/Private/World/UI/ChestWindowWidget.cpp | — | ~875 |
+| 00:05 | Edited Source/Wildforge/Private/World/UI/ChestWindowWidget.cpp | 5→3 lines | ~8 |
+| 00:05 | Created Source/Wildforge/Public/World/ChestActor.h | — | ~1772 |
+| 00:05 | Created Source/Wildforge/Private/World/ChestActor.cpp | — | ~3417 |
+| 00:05 | Edited Source/Wildforge/Public/ItemSystem/Components/ContainerInteractionComponent.h | 1→2 lines | ~14 |
+| 00:05 | Edited Source/Wildforge/Public/ItemSystem/Components/ContainerInteractionComponent.h | expanded (+10 lines) | ~148 |
+| 00:05 | Edited Source/Wildforge/Public/ItemSystem/Components/ContainerInteractionComponent.h | expanded (+6 lines) | ~63 |
+| 00:05 | Edited Source/Wildforge/Public/ItemSystem/Components/ContainerInteractionComponent.h | expanded (+21 lines) | ~171 |
+| 00:06 | Edited Source/Wildforge/Private/ItemSystem/Components/ContainerInteractionComponent.cpp | 8→13 lines | ~129 |
+| 00:06 | Edited Source/Wildforge/Private/ItemSystem/Components/ContainerInteractionComponent.cpp | added 2 condition(s) | ~258 |
+| 00:06 | Edited Source/Wildforge/Private/ItemSystem/Components/ContainerInteractionComponent.cpp | added 9 condition(s) | ~935 |
+| 00:06 | Edited Source/Wildforge/Private/ItemSystem/Components/ContainerInteractionComponent.cpp | added 2 condition(s) | ~149 |
+| 00:06 | Edited Source/Wildforge/Private/ItemSystem/Components/ContainerInteractionComponent.cpp | added 1 condition(s) | ~94 |
+| 00:07 | Edited Source/Wildforge/Private/World/ChestActor.cpp | 3→4 lines | ~39 |
+| 00:10 | Edited Source/Wildforge/Private/ItemSystem/Components/ContainerInteractionComponent.cpp | added 2 condition(s) | ~316 |
+
+## Session: 2026-10-21 00:11
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:12 | 复核 ContainerInteractionComponent.cpp（切换宝箱时关闭前一个箱子） | Source/Wildforge/Private/ItemSystem/Components/ContainerInteractionComponent.cpp | MSVC /Zs EXIT=0 | ~1200 |
+| 00:12 | 修复 TSubclassOf 前向声明导致的 C2027/C2672 | Source/Wildforge/Private/World/ChestActor.cpp | 补 include ChestWindowWidget.h 后 EXIT=0 | ~1200 |
+| 00:12 | 刷新宝箱相关文件描述 | .wolf/anatomy.md | ChestActor/ChestWindowWidget/StorageContainer/ChestLevel/ContainerInteractionComponent/ItemDatabaseSubsystem | ~1500 |
+| 00:12 | 记录宝箱等级归属、掉落、窗口与 ActiveUsers 决策，新增 TSubclassOf 禁令 | .wolf/cerebrum.md | Key Learnings / Do-Not-Repeat / Decision Log 已更新 | ~900 |
+| 00:12 | 记录 TSubclassOf 不完整类型编译错误 | .wolf/buglog.json | bug-108 | ~300 |

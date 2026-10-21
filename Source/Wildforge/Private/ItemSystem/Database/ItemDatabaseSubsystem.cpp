@@ -98,3 +98,9 @@ bool UItemDatabaseSubsystem::FindItem(int32 ItemID,
   }
   return false;
 }
+
+void UItemDatabaseSubsystem::GetAllItemIDs(TArray<int32> &OutItemIDs) const {
+  OutItemIDs.Reset();
+  EnsureIndex();
+  ItemIndex.GetKeys(OutItemIDs);
+}

@@ -1927,6 +1927,108 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-18T16:44:05.242Z"
+    },
+    {
+      "id": "bug-103",
+      "timestamp": "2026-10-21T13:48:12.164Z",
+      "error_message": "Null/undefined access in ",
+      "file": "Source/Wildforge/Private/ItemSystem/Components/ItemContainer.cpp",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-21T13:48:12.164Z"
+    },
+    {
+      "id": "bug-104",
+      "timestamp": "2026-10-21T13:48:17.133Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Private/ItemSystem/Components/ItemContainer.cpp",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 20→90 lines (3 removed) | Also: ItemIDToSlot.FindChecked(Slots[SlotA].ItemID).Remo; ItemIDToSlot.FindChecked(Slots[SlotB].ItemID).Remo",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-21T13:48:20.857Z"
+    },
+    {
+      "id": "bug-105",
+      "timestamp": "2026-10-21T13:51:16.837Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+      "root_cause": "10 lines replaced/restructured",
+      "fix": "Rewrote 77→170 lines (10 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-21T13:51:16.837Z"
+    },
+    {
+      "id": "bug-106",
+      "timestamp": "2026-10-21T13:51:22.459Z",
+      "error_message": "Wrong return value",
+      "file": "Source/Wildforge/Public/ItemSystem/Components/ContainerInteractionComponent.h",
+      "root_cause": "Was returning: ActiveContainer.Get(); }",
+      "fix": "Now returns: IsValid(Container) ? Container : nullptr;",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "h"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-21T13:51:22.459Z"
+    },
+    {
+      "id": "bug-107",
+      "timestamp": "2026-10-21T13:51:23.465Z",
+      "error_message": "Wrong reference: ActiveContainer should be GetActiveContainer",
+      "file": "Source/Wildforge/Private/ItemSystem/Components/ContainerInteractionComponent.cpp",
+      "root_cause": "Used \"ActiveContainer\" instead of \"GetActiveContainer\"",
+      "fix": "Changed ActiveContainer → GetActiveContainer",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-21T13:51:23.465Z"
+    },
+    {
+      "id": "bug-108",
+      "timestamp": "2026-10-21T16:12:04.000Z",
+      "error_message": "error C2027: 使用了未定义类型 UChestWindowWidget (SubclassOf.h(111)); error C2672: \"StaticClass\": 未找到匹配的重载函数",
+      "file": "Source/Wildforge/Private/World/ChestActor.cpp",
+      "root_cause": "ChestActor.cpp 只通过 ChestActor.h 的前向声明看到 UChestWindowWidget；TSubclassOf<T> 的 operator bool（if (!ChestWindowClass)）会实例化 T::StaticClass()，前向声明不足以完成实例化",
+      "fix": "在 ChestActor.cpp 增加 #include \"World/UI/ChestWindowWidget.h\"，让 TSubclassOf 的实例化点看到完整类型；MSVC /Zs 语法检查 EXIT=0",
+      "tags": [
+        "compile-error",
+        "tsubclassof",
+        "incomplete-type",
+        "chest",
+        "msvc",
+        "c2027",
+        "c2672"
+      ],
+      "related_bugs": [
+        "bug-101"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-21T16:12:04.000Z"
     }
   ]
 }

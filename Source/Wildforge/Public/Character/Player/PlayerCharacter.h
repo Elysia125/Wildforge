@@ -8,6 +8,7 @@
 #include "Character/Components/LandRollComponent.h"
 #include "Character/Components/SlideComponent.h"
 #include "Character/Components/SprintBoostComponent.h"
+#include "ItemSystem/Components/ContainerInteractionComponent.h"
 #include "ItemSystem/Components/PlayerInventory.h"
 #include "ItemSystem/Components/QuickContainer.h"
 
@@ -122,6 +123,19 @@ private:
 
   UPROPERTY(BlueprintGetter = GetQuickContainer, Category = "Items")
   TObjectPtr<UQuickContainer> QuickContainer;
+
+  // ===== 容器交互通道 =====
+  // 玩家侧的「打开世界容器 / 跨容器转移物品」RPC 都挂在它身上。
+  //
+  // 为什么不放在 UItemContainer 上：世界宝箱由服务器生成，没有客户端
+  // PlayerController 作为 owning connection，往它身上发的 Server RPC 会被引擎
+  // 静默丢弃（bug-093）。只有玩家自己的角色保证有 owning connection。
+  //
+  // 服务器在 RPC 实现里会重新校验：调用者确实是本角色的 Controller、
+  // 玩家对源 / 目标容器都有 HasAccess、两个容器都在交互距离内。
+  UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Items",
+            meta = (AllowPrivateAccess = "true"))
+  TObjectPtr<UContainerInteractionComponent> ContainerInteractionComponent;
 
   // ===== 角色资源适配器 =====
   // 这个角色使用哪一套资源（骨骼网格体 / 动画蓝图 / 各能力组件的蒙太奇）。
@@ -384,6 +398,15 @@ public:
   UFUNCTION(BlueprintPure, Category = "QuickSlots",
             meta = (BlueprintThreadSafe))
   UQuickContainer *GetQuickContainer() const { return QuickContainer.Get(); }
+
+  // 容器交互组件：`Server_RequestOpenContainer` /
+  // `Server_RequestCloseContainer` / `Server_MoveItemBetweenContainers` 与
+  // `OnActiveContainerChanged` 都在它身上。宝箱 UI 的「打开」与格子拖拽的
+  // 「跨容器转移」应当连到这里。
+  UFUNCTION(BlueprintPure, Category = "Items", meta = (BlueprintThreadSafe))
+  UContainerInteractionComponent *GetContainerInteractionComponent() const {
+    return ContainerInteractionComponent.Get();
+  }
 
   UFUNCTION(BlueprintPure, Category = "Attack", meta = (BlueprintThreadSafe))
   UAttackComponent *GetAttackComponent() const { return AttackComponent.Get(); }

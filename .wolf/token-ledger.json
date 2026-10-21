@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-10-05T10:52:46.081Z",
   "lifetime": {
-    "total_tokens_estimated": 284233,
-    "total_reads": 114,
-    "total_writes": 224,
-    "total_sessions": 46,
-    "anatomy_hits": 72,
+    "total_tokens_estimated": 433180,
+    "total_reads": 149,
+    "total_writes": 294,
+    "total_sessions": 51,
+    "anatomy_hits": 107,
     "anatomy_misses": 42,
-    "repeated_reads_blocked": 37,
-    "estimated_savings_vs_bare_cli": 201805
+    "repeated_reads_blocked": 38,
+    "estimated_savings_vs_bare_cli": 218805
   },
   "sessions": [
     {
@@ -2235,6 +2235,683 @@
         "writes_count": 5,
         "repeated_reads_blocked": 0,
         "anatomy_lookups": 3
+      }
+    },
+    {
+      "id": "session-2026-10-21-2150",
+      "started": "2026-10-21T13:50:20.877Z",
+      "ended": "2026-10-21T13:53:29.083Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 4600,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+          "tokens_estimated": 9200,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h",
+          "tokens_estimated": 2300,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 4100,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/InventorySlotDragDropOperation.h",
+          "tokens_estimated": 700,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 63,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 181,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 164,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+          "tokens_estimated": 134,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h",
+          "tokens_estimated": 35,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h",
+          "tokens_estimated": 180,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 129,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 248,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 154,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 1699,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/Components/ContainerInteractionComponent.h",
+          "tokens_estimated": 114,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/Components/ContainerInteractionComponent.cpp",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/Components/ContainerInteractionComponent.cpp",
+          "tokens_estimated": 17,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 20900,
+        "output_tokens_estimated": 3170,
+        "reads_count": 5,
+        "writes_count": 13,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 5
+      }
+    },
+    {
+      "id": "session-2026-10-21-2150",
+      "started": "2026-10-21T13:50:20.877Z",
+      "ended": "2026-10-21T14:20:41.272Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 4600,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+          "tokens_estimated": 9200,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h",
+          "tokens_estimated": 2300,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 4100,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/InventorySlotDragDropOperation.h",
+          "tokens_estimated": 700,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 63,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 181,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 164,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+          "tokens_estimated": 134,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h",
+          "tokens_estimated": 35,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h",
+          "tokens_estimated": 180,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 129,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 248,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 154,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 1699,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/Components/ContainerInteractionComponent.h",
+          "tokens_estimated": 114,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/Components/ContainerInteractionComponent.cpp",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/Components/ContainerInteractionComponent.cpp",
+          "tokens_estimated": 17,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 20900,
+        "output_tokens_estimated": 3170,
+        "reads_count": 5,
+        "writes_count": 13,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 5
+      }
+    },
+    {
+      "id": "session-2026-10-21-2150",
+      "started": "2026-10-21T13:50:20.877Z",
+      "ended": "2026-10-21T14:28:26.833Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 4600,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+          "tokens_estimated": 9200,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h",
+          "tokens_estimated": 2300,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 4100,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/InventorySlotDragDropOperation.h",
+          "tokens_estimated": 700,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 63,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 181,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 164,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+          "tokens_estimated": 134,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h",
+          "tokens_estimated": 35,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h",
+          "tokens_estimated": 180,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 129,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 248,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 154,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 1699,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/Components/ContainerInteractionComponent.h",
+          "tokens_estimated": 114,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/Components/ContainerInteractionComponent.cpp",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/Components/ContainerInteractionComponent.cpp",
+          "tokens_estimated": 17,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 20900,
+        "output_tokens_estimated": 3170,
+        "reads_count": 5,
+        "writes_count": 13,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 5
+      }
+    },
+    {
+      "id": "session-2026-10-21-2150",
+      "started": "2026-10-21T13:50:20.877Z",
+      "ended": "2026-10-21T14:30:28.961Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 4600,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+          "tokens_estimated": 9200,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h",
+          "tokens_estimated": 2300,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 4100,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/InventorySlotDragDropOperation.h",
+          "tokens_estimated": 700,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/Components/ItemContainer.cpp",
+          "tokens_estimated": 10000,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 63,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 181,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 164,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+          "tokens_estimated": 134,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h",
+          "tokens_estimated": 35,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h",
+          "tokens_estimated": 180,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 129,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 248,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 154,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 1699,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/Components/ContainerInteractionComponent.h",
+          "tokens_estimated": 114,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/Components/ContainerInteractionComponent.cpp",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/Components/ContainerInteractionComponent.cpp",
+          "tokens_estimated": 17,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 30900,
+        "output_tokens_estimated": 3170,
+        "reads_count": 6,
+        "writes_count": 13,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 6
+      }
+    },
+    {
+      "id": "session-2026-10-21-2150",
+      "started": "2026-10-21T13:50:20.877Z",
+      "ended": "2026-10-21T14:44:59.788Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 4600,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+          "tokens_estimated": 9200,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h",
+          "tokens_estimated": 2300,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 4100,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/InventorySlotDragDropOperation.h",
+          "tokens_estimated": 700,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/Components/ItemContainer.cpp",
+          "tokens_estimated": 10000,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/Enums/ItemRarity.h",
+          "tokens_estimated": 150,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Utils/WildforgeAuthority.h",
+          "tokens_estimated": 350,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/Components/ItemContainer.h",
+          "tokens_estimated": 4200,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Utils/ComponentAuthorityGuard.h",
+          "tokens_estimated": 400,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 63,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 181,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Player/PlayerCharacter.h",
+          "tokens_estimated": 164,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Player/PlayerCharacter.cpp",
+          "tokens_estimated": 134,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h",
+          "tokens_estimated": 35,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/InventorySlotWidget.h",
+          "tokens_estimated": 180,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 129,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 248,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 154,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 1699,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/Components/ContainerInteractionComponent.h",
+          "tokens_estimated": 114,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/Components/ContainerInteractionComponent.cpp",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/Components/ContainerInteractionComponent.cpp",
+          "tokens_estimated": 17,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/Enums/ChestLevel.h",
+          "tokens_estimated": 159,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/Components/StorageContainer.h",
+          "tokens_estimated": 38,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/Components/StorageContainer.h",
+          "tokens_estimated": 165,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/Components/StorageContainer.h",
+          "tokens_estimated": 109,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/Components/StorageContainer.cpp",
+          "tokens_estimated": 376,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 36000,
+        "output_tokens_estimated": 4017,
+        "reads_count": 10,
+        "writes_count": 18,
+        "repeated_reads_blocked": 1,
+        "anatomy_lookups": 10
+      }
+    },
+    {
+      "id": "session-2026-10-21-0011",
+      "started": "2026-10-21T16:11:11.290Z",
+      "ended": "2026-10-21T16:12:50.057Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/Database/ItemDatabaseSubsystem.cpp",
+          "tokens_estimated": 820,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/Database/ItemDatabaseSubsystem.h",
+          "tokens_estimated": 505,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [],
+      "totals": {
+        "input_tokens_estimated": 1325,
+        "output_tokens_estimated": 0,
+        "reads_count": 2,
+        "writes_count": 0,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 2
+      }
+    },
+    {
+      "id": "session-2026-10-21-0011",
+      "started": "2026-10-21T16:11:11.290Z",
+      "ended": "2026-10-21T16:27:29.141Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/Database/ItemDatabaseSubsystem.cpp",
+          "tokens_estimated": 820,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/Database/ItemDatabaseSubsystem.h",
+          "tokens_estimated": 505,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [],
+      "totals": {
+        "input_tokens_estimated": 1325,
+        "output_tokens_estimated": 0,
+        "reads_count": 2,
+        "writes_count": 0,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 2
       }
     }
   ],

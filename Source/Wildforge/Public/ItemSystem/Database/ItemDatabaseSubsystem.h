@@ -40,6 +40,15 @@ public:
   UFUNCTION(BlueprintPure, Category = "ItemDatabase")
   UDataTable *GetItemTable() const { return ItemTable; }
 
+  /**
+   * 枚举数据库里所有有效的 ItemID（已按行内 ItemID / 行名回退解析）。
+   *
+   * 供掉落表、随机奖励等「需要遍历全部物品再按条件筛选」的服务器流程使用。
+   * 返回的 ID 可直接交给 `UItemContainer::AddItemByID`。
+   */
+  UFUNCTION(BlueprintPure, Category = "ItemDatabase")
+  void GetAllItemIDs(TArray<int32> &OutItemIDs) const;
+
 private:
   // 运行时解析出的数据表（不复制、不序列化）
   UPROPERTY(Transient)

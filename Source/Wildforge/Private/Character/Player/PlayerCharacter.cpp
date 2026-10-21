@@ -63,6 +63,13 @@ APlayerCharacter::APlayerCharacter() : ABaseCharacter() {
   Inventory = CreateDefaultSubobject<UPlayerInventory>(TEXT("Inventory"));
   QuickContainer =
       CreateDefaultSubobject<UQuickContainer>(TEXT("QuickContainer"));
+
+  // 容器交互组件：世界宝箱的 Server RPC 需要拥有连接，只能挂在玩家角色上。
+  // 复制前提与其它组件一致：组件构造函数里 SetIsReplicatedByDefault(true)，
+  // 宿主 Actor 的 bReplicates 由 ABaseCharacter 构造函数保证。
+  ContainerInteractionComponent =
+      CreateDefaultSubobject<UContainerInteractionComponent>(
+          TEXT("ContainerInteractionComponent"));
   // 容量刻意**不在这里**初始化（原来硬编码的是 30）：构造函数读不到蓝图对
   // InventoryCapacity 的覆盖，且客户端不该自己造玩法状态——统一挪到 BeginPlay
   // 的权威端分支，见那里的注释。
