@@ -9,6 +9,8 @@
 
 #include "LandRollComponent.generated.h"
 
+class UCharacterAttributes;
+
 // 翻滚生命周期通知。
 //
 // 两个都是**每端各自本地广播**（服务器与每个客户端都会各广播一次），
@@ -136,6 +138,15 @@ public:
   // 能不能翻滚的总开关（眩晕 / 缴械 / 死亡等状态把它关掉）
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LandRoll")
   bool bCanLandRoll = true;
+
+  // 每次翻滚消耗的精力（0 = 不消耗）。服务器权威判定：
+  //   * 起手前精力 < 本值时拒绝翻滚，并通知拥有者客户端弹提示；
+  //   * 只有成功起手（蒙太奇播起来）后才扣，失败/被拒的翻滚不扣精力。
+  // 值由权威端从 ULandRollComponentSettings 读 ini，再 COND_InitialOnly 下发。
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated,
+            Category = "LandRoll|Energy",
+            meta = (ClampMin = "0", UIMin = "0"))
+  float EnergyCost = 20.0f;
 
   // 翻滚后是否把速度清零。
   // 只有在翻滚靠**自己位移**（比如蓝图里给一段位移曲线 / Launch）而不是 RootMotion
@@ -282,6 +293,11 @@ public:
             Category = "LandRoll|RPC")
   void Server_LandRoll();
 
+  // 服务器 -> 拥有者客户端：精力不足提示（翻滚起手被拒）。
+  // 只发给拥有者连接（`Client`），由客户端用 UWildforgeUIManager 弹 Toast。
+  UFUNCTION(Client, Reliable, Category = "LandRoll|RPC")
+  void Client_NotifyInsufficientEnergy(float RequiredEnergy);
+
 protected:
   // 读取 ULandRollComponentSettings 的 ini 覆盖并写进本组件。
   // **只在权威端执行**（客户端那份值由 `COND_InitialOnly` 属性复制下来）。
@@ -346,4 +362,18 @@ protected:
 
   // 翻滚超时兜底定时器
   FTimerHandle RollTimeoutHandle;
+
+  // ===== 精力消耗（全部只在权威端执行）=====
+
+  // 取宿主的属性组件（没有则返回 nullptr）。
+  UCharacterAttributes *GetOwnerAttributes() const;
+
+  // 通知拥有者客户端「精力不足」。内部按 1 秒节流，避免连续请求刷屏。
+  void NotifyInsufficientEnergyOnOwner(float RequiredEnergy);
+
+  // 「宿主没有属性组件」只告警一次，避免每次翻滚都刷日志。
+  bool bEnergyAttributesWarned = false;
+
+  // 上一次弹「精力不足」的世界时间（秒），用于节流。
+  float LastInsufficientEnergyToastTime = -1000.0f;
 };

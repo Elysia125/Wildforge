@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-10-05T10:52:46.081Z",
   "lifetime": {
-    "total_tokens_estimated": 645849,
-    "total_reads": 231,
-    "total_writes": 364,
-    "total_sessions": 63,
-    "anatomy_hits": 172,
-    "anatomy_misses": 59,
-    "repeated_reads_blocked": 54,
-    "estimated_savings_vs_bare_cli": 277135
+    "total_tokens_estimated": 690529,
+    "total_reads": 262,
+    "total_writes": 395,
+    "total_sessions": 73,
+    "anatomy_hits": 188,
+    "anatomy_misses": 72,
+    "repeated_reads_blocked": 58,
+    "estimated_savings_vs_bare_cli": 280335
   },
   "sessions": [
     {
@@ -4002,6 +4002,533 @@
         "writes_count": 10,
         "repeated_reads_blocked": 3,
         "anatomy_lookups": 4
+      }
+    },
+    {
+      "id": "session-2026-10-24-2054",
+      "started": "2026-10-24T12:54:40.910Z",
+      "ended": "2026-10-24T13:11:36.149Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/Structs/HotkeyBinding.h",
+          "tokens_estimated": 300,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/UI/ItemContainerGrid.h",
+          "tokens_estimated": 860,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/UI/InventorySlotWidget.cpp",
+          "tokens_estimated": 6200,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/UI/MainUserWidget.cpp",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Utils/HotkeyUtils.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/Components/QuickContainer.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/xf317/AppData/Local/Temp/wfparse/find_array2.py",
+          "tokens_estimated": 500,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 7360,
+        "output_tokens_estimated": 500,
+        "reads_count": 7,
+        "writes_count": 1,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 4
+      }
+    },
+    {
+      "id": "session-2026-10-24-2158",
+      "started": "2026-10-24T13:58:00.068Z",
+      "ended": "2026-10-24T14:14:29.330Z",
+      "reads": [
+        {
+          "file": "C:/Users/xf317/AppData/Local/Temp/wf_tree_full.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/xf317/AppData/Local/Temp/wf_widget_dump2.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/xf317/AppData/Local/Temp/wf_current_tree.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/xf317/AppData/Local/Temp/wf_dump_current.py",
+          "tokens_estimated": 1064,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 1064,
+        "reads_count": 4,
+        "writes_count": 1,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-10-24-2233",
+      "started": "2026-10-24T14:33:06.595Z",
+      "ended": "2026-10-24T14:36:32.124Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Settings/CharacterAttributesSettings.h",
+          "tokens_estimated": 1260,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/CharacterAttributes.h",
+          "tokens_estimated": 164,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 1260,
+        "output_tokens_estimated": 164,
+        "reads_count": 1,
+        "writes_count": 1,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 1
+      }
+    },
+    {
+      "id": "session-2026-10-24-2233",
+      "started": "2026-10-24T14:33:06.595Z",
+      "ended": "2026-10-24T14:40:21.431Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Settings/CharacterAttributesSettings.h",
+          "tokens_estimated": 1260,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/CharacterAttributes.h",
+          "tokens_estimated": 164,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 1260,
+        "output_tokens_estimated": 164,
+        "reads_count": 1,
+        "writes_count": 1,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 1
+      }
+    },
+    {
+      "id": "session-2026-10-24-2233",
+      "started": "2026-10-24T14:33:06.595Z",
+      "ended": "2026-10-24T14:55:17.683Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Settings/CharacterAttributesSettings.h",
+          "tokens_estimated": 1260,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Components/CharacterAttributes.h",
+          "tokens_estimated": 164,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/UI/MainUserWidget.h",
+          "tokens_estimated": 27,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/UI/MainUserWidget.h",
+          "tokens_estimated": 141,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/UI/MainUserWidget.h",
+          "tokens_estimated": 205,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/UI/MainUserWidget.h",
+          "tokens_estimated": 131,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/UI/MainUserWidget.cpp",
+          "tokens_estimated": 47,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/UI/MainUserWidget.cpp",
+          "tokens_estimated": 61,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/UI/MainUserWidget.cpp",
+          "tokens_estimated": 65,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/UI/MainUserWidget.cpp",
+          "tokens_estimated": 1070,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 1260,
+        "output_tokens_estimated": 1911,
+        "reads_count": 1,
+        "writes_count": 9,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 1
+      }
+    },
+    {
+      "id": "session-2026-10-24-2321",
+      "started": "2026-10-24T15:21:10.346Z",
+      "ended": "2026-10-24T15:40:23.087Z",
+      "reads": [
+        {
+          "file": "D:/UE/UE_5.7/Engine/Source/Runtime/Renderer/Private/SceneCaptureRendering.cpp",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Source/Runtime/Engine/Private/Components/SceneCaptureComponent.cpp",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Shaders/Private/SceneCapturePixelShader.usf",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Shaders/Private/SceneTexturesCommon.ush",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Source/Runtime/Engine/Classes/Engine/EngineTypes.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/xf317/AppData/Local/Temp/wf_dump_ui.py",
+          "tokens_estimated": 872,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/xf317/AppData/Local/Temp/wf_dump_ui.py",
+          "tokens_estimated": 59,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/xf317/AppData/Local/Temp/wf_dump_ui.py",
+          "tokens_estimated": 6,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/xf317/AppData/Local/Temp/wf_introspect2.py",
+          "tokens_estimated": 847,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/xf317/AppData/Local/Temp/wf_subobjects.py",
+          "tokens_estimated": 1206,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/xf317/AppData/Local/Temp/wf_widgets.py",
+          "tokens_estimated": 906,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/xf317/AppData/Local/Temp/wf_tree.py",
+          "tokens_estimated": 635,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/xf317/AppData/Local/Temp/wf_capture_parent.py",
+          "tokens_estimated": 539,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 5070,
+        "reads_count": 5,
+        "writes_count": 8,
+        "repeated_reads_blocked": 4,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-10-24-0003",
+      "started": "2026-10-24T16:03:41.691Z",
+      "ended": "2026-10-24T16:17:45.355Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/Logs/Wildforge/2026-10-25/Warning.log",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/Logs/Wildforge/2026-10-24/Error.log",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/Logs/Wildforge_2.log",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 0,
+        "reads_count": 3,
+        "writes_count": 0,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-10-24-0055",
+      "started": "2026-10-24T16:55:00.664Z",
+      "ended": "2026-10-24T16:57:08.003Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/UI/MainUserWidget.cpp",
+          "tokens_estimated": 3274,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/UI/MainUserWidget.cpp",
+          "tokens_estimated": 43,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/UI/MainUserWidget.cpp",
+          "tokens_estimated": 45,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/UI/MainUserWidget.cpp",
+          "tokens_estimated": 154,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 3274,
+        "output_tokens_estimated": 242,
+        "reads_count": 1,
+        "writes_count": 3,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 1
+      }
+    },
+    {
+      "id": "session-2026-10-24-0055",
+      "started": "2026-10-24T16:55:00.664Z",
+      "ended": "2026-10-24T17:03:57.032Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/UI/MainUserWidget.cpp",
+          "tokens_estimated": 3274,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/Character/Settings/CharacterAttributesSettings.h",
+          "tokens_estimated": 1260,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/CharacterAttributes.cpp",
+          "tokens_estimated": 2875,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/UI/ToastMessage.h",
+          "tokens_estimated": 370,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/UI/ToastWidget.h",
+          "tokens_estimated": 2300,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/UI/ToastWidget.cpp",
+          "tokens_estimated": 4100,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/UI/MainUserWidget.cpp",
+          "tokens_estimated": 43,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/UI/MainUserWidget.cpp",
+          "tokens_estimated": 45,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/UI/MainUserWidget.cpp",
+          "tokens_estimated": 154,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 14179,
+        "output_tokens_estimated": 242,
+        "reads_count": 6,
+        "writes_count": 3,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 6
+      }
+    },
+    {
+      "id": "session-2026-10-24-0113",
+      "started": "2026-10-24T17:13:22.918Z",
+      "ended": "2026-10-24T17:19:18.032Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/CharacterAttributes.cpp",
+          "tokens_estimated": 3311,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/UI/WildforgeUIManager.h",
+          "tokens_estimated": 43,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/xf317/AppData/Local/Temp/wf-syntax-check.ps1",
+          "tokens_estimated": 11,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 3311,
+        "output_tokens_estimated": 54,
+        "reads_count": 1,
+        "writes_count": 2,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 1
+      }
+    },
+    {
+      "id": "session-2026-10-24-0113",
+      "started": "2026-10-24T17:13:22.918Z",
+      "ended": "2026-10-24T17:31:11.610Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/CharacterAttributes.cpp",
+          "tokens_estimated": 3311,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/UI/WildforgeUIManager.h",
+          "tokens_estimated": 43,
+          "action": "edit"
+        },
+        {
+          "file": "C:/Users/xf317/AppData/Local/Temp/wf-syntax-check.ps1",
+          "tokens_estimated": 11,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 3311,
+        "output_tokens_estimated": 54,
+        "reads_count": 1,
+        "writes_count": 2,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 1
       }
     }
   ],

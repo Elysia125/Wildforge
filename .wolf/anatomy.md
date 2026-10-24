@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-24T09:51:20.507Z
-> Files: 117 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-24T17:15:56.908Z
+> Files: 137 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -18,24 +18,49 @@
 
 ## C:/Users/xf317/AppData/Local/Temp/
 
+- `wf_capture_parent.py` — p, field (~539 tok)
 - `wf_clangd_info.ps1` (~82 tok)
+- `wf_dump_current.py` — log, get, call, describe_slot (~1064 tok)
+- `wf_dump_inventory.py` — log, get, call, describe_slot (~753 tok)
+- `wf_dump_inventory2.py` — log, get, call, describe_slot (~860 tok)
+- `wf_dump_panels.py` — log, get, call, dump (~565 tok)
+- `wf_dump_ui.py` — p, try_prop, dump_widget (~917 tok)
+- `wf_dump_widget.py` — get, dump_widget (~859 tok)
+- `wf_dump_widget2.py` — object: get, dump_widget (~982 tok)
+- `wf_dump_widget4.py` — object: log, get, dump_widget (~1022 tok)
+- `wf_dump_widget5.py` — log, get, dump (~1043 tok)
+- `wf_find_tree.py` — log, get (~444 tok)
 - `wf_fix_clangd.js` — Declares fs (~96 tok)
+- `wf_introspect.py` — log (~343 tok)
+- `wf_introspect2.py` — p (~847 tok)
+- `wf_subobjects.py` — p, try_prop (~1206 tok)
 - `wf_syntax_check.ps1` — Declares Invoke (~661 tok)
+- `wf_tree_full.py` — log, get, call, describe_slot (~1088 tok)
+- `wf_tree.py` — p, field, walk (~635 tok)
+- `wf_widgets.py` — p, field (~906 tok)
 - `wf_wolf_record.js` — fs: eolOf (~992 tok)
 - `wf-crawl-check-msvc.ps1` — 单 TU 真编译级检查（cl.exe /Zs 语法检查），用 UBT 自己生成的 MSVC 形态 obj.rsp + 真实的 MSVC PCH。 (~980 tok)
 - `wf-crawl-check.ps1` — 单 TU 真编译级检查（clang-cl -fsyntax-only），针对本次 UBT 生成的 MSVC 形态 obj.rsp。 (~835 tok)
 - `wf-probe-attack.ps1` (~384 tok)
 - `wf-syntax-attack.ps1` (~167 tok)
-- `wf-syntax-check.ps1` (~199 tok)
+- `wf-syntax-check.ps1` (~252 tok)
 - `wf-syntax-check2.ps1` (~191 tok)
+
+## C:/Users/xf317/AppData/Local/Temp/wfparse/
+
+- `find_array2.py` — rd_fstring, parse (~500 tok)
 
 ## Config/
 
 - `DefaultEditor.ini` (~14878 tok)
 - `DefaultEditorPerProjectUserSettings.ini` (~19 tok)
 - `DefaultEngine.ini` (~942 tok)
-- `DefaultGame.ini` (~114 tok)
+- `DefaultGame.ini` (~333 tok)
 - `DefaultInput.ini` (~3677 tok)
+
+## Plugins/Plugins/UmgDesignSystem/
+
+- `UmgDesignSystem.uplugin` (~315 tok)
 
 ## Source/Wildforge/
 
@@ -60,11 +85,11 @@
 
 - `AttackComponent.cpp` — 攻击组件实现：服务器权威攻击链 + Multicast 蒙太奇（携带资产+Section）；武器招式表走 `TSubclassOf<UWeaponAttackProfile>` 的 CDO（Set/Clear/OnRep）；ini 覆盖/伤害轨迹/移动锁 (~9800 tok)
 - `BlinkComponent.cpp` — 闪现实现：Sweep + 落点校验全在权威端；**新增 BeginPlay**（唯一职责是应用 ini 覆盖），4 项调参 COND_InitialOnly（含原先根本没复制的 BlinkCooldown） (~5300 tok)
-- `CharacterAttributes.cpp` — 属性组件实现：DOREPLIFETIME + OnRep 广播委托，SetHealth/SetMaxHealth 带 Clamp (~900 tok)
+- `CharacterAttributes.cpp` — 属性组件实现：权威端 ini 覆盖、等级曲线、精力自然回复 Tick（最近消耗后延迟 EnergyRegenDelay 秒，再按 EnergyRegenPerSecond 回复） (~4000 tok)
 - `CrawlingComponent.cpp` — 趴下实现：姿态/过渡状态机 + 速度镜像（一律经 SprintBoostComponent::SetBaseMaxSpeed）；BeginPlay 先应用 5 项 ini 覆盖、再订阅动画回调 (~10500 tok)
-- `LandRollComponent.cpp` — 翻滚实现：BeginPlay 先应用 4 项 ini 覆盖再订阅动画回调；调参走 COND_InitialOnly（原 LandRollCooldown 沿用 COND_OwnerOnly） (~6900 tok)
+- `LandRollComponent.cpp` — Fill out your copyright notice in the Description page of Project Settings. (~7391 tok)
 - `SlideComponent.cpp` — 滑行实现：速度曲线两端各跑一份（所以调参必须复制）；BeginPlay 先应用 14 项 ini 覆盖，全部 COND_InitialOnly (~10000 tok)
-- `SprintBoostComponent.cpp` — 加速实现：独占 MaxWalkSpeed 快照/还原 + 镜像给拥有者客户端；BeginPlay 先应用 4 项 ini 覆盖 (~10900 tok)
+- `SprintBoostComponent.cpp` — Fill out your copyright notice in the Description page of Project Settings. (~11798 tok)
 
 ## Source/Wildforge/Private/Character/Player/
 
@@ -102,9 +127,9 @@
 
 ## Source/Wildforge/Private/UI/
 
-- `MainUserWidget.cpp` — 主 HUD 控件：NativeConstruct 先试一次 TryInitializeQuickBar（客户端 Pawn 未到就交给 OnPossessedPawnChanged 补第二枪），NativeDestruct 退订；文件头有大段「快捷栏初始化时序」说明（控件由 PlayerController 的 BeginPlay 创建，早于角色 BeginPlay） (~2400 tok)
-- `ToastWidget.cpp` — 实现：三类显示入口（ShowToast / ShowToastStyled / ShowToastMessage）+ 待显示队列（MaxQueuedMessages 上限，满时丢排队最久的一条）+ FadeIn→Hold→FadeOut 状态机（NativeTick 驱动 RenderOpacity）；BP_OnToastShown / FadeOutStarted / Hidden / QueueEmptied 蓝图钩子供 WBP 动画接管（bUseNativeFade=false）；未构造先入队、NativeConstruct 按状态重放 (~4100 tok)
-- `WildforgeUIManager.cpp` — 实现：按类引用 ShowUI/HideUI/RemoveUI/RemoveAllUI（每个类一个实例、Entries 只增不删）+ 无参 bool 展示判定（BindCanShowFunction 在绑定时就校验签名，绑定对象失效自动解绑）+ Toast 便捷入口（ShowToast / ShowToastStyled / ShowToastMessage / ClearToasts / IsToastActive / GetToastWidget / SetToastWidgetClass）：首次调用按 UToastSettings 的软类引用懒创建 UToastWidget 并复用，运行时覆盖优先并缓存解析结果 (~7000 tok)
+- `MainUserWidget.cpp` — Fill out your copyright notice in the Description page of Project Settings. (~3318 tok)
+- `ToastWidget.cpp` — Toast 状态机：排队与淡入/停留/淡出、相同文本合并（正在显示则重置停留，队尾相同则替换）、蓝图钩子与 Slate 重建重放。 (~3000 tok)
+- `WildforgeUIManager.cpp` — 管理器实现：视口界面懒创建/移除、CanShow 判定求值、Toast 懒创建与警告样式（ShowToastWarning 红字深红底）。 (~6200 tok)
 
 ## Source/Wildforge/Private/Utils/
 
@@ -135,11 +160,11 @@
 
 - `AttackComponent.h` — 攻击组件（服务器权威）。 (~4575 tok)
 - `BlinkComponent.h` — 点按闪现组件（服务器权威）：距离/冷却/播速带 Replicated（COND_InitialOnly）；新增 protected BeginPlay + ApplyGameplaySettingsOverrides（本组件原先没有 BeginPlay） (~2500 tok)
-- `CharacterAttributes.h` — UCharacterAttributes：复制 Health/MaxHealth（ReplicatedUsing OnRep 广播 FOnHealthChanged/FOnMaxHealthChanged），Setter 为 BlueprintAuthorityOnly，且 SetHealth/SetMaxHealth 内联加非权威端门禁（IsAuthoritativeForActorComponent + WFLOG_ERROR） (~900 tok)
+- `CharacterAttributes.h` — 角色的基础属性：生命、精力（含权威端自然回复参数 EnergyRegenPerSecond / EnergyRegenDelay 与最近消耗时间）、等级与经验。 (~4000 tok)
 - `CrawlingComponent.h` — 趴下（爬行）组件（服务器权威）：爬行速度/奔跑阈值/播速带 Replicated + ini 覆盖；速度改写一律经 USprintBoostComponent::SetBaseMaxSpeed (~5100 tok)
-- `LandRollComponent.h` — 翻滚组件（服务器权威）：冷却/播速/BlendOut 解锁/起手清零速度可被 ini 覆盖（冷却沿用 COND_OwnerOnly，其余 COND_InitialOnly） (~3600 tok)
+- `LandRollComponent.h` — 翻滚组件（服务器权威）。 (~3702 tok)
 - `SlideComponent.h` — 滑行（低姿态冲刺滑铲）组件（服务器权威）：14 项调参带 Replicated（COND_InitialOnly）+ ini 覆盖；两端各跑同一份速度曲线所以必须复制 (~5600 tok)
-- `SprintBoostComponent.h` — 加速（长按冲刺）组件（服务器权威）：时长/方向门控/夹角/播速带 Replicated + ini 覆盖；MaxWalkSpeed 由本组件独占 (~6900 tok)
+- `SprintBoostComponent.h` — 加速（长按冲刺）组件 —— **服务器权威**。 (~6950 tok)
 - `structs/AttackMontageData.h` — FAttackMontageData：Montage + SectionNames（TArray<FName>，默认 {NAME_None}），攻击蒙太奇分段数据 (~150 tok)
 - `WeaponAttackProfile.h` — 武器攻击配置：**一件武器一份**的招式表；做成蓝图子类（Class Reference/TSubclassOf，数据读 CDO），`AttackMontageList` 非空时覆盖角色默认表 (~550 tok)
 
@@ -151,11 +176,12 @@
 
 - `AttackComponentSettings.h` — `UAttackComponentSettings`：冷却/连击间隔/连击融合时间/伤害/范围/扫描半径/扫描高度偏移，8 对 bOverride_* (~1200 tok)
 - `BlinkComponentSettings.h` — `UBlinkComponentSettings`：最大距离/冷却/是否保留速度/蒙太奇播速，4 对 (~700 tok)
+- `CharacterAttributesSettings.h` — 角色属性组件（`UCharacterAttributes`）的可调数值：初始等级、生命/精力上限、 (~1514 tok)
 - `CrawlingComponentSettings.h` — `UCrawlingComponentSettings`：趴下移速（ClampMin 1，见 bug-027）/奔跑阈值/冷却/BlendOut 收尾/播速，5 对 (~800 tok)
-- `LandRollComponentSettings.h` — `ULandRollComponentSettings`：冷却/BlendOut 提前解锁/起手清零速度/播速，4 对 (~700 tok)
+- `LandRollComponentSettings.h` — 翻滚组件（`ULandRollComponent`）的可调数值。 (~799 tok)
 - `PlayerCharacterSettings.h` — `UPlayerCharacterSettings`：**角色自身**（非组件）的调参，当前只有背包容量 InventoryCapacity（ClampMin 1） (~400 tok)
 - `SlideComponentSettings.h` — `USlideComponentSettings`：时长/起止速度/减速速率/续滑门限与宽限/是否可转向/离地结束/地面摩擦/刹车减速/蒙太奇播速与 BlendOut，14 对，按 Slide|Speed / Rules / Steering / Anim 分组 (~1800 tok)
-- `SprintBoostComponentSettings.h` — `USprintBoostComponentSettings`：冲刺时长/仅允许向前/最大前向夹角(0-180)/播速，4 对 (~700 tok)
+- `SprintBoostComponentSettings.h` — 加速组件（`USprintBoostComponent`）的可调数值。 (~839 tok)
 
 ## Source/Wildforge/Public/Core/
 
@@ -207,10 +233,10 @@
 
 ## Source/Wildforge/Public/UI/
 
-- `MainUserWidget.h` — UMainUserWidget：BindWidget 持有 InventoryWidget / QuickBarWidget，ShowInventory（蓝图事件）切换背包可见性；新增 HandlePossessedPawnChanged + TryInitializeQuickBar（快捷栏容器晚绑） (~700 tok)
+- `MainUserWidget.h` — Fill out your copyright notice in the Description page of Project Settings. (~1222 tok)
 - `ToastMessage.h` — FToastMessage（BlueprintType）：Message / TextColor / BackgroundColor / Icon + IconTint / Duration（<=0 回退控件默认时长）；全部只影响客户端表现 (~370 tok)
-- `ToastWidget.h` — UToastWidget（Abstract）：队列化 Toast 控件基类；公开 ShowToast / ShowToastStyled / ShowToastMessage / ClearToasts / 查询；BindWidget `MessageText`（必需）+ `BackgroundBorder` / `IconImage`（可选）；默认样式与 DefaultDuration / FadeInDuration / FadeOutDuration / MaxQueuedMessages / bUseNativeFade 均可在 WBP 类默认值调；BP_OnToast* 四个表现事件；私有状态机 + 待显示队列 + Slate 重建重放 (~2300 tok)
-- `WildforgeUIManager.h` — UWildforgeUIManager（ULocalPlayerSubsystem，纯客户端）：以 TSubclassOf<UUserWidget> 为键展示/收起/移除界面；每个类可绑定无参返回 bool 的展示判定函数（动态委托）；Toast 便捷 API（ShowToast* / ClearToasts / IsToastActive / Get/SetToastWidgetClass）；不管输入模式与鼠标显隐 (~3000 tok)
+- `ToastWidget.h` — Toast 提示控件基类（必须由蓝图子类提供具体外观）。 (~1986 tok)
+- `WildforgeUIManager.h` — 每本地玩家一份的界面管理器：按类管理视口界面 + 可绑定展示判定；Toast 入口 ShowToast / ShowToastStyled / ShowToastWarning / ShowToastMessage（警告样式红字深红底，默认 4 秒）。 (~2700 tok)
 
 ## Source/Wildforge/Public/UI/Settings/
 

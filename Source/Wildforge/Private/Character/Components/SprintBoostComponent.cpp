@@ -3,13 +3,15 @@
 #include "Character/Components/SprintBoostComponent.h"
 
 #include "Animation/AnimInstance.h"
-#include "Components/SkeletalMeshComponent.h"
+#include "Character/Components/CharacterAttributes.h"
 #include "Character/Settings/SprintBoostComponentSettings.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Math/UnrealMathUtility.h"
 #include "Net/UnrealNetwork.h"
+#include "UI/WildforgeUIManager.h"
 #include "Utils/ComponentAuthorityGuard.h"
 #include "Utils/WildforgeLog.h"
 
@@ -95,6 +97,9 @@ void USprintBoostComponent::GetLifetimeReplicatedProps(
                           COND_InitialOnly);
   DOREPLIFETIME_CONDITION(USprintBoostComponent, SprintMontagePlayRate,
                           COND_InitialOnly);
+  // 每秒精力消耗：权威端读 ini 后写入，客户端拿同一份值（UI 可能显示「每秒消耗」）。
+  DOREPLIFETIME_CONDITION(USprintBoostComponent, EnergyCostPerSecond,
+                          COND_InitialOnly);
 }
 
 void USprintBoostComponent::BeginPlay() {
@@ -177,15 +182,20 @@ void USprintBoostComponent::ApplyGameplaySettingsOverrides() {
     SprintMontagePlayRate = FMath::Max(0.01f, Settings->MontagePlayRate);
     ++Applied;
   }
+  if (Settings->bOverride_EnergyCostPerSecond) {
+    // 0 是合法值（= 不消耗精力），只夹掉负数。
+    EnergyCostPerSecond = FMath::Max(0.0f, Settings->EnergyCostPerSecond);
+    ++Applied;
+  }
 
   const FString Source = (Applied > 0)
                              ? FString::Printf(TEXT("应用了 %d 项 ini 覆盖"), Applied)
                              : FString(TEXT("没有 ini 覆盖（全部用类默认值）"));
   WFLOG_INFO("[配置] 加速组件（宿主 %s，权威端）：%s；生效值 默认时长=%.2fs "
-             "只向前才加速=%d 最大夹角=%.1f 蒙太奇播速=%.2f。",
+             "只向前才加速=%d 最大夹角=%.1f 蒙太奇播速=%.2f 每秒耗精力=%.2f。",
              GetOwner() ? *GetOwner()->GetName() : TEXT("None"), *Source,
              DefaultBoostDuration, bSprintOnlyForward ? 1 : 0,
-             MaxForwardSprintAngle, SprintMontagePlayRate);
+             MaxForwardSprintAngle, SprintMontagePlayRate, EnergyCostPerSecond);
 }
 
 void USprintBoostComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) {
@@ -364,10 +374,97 @@ void USprintBoostComponent::TickComponent(
     FActorComponentTickFunction *ThisTickFunction) {
   Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-  // 唯一在这里做的事：拥有者客户端把复制的权威速度核对进本地移动组件。
+  // 权威端：加速进行中持续扣精力（耗尽会在内部停止加速并通知拥有者）。
+  // 放在镜像之前：如果这一帧把加速收掉了，下面的镜像会立刻把复位后的速度同步下去。
+  if (IsAuthoritativeForActorComponent(this) && bBoostActive &&
+      EnergyCostPerSecond > 0.0f) {
+    TickSprintEnergyDrain(DeltaTime);
+  }
+
+  // 拥有者客户端把复制的权威速度核对进本地移动组件。
   // 权威端、其它客户端上的模拟代理、以及关掉开关时都会在函数第一行早退，
   // 值一致时也只是两次浮点比较（不写组件）。
   MirrorAuthoritativeSpeedToLocalMovement(TEXT("每帧核对"));
+}
+
+UCharacterAttributes *USprintBoostComponent::GetOwnerAttributes() const {
+  const AActor *Owner = GetOwner();
+  return Owner ? Owner->FindComponentByClass<UCharacterAttributes>() : nullptr;
+}
+
+void USprintBoostComponent::TickSprintEnergyDrain(float DeltaSeconds) {
+  if (!IsAuthoritativeForActorComponent(this) || DeltaSeconds <= 0.0f) {
+    return;
+  }
+
+  UCharacterAttributes *Attributes = GetOwnerAttributes();
+  if (Attributes == nullptr) {
+    if (!bEnergyAttributesWarned) {
+      bEnergyAttributesWarned = true;
+      WFLOG_WARNING("[加速] 加速中找不到 UCharacterAttributes（宿主 %s），"
+                    "精力消耗不会生效。",
+                    GetOwner() ? *GetOwner()->GetName() : TEXT("None"));
+    }
+    return;
+  }
+
+  const float Cost = EnergyCostPerSecond * DeltaSeconds;
+  if (Cost <= 0.0f) {
+    return;
+  }
+
+  // 理论上「精力耗尽」会在下面这一帧就收掉；这里兜底处理上一帧刚好扣到 0 的情况。
+  if (Attributes->GetEnergy() <= KINDA_SMALL_NUMBER) {
+    Attributes->SetEnergy(0.0f);
+    WFLOG_INFO("[加速] 加速中精力已为 0，停止加速。宿主 %s",
+               GetOwner() ? *GetOwner()->GetName() : TEXT("None"));
+    ResetMaxSpeed();
+    NotifyInsufficientEnergyOnOwner(EnergyCostPerSecond);
+    return;
+  }
+
+  Attributes->AddEnergy(-Cost);
+
+  if (Attributes->GetEnergy() <= KINDA_SMALL_NUMBER) {
+    // AddEnergy 的 Clamp 下限是 0，但浮点可能留一个极小值；明确归零，
+    // 避免 UI 显示 0.0001 / 100 这种「明明耗尽还有一丝」的进度。
+    Attributes->SetEnergy(0.0f);
+    WFLOG_INFO("[加速] 精力耗尽（每秒消耗 %.2f），自动停止加速。宿主 %s",
+               EnergyCostPerSecond,
+               GetOwner() ? *GetOwner()->GetName() : TEXT("None"));
+    ResetMaxSpeed();
+    NotifyInsufficientEnergyOnOwner(EnergyCostPerSecond);
+  }
+}
+
+void USprintBoostComponent::NotifyInsufficientEnergyOnOwner(
+    float RequiredEnergy) {
+  if (!IsAuthoritativeForActorComponent(this)) {
+    return;
+  }
+
+  // 节流：蓝图可能每帧重发 Start 请求，没有节流会瞬间刷出一串提示。
+  const UWorld *World = GetWorld();
+  const float Now = (World != nullptr) ? World->GetTimeSeconds() : 0.0f;
+  if (Now - LastInsufficientEnergyToastTime < 1.0f) {
+    return;
+  }
+  LastInsufficientEnergyToastTime = Now;
+
+  Client_NotifyInsufficientEnergy(RequiredEnergy);
+}
+
+void USprintBoostComponent::Client_NotifyInsufficientEnergy_Implementation(
+    float RequiredEnergy) {
+  // 本函数只会在拥有者客户端执行（服务器发 Client RPC 时不会本地执行）。
+  if (UWildforgeUIManager *UIManager = UWildforgeUIManager::GetUIManager(this)) {
+    UIManager->ShowToastWarning(FText::FromString(TEXT("精力不足，无法加速")));
+    WFLOG_INFO("[加速] 已向拥有者客户端弹出精力不足提示（每秒消耗 %.2f）。",
+               RequiredEnergy);
+  } else {
+    WFLOG_WARNING("[加速] 精力不足，但本端取不到 UWildforgeUIManager，"
+                  "无法弹提示（专用服务器 / 无本地玩家属于正常情况）。");
+  }
 }
 
 // 加速状态的一行快照：曲线没反应时能直接从日志看出卡在哪一步
@@ -680,6 +777,25 @@ bool USprintBoostComponent::StartSpeedBoost_Implementation(
     return false;
   }
 
+  // 精力门槛：加速是持续消耗，起手时只要求「还有精力」，能撑多久由扣费决定。
+  // 客户端不能自己判（能量是服务器权威值），拒绝原因由 Client RPC 通知拥有者弹提示。
+  if (EnergyCostPerSecond > 0.0f) {
+    UCharacterAttributes *Attributes = GetOwnerAttributes();
+    if (Attributes == nullptr) {
+      if (!bEnergyAttributesWarned) {
+        bEnergyAttributesWarned = true;
+        WFLOG_WARNING("[加速] 宿主 %s 上没有 UCharacterAttributes，"
+                      "本次不校验精力消耗（也不会扣精力）。",
+                      *Who);
+      }
+    } else if (Attributes->GetEnergy() <= KINDA_SMALL_NUMBER) {
+      WFLOG_WARNING("[加速] 被拒：精力不足（当前 %.2f，每秒消耗 %.2f）。宿主 %s",
+                    Attributes->GetEnergy(), EnergyCostPerSecond, *Who);
+      NotifyInsufficientEnergyOnOwner(EnergyCostPerSecond);
+      return false;
+    }
+  }
+
   // HoldThreshold 是调用方的节奏参数（先按住这么久才算「长按」），
   // 不参与速度曲线计算，这里只做记录与合法性检查。
   if (!FMath::IsFinite(HoldThreshold) || HoldThreshold < 0.0f) {
@@ -806,12 +922,12 @@ bool USprintBoostComponent::StartSpeedBoost_Implementation(
 
   WFLOG_INFO("[加速] 开始：长按阈值 %.2fs，速度 %.2f -> %.2f"
              "（基准 %.2f / 蹲伏 %.2f，比例 %.3f），用时 %.3fs，"
-             "刷新间隔 %.3fs（0 表示每帧）。%s",
+             "刷新间隔 %.3fs，每秒耗精力 %.2f。%s",
              HoldThreshold, BoostState.StartSpeed, BoostState.TargetSpeed,
              BoostState.BaseMaxWalkSpeed,
              BoostState.BaseMaxWalkSpeedCrouched,
              BoostState.CrouchSpeedRatio, BoostState.BoostDuration, UseInterval,
-             *GetSprintBoostDebugString());
+             EnergyCostPerSecond, *GetSprintBoostDebugString());
   return true;
 }
 

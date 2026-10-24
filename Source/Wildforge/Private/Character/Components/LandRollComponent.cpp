@@ -3,14 +3,16 @@
 #include "Character/Components/LandRollComponent.h"
 
 #include "Animation/AnimInstance.h"
-#include "Components/SkeletalMeshComponent.h"
+#include "Character/Components/CharacterAttributes.h"
 #include "Character/Settings/LandRollComponentSettings.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Math/UnrealMathUtility.h"
 #include "Net/UnrealNetwork.h"
 #include "TimerManager.h"
+#include "UI/WildforgeUIManager.h"
 #include "Utils/ComponentAuthorityGuard.h"
 #include "Utils/WildforgeLog.h"
 
@@ -79,6 +81,8 @@ void ULandRollComponent::GetLifetimeReplicatedProps(
                           COND_InitialOnly);
   DOREPLIFETIME_CONDITION(ULandRollComponent, bStopMovementOnStart,
                           COND_InitialOnly);
+  // 每次翻滚的精力消耗：权威端读 ini 后写入，客户端拿同一份值（UI 可显示「消耗 N」）。
+  DOREPLIFETIME_CONDITION(ULandRollComponent, EnergyCost, COND_InitialOnly);
 }
 
 void ULandRollComponent::BeginPlay() {
@@ -172,14 +176,20 @@ void ULandRollComponent::ApplyGameplaySettingsOverrides() {
     bStopMovementOnStart = Settings->bStopMovementOnStart;
     ++Applied;
   }
+  if (Settings->bOverride_EnergyCost) {
+    // 0 是合法值（= 不消耗精力），只夹掉负数。
+    EnergyCost = FMath::Max(0.0f, Settings->EnergyCost);
+    ++Applied;
+  }
 
   const FString Source = (Applied > 0)
                              ? FString::Printf(TEXT("应用了 %d 项 ini 覆盖"), Applied)
                              : FString(TEXT("没有 ini 覆盖（全部用类默认值）"));
   WFLOG_INFO("[配置] 翻滚组件（宿主 %s，权威端）：%s；生效值 冷却=%.2fs "
-             "播速=%.2f BlendOut提前解锁=%d 起手清零速度=%d。",
+             "播速=%.2f BlendOut提前解锁=%d 起手清零速度=%d 每次耗精力=%.2f。",
              *GetNameSafe(GetOwner()), *Source, LandRollCooldown, MontagePlayRate,
-             bFinishOnBlendOut ? 1 : 0, bStopMovementOnStart ? 1 : 0);
+             bFinishOnBlendOut ? 1 : 0, bStopMovementOnStart ? 1 : 0,
+             EnergyCost);
 }
 
 void ULandRollComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) {
@@ -357,6 +367,25 @@ bool ULandRollComponent::LandRoll_Implementation() {
     return false;
   }
 
+  // 精力校验：放在冷却之后、真正改状态之前。
+  // 客户端不能自己判（能量是服务器权威值），拒绝原因由 Client RPC 通知拥有者弹提示。
+  UCharacterAttributes *Attributes = GetOwnerAttributes();
+  if (EnergyCost > 0.0f) {
+    if (Attributes == nullptr) {
+      if (!bEnergyAttributesWarned) {
+        bEnergyAttributesWarned = true;
+        WFLOG_WARNING("[翻滚] 宿主 %s 上没有 UCharacterAttributes，"
+                      "本次不校验精力消耗（也不会扣精力）。",
+                      *Who);
+      }
+    } else if (Attributes->GetEnergy() < EnergyCost) {
+      WFLOG_WARNING("[翻滚] 被拒：精力不足（当前 %.2f < 每次消耗 %.2f）。宿主 %s",
+                    Attributes->GetEnergy(), EnergyCost, *Who);
+      NotifyInsufficientEnergyOnOwner(EnergyCost);
+      return false;
+    }
+  }
+
   // 蒙太奇没配：仍然推进状态（翻滚的位移可能完全由蓝图驱动），但要明确告警——
   // 「滚了但没动画」在联机排查时很难和「动画没同步」区分开。
   if (LandRollMontage == nullptr) {
@@ -408,6 +437,13 @@ bool ULandRollComponent::LandRoll_Implementation() {
         "既不落移动锁也没有动画（检查 LandRollMontage 与动画蓝图）。宿主 %s",
         *Who);
     return false;
+  }
+
+  // 成功起手之后才扣精力：上面的失败路径（没播起来）会 return false，不应该扣。
+  if (EnergyCost > 0.0f && Attributes != nullptr) {
+    Attributes->AddEnergy(-EnergyCost);
+    WFLOG_INFO("[翻滚] 消耗精力 %.2f（剩余 %.2f/%.2f）。宿主 %s", EnergyCost,
+               Attributes->GetEnergy(), Attributes->GetMaxEnergy(), *Who);
   }
 
   // 播出去之后才挂兜底定时器（按蒙太奇时长估算）
@@ -698,4 +734,42 @@ void ULandRollComponent::Server_LandRoll_Implementation() {
   WFLOG_INFO("[翻滚] RPC Server_LandRoll 到达服务器（宿主 %s）。",
              GetOwner() ? *GetOwner()->GetName() : TEXT("None"));
   LandRoll();
+}
+
+// ===== 精力消耗（权威端）=====
+
+UCharacterAttributes *ULandRollComponent::GetOwnerAttributes() const {
+  const AActor *Owner = GetOwner();
+  return Owner ? Owner->FindComponentByClass<UCharacterAttributes>() : nullptr;
+}
+
+void ULandRollComponent::NotifyInsufficientEnergyOnOwner(
+    float RequiredEnergy) {
+  if (!IsAuthoritativeForActorComponent(this)) {
+    return;
+  }
+
+  // 节流：玩家可能连续点翻滚，没有节流会瞬间刷出一串提示。
+  const UWorld *World = GetWorld();
+  const float Now = (World != nullptr) ? World->GetTimeSeconds() : 0.0f;
+  if (Now - LastInsufficientEnergyToastTime < 1.0f) {
+    return;
+  }
+  LastInsufficientEnergyToastTime = Now;
+
+  Client_NotifyInsufficientEnergy(RequiredEnergy);
+}
+
+void ULandRollComponent::Client_NotifyInsufficientEnergy_Implementation(
+    float RequiredEnergy) {
+  // 本函数只会在拥有者客户端执行（服务器发 Client RPC 时不会本地执行）。
+  if (UWildforgeUIManager *UIManager = UWildforgeUIManager::GetUIManager(this)) {
+    UIManager->ShowToastWarning(
+        FText::FromString(TEXT("精力不足，无法翻滚")));
+    WFLOG_INFO("[翻滚] 已向拥有者客户端弹出精力不足提示（每次消耗 %.2f）。",
+               RequiredEnergy);
+  } else {
+    WFLOG_WARNING("[翻滚] 精力不足，但本端取不到 UWildforgeUIManager，"
+                  "无法弹提示（专用服务器 / 无本地玩家属于正常情况）。");
+  }
 }

@@ -1016,3 +1016,173 @@
 | 17:51 | Edited Source/Wildforge/Private/World/ChestActor.cpp | 3→4 lines | ~59 |
 | 17:52 | 宝箱战利品新增每堆数量随机（LootStackMin/Max，按物品 MaxStackSize 夹紧） | Source/Wildforge/Public/World/ChestActor.h, Source/Wildforge/Public/World/Settings/ChestSettings.h, Source/Wildforge/Private/World/ChestActor.cpp | Build 成功（WildforgeEditor） | ~120 |
 | 17:52 | Session end: 10 writes across 3 files (ChestActor.h, ChestSettings.h, ChestActor.cpp) | 6 reads | ~18785 tok |
+
+## Session: 2026-10-24 20:54
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:08 | Created C:/Users/xf317/AppData/Local/Temp/wfparse/find_array2.py | — | ~500 |
+| 21:15 | 诊断快捷栏按键标签恒为 <None>：解析 Saved/Autosaves 的 tagged property，确认 W_MainWidget 内嵌 QuickBar 实例有 1 元素 HotkeyBindings 覆盖（Key=None），遮蔽 W_QuickBar 类默认值的 10 条绑定 | W_MainWidget.uasset / W_QuickBar.uasset / QuickBarWidget.cpp | 根因确认（实例覆盖），待用户在编辑器清除覆盖 | ~12k |
+| 21:11 | Session end: 1 writes across 1 files (find_array2.py) | 7 reads | ~7860 tok |
+
+## Session: 2026-10-24 21:44
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:46 | Created C:/Users/xf317/AppData/Local/Temp/wf_dump_widget.py | — | ~859 |
+| 21:48 | Created C:/Users/xf317/AppData/Local/Temp/wf_dump_widget2.py | — | ~982 |
+| 21:48 | Created C:/Users/xf317/AppData/Local/Temp/wf_dump_widget4.py | — | ~1022 |
+| 21:49 | Created C:/Users/xf317/AppData/Local/Temp/wf_introspect.py | — | ~343 |
+| 21:51 | Created C:/Users/xf317/AppData/Local/Temp/wf_find_tree.py | — | ~444 |
+| 21:52 | Created C:/Users/xf317/AppData/Local/Temp/wf_dump_widget5.py | — | ~1043 |
+| 21:53 | Created C:/Users/xf317/AppData/Local/Temp/wf_tree_full.py | — | ~1088 |
+| 21:54 | Created C:/Users/xf317/AppData/Local/Temp/wf_dump_panels.py | — | ~565 |
+
+## Session: 2026-10-24 21:58
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:12 | Created C:/Users/xf317/AppData/Local/Temp/wf_dump_current.py | — | ~1064 |
+| 22:14 | Session end: 1 writes across 1 files (wf_dump_current.py) | 4 reads | ~1064 tok |
+| 22:28 | Created C:/Users/xf317/AppData/Local/Temp/wf_dump_inventory.py | — | ~753 |
+| 22:29 | Created C:/Users/xf317/AppData/Local/Temp/wf_dump_inventory2.py | — | ~860 |
+| 22:30 | Edited Plugins/Plugins/UmgDesignSystem/UmgDesignSystem.uplugin | 5.8 → 5.7 | ~7 |
+| 22:30 | Created Source/Wildforge/Public/Character/Settings/CharacterAttributesSettings.h | — | ~1260 |
+| 22:30 | Created Source/Wildforge/Public/Character/Components/CharacterAttributes.h | — | ~3380 |
+| 22:31 | Created Source/Wildforge/Private/Character/Components/CharacterAttributes.cpp | — | ~2875 |
+| 22:31 | Created Source/Wildforge/Public/UI/MainUserWidget.h | — | ~881 |
+| 22:31 | Created Source/Wildforge/Private/UI/MainUserWidget.cpp | — | ~2237 |
+| 22:31 | Edited Config/DefaultGame.ini | expanded (+18 lines) | ~159 |
+| 22:32 | Edited Source/Wildforge/Public/Character/Components/CharacterAttributes.h | 9→11 lines | ~107 |
+
+## Session: 2026-10-24 22:33
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:33 | Edited Source/Wildforge/Public/Character/Components/CharacterAttributes.h | 11→13 lines | ~154 |
+| 22:36 | UHT 修复：private 属性不能用 BlueprintReadOnly，改用 BlueprintGetter（Level/Experience/ExperienceToNextLevel） | CharacterAttributes.h | Result: Succeeded | ~300 |
+| 22:36 | clang-cl 单文件语法检查通过（含注入错误的对照测试，确认真的在编译该 TU） | CharacterAttributes.cpp, MainUserWidget.cpp | EXIT=0 | ~500 |
+| 22:36 | 新增角色属性/等级/经验系统与 UCharacterAttributesSettings 配置页；MainUserWidget 绑定三条进度条与等级文本 | CharacterAttributes.h/.cpp, CharacterAttributesSettings.h, MainUserWidget.h/.cpp, DefaultGame.ini | 待编辑器 Ctrl+Alt+F11 热编 | ~4000 |
+| 22:36 | Session end: 1 writes across 1 files (CharacterAttributes.h) | 1 reads | ~1424 tok |
+| 22:40 | Session end: 1 writes across 1 files (CharacterAttributes.h) | 1 reads | ~1424 tok |
+| 22:51 | Edited Source/Wildforge/Public/UI/MainUserWidget.h | 4→5 lines | ~26 |
+| 22:53 | Edited Source/Wildforge/Public/UI/MainUserWidget.h | expanded (+12 lines) | ~132 |
+| 22:53 | Edited Source/Wildforge/Public/UI/MainUserWidget.h | expanded (+13 lines) | ~191 |
+| 22:53 | Edited Source/Wildforge/Public/UI/MainUserWidget.h | expanded (+9 lines) | ~123 |
+| 22:53 | Edited Source/Wildforge/Private/UI/MainUserWidget.cpp | 3→4 lines | ~44 |
+| 22:53 | Edited Source/Wildforge/Private/UI/MainUserWidget.cpp | modified NativeConstruct() | ~57 |
+| 22:53 | Edited Source/Wildforge/Private/UI/MainUserWidget.cpp | modified RefreshAttributeWidgets() | ~60 |
+| 22:54 | Edited Source/Wildforge/Private/UI/MainUserWidget.cpp | added 15 condition(s) | ~999 |
+| 22:55 | 血条/精力条按上限拉伸：设计槽位宽度 × (当前上限/1级上限)，夹在 [1, MaxBarStretch=2.5]；WBP 类默认值可开关/调倍率 | MainUserWidget.h/.cpp | UHT + clang-cl 语法检查通过 | ~1500 |
+| 22:55 | Session end: 9 writes across 3 files (CharacterAttributes.h, MainUserWidget.h, MainUserWidget.cpp) | 1 reads | ~3171 tok |
+| 22:59 | Edited Source/Wildforge/Public/Character/Settings/SprintBoostComponentSettings.h | expanded (+10 lines) | ~219 |
+| 22:59 | Edited Source/Wildforge/Public/Character/Settings/LandRollComponentSettings.h | expanded (+10 lines) | ~213 |
+| 22:59 | Edited Source/Wildforge/Public/Character/Components/SprintBoostComponent.h | expanded (+12 lines) | ~197 |
+| 22:59 | Edited Source/Wildforge/Public/Character/Components/SprintBoostComponent.h | 4→9 lines | ~104 |
+| 23:00 | Edited Source/Wildforge/Public/Character/Components/SprintBoostComponent.h | 1→2 lines | ~17 |
+| 23:00 | Edited Source/Wildforge/Public/Character/Components/SprintBoostComponent.h | expanded (+18 lines) | ~204 |
+| 23:00 | Edited Source/Wildforge/Public/Character/Components/LandRollComponent.h | 1→3 lines | ~19 |
+| 23:00 | Edited Source/Wildforge/Public/Character/Components/LandRollComponent.h | expanded (+9 lines) | ~132 |
+| 23:00 | Edited Source/Wildforge/Public/Character/Components/LandRollComponent.h | 3→8 lines | ~92 |
+| 23:00 | Edited Source/Wildforge/Public/Character/Components/LandRollComponent.h | expanded (+14 lines) | ~125 |
+| 23:00 | Edited Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp | 10→12 lines | ~131 |
+| 23:00 | Edited Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp | 3→6 lines | ~76 |
+| 23:00 | Edited Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp | added 1 condition(s) | ~223 |
+| 23:00 | Edited Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp | added 4 condition(s) | ~231 |
+| 23:00 | Edited Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp | 8→8 lines | ~122 |
+| 23:00 | Edited Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp | added 10 condition(s) | ~845 |
+| 23:00 | Edited Source/Wildforge/Private/Character/Components/LandRollComponent.cpp | 11→13 lines | ~137 |
+| 23:00 | Edited Source/Wildforge/Private/Character/Components/LandRollComponent.cpp | 3→5 lines | ~65 |
+| 23:00 | Edited Source/Wildforge/Private/Character/Components/LandRollComponent.cpp | added 1 condition(s) | ~202 |
+| 23:00 | Edited Source/Wildforge/Private/Character/Components/LandRollComponent.cpp | added 4 condition(s) | ~212 |
+| 23:01 | Edited Source/Wildforge/Private/Character/Components/LandRollComponent.cpp | added 1 condition(s) | ~95 |
+| 23:01 | Edited Source/Wildforge/Private/Character/Components/LandRollComponent.cpp | added 3 condition(s) | ~390 |
+| 23:01 | Edited Config/DefaultGame.ini | expanded (+8 lines) | ~186 |
+
+## Session: 2026-10-24 23:09
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:20 | 加速/翻滚精力消耗实现（属性、ini、RPC、Toast） | SprintBoostComponent.h/.cpp, LandRollComponent.h/.cpp, 两个 Settings 头, DefaultGame.ini | 完成 | ~1800 |
+| 23:22 | UHT 验证：新增复制属性与 Client RPC 全部通过 | - | Result: Succeeded | ~900 |
+| 23:26 | clang-cl 语法检查 SprintBoostComponent.cpp / LandRollComponent.cpp | 两文件 | EXIT=0，均经注入错误对照 | ~1200 |
+| 23:28 | 记录精力消耗设计到 cerebrum Decision Log | .wolf/cerebrum.md | 完成 | ~300 |
+
+## Session: 2026-10-24 23:21
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:32 | Created C:/Users/xf317/AppData/Local/Temp/wf_dump_ui.py | — | ~872 |
+| 23:33 | Edited C:/Users/xf317/AppData/Local/Temp/wf_dump_ui.py | modified p() | ~59 |
+| 23:33 | Edited C:/Users/xf317/AppData/Local/Temp/wf_dump_ui.py | 1→2 lines | ~6 |
+| 23:33 | Created C:/Users/xf317/AppData/Local/Temp/wf_introspect2.py | — | ~847 |
+| 23:35 | Created C:/Users/xf317/AppData/Local/Temp/wf_subobjects.py | — | ~1206 |
+| 23:36 | Created C:/Users/xf317/AppData/Local/Temp/wf_widgets.py | — | ~906 |
+| 23:36 | Created C:/Users/xf317/AppData/Local/Temp/wf_tree.py | — | ~635 |
+| 23:39 | Created C:/Users/xf317/AppData/Local/Temp/wf_capture_parent.py | — | ~539 |
+
+| 23:40 | 排查主界面小地图不显示：只读检查 W_MainWidget 层级/槽位——MapImage 可见、brush=RT_Minimap、右上角 200×200，RootSizeBox 已 Fill Screen | Content/UI/W_MainWidget.uasset（只读） | 控件侧正常 | ~1800 |
+| 23:41 | 只读检查 BP_WildforgeCharacter：SceneCapture2D → RT_Minimap，CaptureSource=SceneColorHDR、CaptureEveryFrame=False、Ortho 1000 | Content/Core/BP_WildforgeCharacter.uasset（只读） | 发现根因 | ~1200 |
+| 23:42 | 根因：SceneColorHDR 的 alpha=反向不透明度（不透明≈0），UMG Image 全透明；记录 bug-134 与 cerebrum Key Learning | .wolf/buglog.json, .wolf/cerebrum.md | 完成 | ~500 |
+| 23:40 | Session end: 8 writes across 6 files (wf_dump_ui.py, wf_introspect2.py, wf_subobjects.py, wf_widgets.py, wf_tree.py) | 5 reads | ~5070 tok |
+
+## Session: 2026-10-24 00:03
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-25 00:16
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:16 | 诊断小地图 Sprite Actor 导致客户端 Pawn 生成失败/角色被顶飞 | Saved/Logs/Wildforge.log, .wolf/buglog.json, .wolf/cerebrum.md | 定位 PaperSprite 默认 BlockAllDynamic 碰撞；写 bug-135 与 Key Learning | ~12k |
+
+## Session: 2026-10-24 00:54
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-24 00:55
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:55 | Edited Source/Wildforge/Private/UI/MainUserWidget.cpp | 3→3 lines | ~40 |
+| 00:55 | Edited Source/Wildforge/Private/UI/MainUserWidget.cpp | 3→3 lines | ~42 |
+| 00:55 | Edited Source/Wildforge/Private/UI/MainUserWidget.cpp | modified if() | ~143 |
+| 00:56 | 修复 MainUserWidget C4458：局部变量 Slot 改名为 CanvasSlot（3 处） | Source/Wildforge/Private/UI/MainUserWidget.cpp | 告警消除，待 UHT/重新解析确认 | ~600 |
+| 00:57 | Session end: 3 writes across 1 files (MainUserWidget.cpp) | 1 reads | ~3516 tok |
+
+## Session: 2026-10-25 01:03
+| 01:03 | 分析小地图 SceneCapture 仅本地生效、所有玩家互相可见、自机箭头缺失；给出 BP 方案（捕获默认关闭 + ReceiveControllerChanged 门禁 + 10Hz CaptureScene；图标全端本地生成 + NoCollision + 平躺 Sprite；PIE 共享 RT 提醒） | BP_WildforgeCharacter / BP_MinimapIcon（只读）、.wolf/memory.md | 已答复，待用户验证 | ~20k |
+| 01:03 | Session end: 3 writes across 1 files (MainUserWidget.cpp) | 6 reads | ~14421 tok |
+| 01:08 | Edited Source/Wildforge/Public/Character/Components/CharacterAttributes.h | 5→6 lines | ~43 |
+| 01:08 | Edited Source/Wildforge/Public/Character/Components/CharacterAttributes.h | expanded (+19 lines) | ~210 |
+| 01:08 | Edited Source/Wildforge/Public/Character/Components/CharacterAttributes.h | added 1 condition(s) | ~119 |
+| 01:08 | Edited Source/Wildforge/Private/Character/Components/CharacterAttributes.cpp | expanded (+7 lines) | ~145 |
+| 01:08 | Edited Source/Wildforge/Private/Character/Components/CharacterAttributes.cpp | added 2 condition(s) | ~111 |
+| 01:08 | Edited Source/Wildforge/Private/Character/Components/CharacterAttributes.cpp | 2→4 lines | ~69 |
+| 01:08 | Edited Source/Wildforge/Private/Character/Components/CharacterAttributes.cpp | modified GetName() | ~112 |
+| 01:08 | Edited Source/Wildforge/Private/Character/Components/CharacterAttributes.cpp | added 4 condition(s) | ~283 |
+| 01:08 | Edited Source/Wildforge/Public/Character/Settings/CharacterAttributesSettings.h | expanded (+20 lines) | ~270 |
+| 01:08 | Edited Config/DefaultGame.ini | 1→5 lines | ~40 |
+| 01:08 | Edited Source/Wildforge/Public/UI/WildforgeUIManager.h | expanded (+10 lines) | ~153 |
+| 01:08 | Edited Source/Wildforge/Private/UI/WildforgeUIManager.cpp | modified ShowToastWarning() | ~155 |
+| 01:08 | Edited Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp | inline fix | ~19 |
+| 01:08 | Edited Source/Wildforge/Private/Character/Components/LandRollComponent.cpp | ShowToast() → ShowToastWarning() | ~22 |
+| 01:08 | Edited Source/Wildforge/Public/UI/ToastWidget.h | 3→3 lines | ~43 |
+| 01:08 | Edited Source/Wildforge/Private/UI/ToastWidget.cpp | added 3 condition(s) | ~338 |
+| 01:09 | Edited Source/Wildforge/Public/Character/Settings/CharacterAttributesSettings.h | expanded (+6 lines) | ~87 |
+| 01:09 | Edited Source/Wildforge/Public/Character/Components/CharacterAttributes.h | 4→6 lines | ~92 |
+| 01:09 | Created C:/Users/xf317/AppData/Local/Temp/wf-syntax-check.ps1 | — | ~274 |
+
+## Session: 2026-10-24 01:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 01:14 | Edited Source/Wildforge/Public/UI/WildforgeUIManager.h | 3→4 lines | ~40 |
+| 01:15 | Edited C:/Users/xf317/AppData/Local/Temp/wf-syntax-check.ps1 | 2→1 lines | ~10 |
+| 01:16 | 补 WildforgeUIManager.h 的 Templates/SubclassOf.h，重跑 UHT（GenerateClangDatabase）修复 FID 行号错位；5 个改动 TU 的 clang-cl 无 PCH 语法检查全部 EXIT=0 | WildforgeUIManager.h, generated.h, compile_commands.json | 通过 | ~2k |
+| 01:17 | 记录精力回复/Toast 优化：bug-144~146、cerebrum Key Learnings + Do-Not-Repeat + Decision Log | .wolf/buglog.json, .wolf/cerebrum.md | 完成 | ~1k |
+| 01:19 | Session end: 2 writes across 2 files (WildforgeUIManager.h, wf-syntax-check.ps1) | 1 reads | ~3365 tok |
+| 01:30 | 补充 ReceiveControllerChanged 的 BP 实现步骤（事件 + 共享函数 + 定时器 + 自机/他人 Sprite） | BP_WildforgeCharacter（只读）、.wolf/cerebrum.md、.wolf/memory.md | 已答复，待用户验证 | ~6k |
+| 01:31 | Session end: 2 writes across 2 files (WildforgeUIManager.h, wf-syntax-check.ps1) | 1 reads | ~3365 tok |

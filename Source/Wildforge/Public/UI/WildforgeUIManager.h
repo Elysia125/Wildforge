@@ -4,6 +4,7 @@
 
 #include "Components/SlateWrapperTypes.h"
 #include "Subsystems/LocalPlayerSubsystem.h"
+#include "Templates/SubclassOf.h"
 #include "UI/ToastMessage.h"
 
 #include "WildforgeUIManager.generated.h"
@@ -235,6 +236,16 @@ public:
   UToastWidget *ShowToastStyled(const FText &Message, FLinearColor TextColor,
                                 FLinearColor BackgroundColor,
                                 float Duration = 0.0f);
+
+  /**
+   * 用「警告」样式弹一条提示：红色文本 + 深红背景，默认停留 4 秒。
+   *
+   * 用于「精力不足」这类需要立刻被注意到的反馈。颜色是纯客户端表现
+   * （不参与玩法判定），需要换配色时改 `ShowToastWarning` 的实现或用
+   * `ShowToastMessage` 逐条指定。
+   */
+  UFUNCTION(BlueprintCallable, Category = "UI|Manager|Toast")
+  UToastWidget *ShowToastWarning(const FText &Message, float Duration = 4.0f);
 
   /** 完整数据入口：文本 / 颜色 / 图标 / 停留时长逐条指定。 */
   UFUNCTION(BlueprintCallable, Category = "UI|Manager|Toast")

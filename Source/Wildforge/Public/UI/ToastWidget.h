@@ -158,7 +158,7 @@ protected:
    */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Toast|Timing",
             meta = (ClampMin = "0.0", UIMin = "0.0"))
-  float DefaultDuration = 3.0f;
+  float DefaultDuration = 4.0f;
 
   /** 淡入时长（秒）。<= 0 表示立即完全显示。 */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Toast|Timing",

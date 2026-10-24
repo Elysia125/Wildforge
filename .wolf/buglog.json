@@ -25,8 +25,8 @@
       "timestamp": "2026-10-05T21:26:00",
       "error_message": "UHT: Property has a Category set but is not exposed to the editor or Blueprints with EditAnywhere, BlueprintReadWrite, VisibleAnywhere, BlueprintReadOnly, BlueprintAssignable, BlueprintCallable keywords. (ItemDatabaseSubsystem.h:50)",
       "file": "Source/Wildforge/Public/ItemSystem/Database/ItemDatabaseSubsystem.h",
-      "root_cause": "给只用于配置的 UPROPERTY(Config) 写了 Category，但没有 EditAnywhere/BlueprintReadWrite 等暴露关键字。UHT 以 -WarningsAsErrors 运行，警告被当成错误。",
-      "fix": "去掉该 UPROPERTY(Config) 上的 Category（Config 属性本来就只从 ini 读取，不需要 Category）。",
+      "root_cause": "给只用于配置的 UPROPERTY(Config) 写了 Category，但没有 EditAnywhere/BlueprintReadWrite 等暴露关键字。UHT 以 -WarningsAsErrors 运行，警告被当成错误。2026-10-24 在 CharacterAttributes.h 的 Level / Experience / ExperienceToNextLevel 上再次踩到（这三个是 private 的 ReplicatedUsing 属性，只写了 Category）。",
+      "fix": "去掉该 UPROPERTY(Config) 上的 Category（Config 属性本来就只从 ini 读取，不需要 Category）。若属性确实需要蓝图读取：public/protected 成员加 BlueprintReadOnly；private 成员不能加 BlueprintReadOnly（见 bug-024），改用 BlueprintGetter 指向 BlueprintPure 取值函数（本次三个属性即如此解决）。",
       "tags": [
         "uht",
         "uproperty",
@@ -34,9 +34,11 @@
         "build",
         "warnings-as-errors"
       ],
-      "related_bugs": [],
-      "occurrences": 1,
-      "last_seen": "2026-10-05T21:26:00"
+      "related_bugs": [
+        "bug-024"
+      ],
+      "occurrences": 2,
+      "last_seen": "2026-10-24T14:45:00.000Z"
     },
     {
       "id": "bug-003",
@@ -500,7 +502,7 @@
       "error_message": "UHT: E:\\...\\SprintBoostComponent.h(325): Error: BlueprintReadOnly should not be used on private members",
       "file": "Source/Wildforge/Public/Character/Components/SprintBoostComponent.h",
       "root_cause": "把 bDriveOwnerLocally 放在 private: 区段里，又给它加了 UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, ...)。UHT（以 -WarningsAsErrors 运行）不允许私有成员暴露给蓝图读取——BlueprintReadOnly/BlueprintReadWrite 的语义就是「蓝图可见」，与 private 冲突。",
-      "fix": "把该 UPROPERTY 挪到 protected: 区段（并在注释里写明为什么不放 private，避免下次又被搬回去）。替代方案是去掉 BlueprintReadOnly 只留 EditDefaultsOnly。",
+      "fix": "把该 UPROPERTY 挪到 protected: 区段（并在注释里写明为什么不放 private，避免下次又被搬回去）。替代方案是去掉 BlueprintReadOnly 只留 EditDefaultsOnly；若必须留在 private（如 CharacterAttributes 的 Level/Experience/ExperienceToNextLevel 这类由 getter 暴露的运行时数值），改成 `BlueprintGetter = GetXxx` 指向 BlueprintPure 取值函数。2026-10-24 再次踩到，已用 BlueprintGetter 解决。",
       "tags": [
         "uht",
         "uproperty",
@@ -512,8 +514,8 @@
       "related_bugs": [
         "bug-002"
       ],
-      "occurrences": 1,
-      "last_seen": "2026-10-07T15:52:00"
+      "occurrences": 2,
+      "last_seen": "2026-10-24T14:45:00.000Z"
     },
     {
       "id": "bug-025",
@@ -2337,6 +2339,376 @@
       "related_bugs": [],
       "occurrences": 3,
       "last_seen": "2026-10-24T09:51:20.525Z"
+    },
+    {
+      "id": "bug-126",
+      "timestamp": "2026-10-24T13:15:00.000Z",
+      "error_message": "用户报告：已在蓝图中给 UQuickBarWidget 指定快捷键，但格子下方的快捷键文本（ButtomExtraText）仍显示 <None>。",
+      "file": "Content/UI/W_MainWidget.uasset（子实例覆盖） / Source/Wildforge/Private/ItemSystem/UI/QuickBarWidget.cpp",
+      "root_cause": "RefreshHotkeyLabels 的文本只取自「控件实例自己的」HotkeyBindings：索引超出数组长度写 <None>，数组元素存在但 Chord.Key 无效时 InputChordToString 也返回 <None>（Utils/HotkeyUtils.h:13-15）。今日 PIE 日志（Saved/Logs/Wildforge.log 12:53/12:54 UTC）只有一条「第 0 个快捷键绑定时槽位控件尚未建出」→ 实例数组只有 1 个元素；同时 0 号槽也被写成 <None> → 该元素 Chord.Key 为空。解析编辑器未保存状态（Saved/Autosaves）：W_QuickBar_Auto1.uasset 的类默认值有 10 个元素（One..Zero，其中第 5 个误重复为 Four），而 W_MainWidget_Auto1.uasset 里嵌套的 W_QuickBar 实例序列化了 1 个元素的 HotkeyBindings 覆盖（Key=None）。UMG 嵌套 UserWidget 实例的属性覆盖会遮蔽子 WBP 类默认值，所以运行时 HUD 拿到的始终是父 WBP 里那条 1 元素旧数组。另外磁盘上的 W_QuickBar.uasset 仍是 2026-10-17 的版本（不含任何 HotkeyBindings 数据），当前 10 条配置只在编辑器内存/自动保存里。",
+      "fix": "在 W_MainWidget 设计器中选中 QuickBarWidget（W_QuickBar_C 实例）→ Details → QuickBar → Hotkey Bindings，点属性右侧的「重置为默认」箭头清除实例覆盖（不要只把数组清空，显式空数组仍可能是覆盖）；随后确认 W_QuickBar 类默认值里的 10 条绑定、把重复的 Four 改成 Five，并为每条填 FunctionName（SetupHotkeyBindings 会跳过 FunctionName=None 的条目，QuickBarWidget.cpp:111）。最后保存 W_QuickBar 与 W_MainWidget。",
+      "tags": [
+        "quickbar",
+        "umg",
+        "blueprint",
+        "hotkey",
+        "instance-override",
+        "class-defaults",
+        "unreal"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T13:15:00.000Z"
+    },
+    {
+      "id": "bug-127",
+      "timestamp": "2026-10-24T14:30:14.545Z",
+      "error_message": "Incorrect value in code",
+      "file": "Plugins/Plugins/UmgDesignSystem/UmgDesignSystem.uplugin",
+      "root_cause": "Had \"5.8.0\"",
+      "fix": "Changed to \"5.7.0\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "uplugin"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T14:30:14.545Z"
+    },
+    {
+      "id": "bug-128",
+      "timestamp": "2026-10-24T14:33:22.646Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Public/Character/Components/CharacterAttributes.h",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 11→13 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "h"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T14:33:22.646Z"
+    },
+    {
+      "id": "bug-129",
+      "timestamp": "2026-10-24T15:00:30.588Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 14→19 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T15:00:30.588Z"
+    },
+    {
+      "id": "bug-130",
+      "timestamp": "2026-10-24T15:00:45.308Z",
+      "error_message": "Null/undefined access in ",
+      "file": "Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T15:00:45.308Z"
+    },
+    {
+      "id": "bug-131",
+      "timestamp": "2026-10-24T15:00:55.174Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Private/Character/Components/LandRollComponent.cpp",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 13→19 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T15:00:55.174Z"
+    },
+    {
+      "id": "bug-132",
+      "timestamp": "2026-10-24T15:00:59.548Z",
+      "error_message": "Wrong condition in logic",
+      "file": "Source/Wildforge/Private/Character/Components/LandRollComponent.cpp",
+      "root_cause": "Condition was: if (LandRollMontage == nullptr)",
+      "fix": "Changed to: if (EnergyCost > 0.0f)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T15:00:59.548Z"
+    },
+    {
+      "id": "bug-133",
+      "timestamp": "2026-10-24T15:01:03.072Z",
+      "error_message": "Null/undefined access in ",
+      "file": "Source/Wildforge/Private/Character/Components/LandRollComponent.cpp",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: // ===== 精力消耗（权威端）=====; UCharacterAttributes *ULandRollComponent::GetOwnerAttributes",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-24T15:01:09.645Z"
+    },
+    {
+      "id": "bug-134",
+      "timestamp": "2026-10-24T15:40:13.000Z",
+      "error_message": "主界面右上角小地图不显示（RT_Minimap 已捕获图像，W_MainWidget.MapImage 已绑定）",
+      "file": "Content/Core/BP_WildforgeCharacter.uasset (SceneCaptureComponent2D) / Content/UI/W_MainWidget.uasset (MapImage)",
+      "root_cause": "SceneCapture 的 CaptureSource=SCS_SceneColorHDR，其 alpha 通道写入的是「反向不透明度」（Inv Opacity in A）：不透明地形/物体的 alpha≈0。UMG Image 按 alpha 混合绘制，因此整张 RT 在 HUD 上完全透明；RT 预览/缩略图只显示 RGB，故看起来「已经捕获」。次要问题：CaptureEveryFrame=False、CaptureOnMovement=True，只在组件移动/注册时抓一帧，小地图不会连续刷新。",
+      "fix": "在 BP_WildforgeCharacter 的 SceneCaptureComponent2D 上：Capture Source 改为 \"Final Color (LDR) in RGB\"（alpha 正常）；勾选 Capture Every Frame（可取消 Capture on Movement）。若必须用 SceneColorHDR，则需用 UI 材质采样 RT 并强制 Opacity=1。C++ 无需修改。",
+      "tags": [
+        "UMG",
+        "SceneCapture2D",
+        "RenderTarget",
+        "alpha",
+        "minimap",
+        "UI",
+        "InvOpacity"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T15:40:13.000Z"
+    },
+    {
+      "id": "bug-135",
+      "timestamp": "2026-10-24T16:16:00.000Z",
+      "error_message": "在 BP_WildforgeCharacter 的 BeginPlay 里 Spawn 小地图 Sprite Actor 后，PIE 联机的第二个客户端没有角色（看起来「加载不了」，监听服务器正常）。引擎日志 2026-10-24 16:02:34 UTC（本地 00:02:34）：LogGameMode: FindPlayerStart: PATHS NOT DEFINED or NO PLAYERSTART with positive rating；LogSpawn: Warning: SpawnActor failed because of collision at the spawn location [X=0.000 Y=0.000 Z=0.000] for [BP_WildforgeCharacter_C]；LogGameMode: Warning: SpawnDefaultPawnAtTransform: Couldn't spawn Pawn ...。WFLOG 同一时刻只有 BP_WildforgeCharacter_C_0、没有 _1，客户端 UMainUserWidget 打印「还没有 Pawn」。把同一个 Sprite Actor Attach 到角色后，角色开局被持续顶到地图边缘。",
+      "file": "Content/World/Components/Sprite/BP_MinimapIcon.uasset (PaperSpriteComponent) / Content/Core/BP_WildforgeCharacter.uasset (BeginPlay Spawn By Class + Attach)",
+      "root_cause": "BP_MinimapIcon 的 UPaperSpriteComponent 使用默认碰撞预设 BlockAllDynamic（Paper2D 构造函数写死，蓝图中没有改成 NoCollision）。BeginPlay 在服务器与每个客户端都会执行，服务器也在角色/出生点生成了一份图标；它作为实体碰撞体让唯一的 PlayerStart 变成不可用（ChoosePlayerStart 的 EncroachingBlockingGeometry 命中，FindTeleportSpot 又找不到可调整位置），FindPlayerStart 回退到 WorldSettings（0,0,0）；在原点生成 Pawn 时再次被碰撞挡下（Pawn 默认 AdjustIfPossibleButDontSpawnIfColliding），Pawn 被销毁，客户端只剩 PlayerController、没有 Pawn，表现成「加载不了」。Attach 后同一个碰撞体与角色胶囊持续重叠，CharacterMovement 每帧 depenetration 把角色推开，而图标跟随角色，重叠永远解不开，于是被一路推到地图边缘。",
+      "fix": "把 BP_MinimapIcon 的 PaperSpriteComponent 碰撞预设改成 NoCollision（Collision Enabled = No Collision，并关闭 Generate Overlap Events / Can Ever Affect Navigation）；也可以在 Spawn 之后对 Actor 调 Set Actor Enable Collision(false)，但首选在组件默认值里改。联机方面：纯表现的小地图图标保持 bReplicates=false、每端本地生成即可（每个世界一份，当前做法可行），不要同时让服务器再复制一份；若需要所有玩家互相可见，则服务器生成 + bReplicates=true + 复制 Attach，或直接把 PaperSpriteComponent 做成角色上的组件。另检查 Lvl_FirstPerson 的 PlayerStart 数量与周围空间，避免唯一出生点被占后回退到世界原点。",
+      "tags": [
+        "multiplayer",
+        "spawn",
+        "collision",
+        "PaperSpriteComponent",
+        "BlockAllDynamic",
+        "PlayerStart",
+        "Pawn",
+        "minimap",
+        "PIE",
+        "BeginPlay"
+      ],
+      "related_bugs": [
+        "bug-134"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T16:16:00.000Z"
+    },
+    {
+      "id": "bug-136",
+      "timestamp": "2026-10-24T16:55:22.163Z",
+      "error_message": "Wrong condition in logic",
+      "file": "Source/Wildforge/Private/UI/MainUserWidget.cpp",
+      "root_cause": "Condition was: if (const UCanvasPanelSlot *Slot =\n            Cast<UC)",
+      "fix": "Changed to: if (const UCanvasPanelSlot *CanvasSlot =\n            C)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-24T16:55:25.260Z"
+    },
+    {
+      "id": "bug-137",
+      "timestamp": "2026-10-24T16:55:29.594Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Private/UI/MainUserWidget.cpp",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 15→17 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T16:55:29.594Z"
+    },
+    {
+      "id": "bug-138",
+      "timestamp": "2026-10-24T16:56:05.000Z",
+      "error_message": "MainUserWidget.cpp 编译告警（IDE 中以 Error 显示）：\"Slot\" 的声明隐藏了类成员（C4458）",
+      "file": "Source/Wildforge/Private/UI/MainUserWidget.cpp",
+      "root_cause": "UMainUserWidget 继承自 UWidget，而 UWidget 自带名为 Slot 的 UPROPERTY（控件在父面板里的槽位）。CacheAttributeBarBaseSizes 与 ResizeAttributeBar 里三个局部变量都叫 Slot，按 C++ 作用域规则遮蔽了这个继承成员，触发 MSVC C4458。",
+      "fix": "把三个局部变量改名为 CanvasSlot（含其后的 GetSize/GetAutoSize/SetAutoSize/SetSize 调用点），成员访问 HPProgressBar->Slot / Bar->Slot 保持不变。",
+      "tags": [
+        "compile-warning",
+        "c4458",
+        "shadow",
+        "umg",
+        "uuserwidget",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T16:56:05.000Z"
+    },
+    {
+      "id": "bug-139",
+      "timestamp": "2026-10-24T17:08:09.171Z",
+      "error_message": "Null/undefined access in ",
+      "file": "Source/Wildforge/Public/Character/Components/CharacterAttributes.h",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "h"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T17:08:09.171Z"
+    },
+    {
+      "id": "bug-140",
+      "timestamp": "2026-10-24T17:08:24.406Z",
+      "error_message": "Null/undefined access in ",
+      "file": "Source/Wildforge/Private/Character/Components/CharacterAttributes.cpp",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T17:08:24.406Z"
+    },
+    {
+      "id": "bug-141",
+      "timestamp": "2026-10-24T17:08:43.021Z",
+      "error_message": "Wrong reference: ShowToast should be ShowToastWarning",
+      "file": "Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp",
+      "root_cause": "Used \"ShowToast\" instead of \"ShowToastWarning\"",
+      "fix": "Changed ShowToast → ShowToastWarning",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T17:08:43.021Z"
+    },
+    {
+      "id": "bug-142",
+      "timestamp": "2026-10-24T17:08:45.834Z",
+      "error_message": "Wrong reference: ShowToast should be ShowToastWarning",
+      "file": "Source/Wildforge/Private/Character/Components/LandRollComponent.cpp",
+      "root_cause": "Used \"ShowToast\" instead of \"ShowToastWarning\"",
+      "fix": "Changed ShowToast → ShowToastWarning",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T17:08:45.834Z"
+    },
+    {
+      "id": "bug-143",
+      "timestamp": "2026-10-24T17:15:56.925Z",
+      "error_message": "Incorrect value in code",
+      "file": "C:/Users/xf317/AppData/Local/Temp/wf-syntax-check.ps1",
+      "root_cause": "Had 'wf-'",
+      "fix": "Changed to \"@$tmpRsp\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ps1"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T17:15:56.925Z"
+    },
+    {
+      "id": "bug-144",
+      "timestamp": "2026-10-24T17:16:00.000Z",
+      "error_message": "精力减少是有了，但是精力缓慢回复似乎没有",
+      "file": "Source/Wildforge/Private/Character/Components/CharacterAttributes.cpp",
+      "root_cause": "UCharacterAttributes::TickComponent 是空实现，UCharacterAttributesSettings 也没有回复速度/延迟配置——全项目没有任何精力自然回复代码，只有加速/翻滚的扣费。",
+      "fix": "权威端 TickComponent 按 EnergyRegenPerSecond 回复，并在最近一次消耗后等待 EnergyRegenDelay；SetEnergy 记录 LastEnergyDecreaseTime（持续扣费会刷新它，天然避免边扣边回）；两项参数加入 CharacterAttributesSettings + DefaultGame.ini，并用 COND_InitialOnly 复制；客户端 Tick 只读复制值、不推进回复。",
+      "tags": [
+        "energy",
+        "regen",
+        "characterattributes",
+        "server-authority",
+        "settings",
+        "replication"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T17:16:00.000Z"
+    },
+    {
+      "id": "bug-145",
+      "timestamp": "2026-10-24T17:16:30.000Z",
+      "error_message": "精力耗尽这种提示是不是得用红色更好一点，另外，提示消失的是不是有点快，而且有时候好像不显示提示",
+      "file": "Source/Wildforge/Private/UI/ToastWidget.cpp",
+      "root_cause": "Toast 默认停留 3 秒；加速/翻滚耗尽时服务器按 1 秒节流重复发同一文本，旧逻辑把每一条都排进队列（上限 5）——重复消息既占用显示时间，又会在队列满时把其它提示挤掉，表现为「有时候不显示」。",
+      "fix": "新增 UWildforgeUIManager::ShowToastWarning（红字 + 深红底，默认 4 秒），加速/翻滚的精力不足提示改用它；DefaultDuration 3→4 秒；ShowToastMessage 对相同文本合并（正在显示则只重置停留计时，队列尾部相同则替换），避免重复提示刷屏与挤掉其它提示。",
+      "tags": [
+        "ui",
+        "toast",
+        "queue",
+        "dedupe",
+        "energy",
+        "warning-style"
+      ],
+      "related_bugs": [
+        "bug-144"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T17:16:30.000Z"
+    },
+    {
+      "id": "bug-146",
+      "timestamp": "2026-10-24T17:17:00.000Z",
+      "error_message": "clang-cl 无 PCH 语法检查 WildforgeUIManager.cpp 报 WildforgeUIManager.h(34,28): error: implicit instantiation of undefined template 'TSubclassOf<UUserWidget>'，并级联报 GENERATED_BODY 基类转换、GetLocalPlayer、Super::Deinitialize 等错误",
+      "file": "Source/Wildforge/Public/UI/WildforgeUIManager.h",
+      "root_cause": "头文件直接使用 TSubclassOf 属性，但没有 include 定义它的 Templates/SubclassOf.h；MSVC 的 SharedPCH 间接提供了定义所以 UBT 一直编得过，而 GenerateClangDatabase 生成的 clang rsp 不带 PCH，只剩 Templates/Casts.h 里的前置声明——其余基类/成员错误都是这个 undefined template 的级联假象。",
+      "fix": "WildforgeUIManager.h 显式补 `#include \"Templates/SubclassOf.h\"`；插入行导致按行号命名的 FID 宏错位，重跑 GenerateClangDatabase（UHT）刷新 generated.h；随后 5 个改动 TU 的 clang-cl -fsyntax-only 全部 EXIT=0。",
+      "tags": [
+        "include",
+        "iwyu",
+        "subclassof",
+        "pch",
+        "clangd",
+        "uht",
+        "false-positive"
+      ],
+      "related_bugs": [
+        "bug-014"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T17:17:00.000Z"
     }
   ]
 }

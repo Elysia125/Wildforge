@@ -42,6 +42,38 @@ void UToastWidget::ShowToastMessage(const FToastMessage &Message) {
   FToastMessage NewToast = Message;
   NewToast.Duration = ResolveHoldDuration(NewToast);
 
+  // 相同文本合并：典型场景是按住冲刺时服务器每秒发一次「精力不足」。
+  // 直接排队会刷出一长串重复提示（队列满了还会把别的提示挤掉），
+  // 这里改成：正在显示的那条只重置停留计时，或替换队列尾部的同文本条目。
+  // FadeOut 阶段不合并——那条马上就要消失，让它正常收尾、下一条重新显示。
+  if (bIsConstructed && Phase != EToastPhase::Idle &&
+      Phase != EToastPhase::FadeOut &&
+      ActiveToast.Message.EqualTo(NewToast.Message)) {
+    const float PreviousDuration = ActiveHoldDuration;
+    ActiveHoldDuration = NewToast.Duration;
+    ActiveToast = NewToast;
+
+    if (Phase == EToastPhase::Hold) {
+      PhaseElapsedSeconds = 0.0f;
+      ApplyToastVisuals(ActiveToast);
+    }
+
+    WFLOG_INFO("[Toast] 相同提示正在显示，停留计时重置为 %.2fs"
+               "（原 %.2fs，不重复排队）：%s",
+               ActiveHoldDuration, PreviousDuration,
+               *ActiveToast.Message.ToString());
+    return;
+  }
+
+  if (PendingToasts.Num() > 0 &&
+      PendingToasts.Last().Message.EqualTo(NewToast.Message)) {
+    PendingToasts.Last() = NewToast;
+    WFLOG_INFO("[Toast] 队列尾部已有相同提示，替换为最新样式"
+               "（待显示 %d 条）：%s",
+               PendingToasts.Num(), *NewToast.Message.ToString());
+    return;
+  }
+
   // 控件还没进入 Slate 树时先排队：NativeConstruct 里再开始播放，
   // 避免蓝图动画在控件树尚未就绪时被 BP_OnToastShown 触发。
   if (!bIsConstructed) {

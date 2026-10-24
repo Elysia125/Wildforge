@@ -536,12 +536,57 @@
   上都有实例，碰撞重叠 / Tick 也会为**远端角色的模拟代理**执行；交互提示逻辑必须在入口用
   `IsLocallyControlled` 过滤，否则主机角色靠近宝箱会让每个客户端都弹提示。见 bug-124。
 
+- [2026-10-24] **UMG 嵌套 UserWidget 的实例属性覆盖会遮蔽子 WBP 的类默认值**：父 WBP（如
+  `W_MainWidget`）的设计器里放置的子控件（`QuickBarWidget` / `W_QuickBar_C`）是一个序列化实例，
+  在它上面改过的属性会以「与类 CDO 的差异」存进父 WBP；之后改子 WBP 的 Class Defaults **不会**
+  透传到这个实例。排查时可解析 `Saved/Autosaves` 的 tagged property（`HotkeyBindings` 的
+  ArrayProperty 值），或直接在父 WBP 里选中子控件看 Details 面板的重置箭头。见 bug-126。
+
+- [2026-10-24] **UMG 布局空间不是窗口像素**：`UIScaleRule=ShortestSide` 下布局宽度 ≈
+  `1080 × 宽高比`（4:3 窗口的布局空间反而是 1441×1081）。`W_MainWidget` 的 `RootSizeBox`
+  是居中定尺（≈1921×1086），在 4:3 / 小窗口里左边界会到 x≈−242，把左上角头像/血条推出屏幕，
+  而水平居中的快捷栏看不出问题。HUD 根容器应设 **Fill Screen**（锚点 0,0–1,1、偏移 0、
+  对齐 0,0），让子 Canvas 的左上角始终等于屏幕左上角。`W_InventoryWidget` 根是 1280×720
+  定尺，适配方式是外面套 `ScaleBox`（Scale to Fit / Down Only）+ 父槽 Fill Screen。
+
+- [2026-10-25] **`UPaperSpriteComponent` 的默认碰撞预设是 `BlockAllDynamic`**（Paper2D 构造函数写死：
+  `Engine/Plugins/2D/Paper2D/Source/Paper2D/Private/PaperSpriteComponent.cpp:24`）。纯表现用的 Sprite
+  Actor（小地图图标、拾取提示等）必须在组件上改成 `NoCollision`，否则它会作为实体碰撞体参与 PlayerStart
+  的 `EncroachingBlockingGeometry` / `FindTeleportSpot` 判定，把后续玩家的 Pawn 生成挡掉；`Attach` 到
+  角色身上后，CharacterMovement 每帧的 depenetration 会持续把它顶开，而图标跟着角色走 ⇒ 重叠永远解不开，
+  角色被一路推到地图边缘。见 bug-135。
+
+- [2026-10-25] **头文件直接用 `TSubclassOf<T>` 必须自己 `#include "Templates/SubclassOf.h"`**：
+  `CoreMinimal.h` 这条包含链只经 `Templates/Casts.h` 给出前置声明，定义不在里面。MSVC 的
+  SharedPCH 会掩盖这一点（UBT 一直编得过），而 `GenerateClangDatabase` 生成的 clang rsp **不带 PCH**，
+  于是报 `implicit instantiation of undefined template 'TSubclassOf<...>'`，并级联出
+  `GENERATED_BODY` 基类转换失败、`GetLocalPlayer` 无匹配、`Super::Deinitialize` 对象参数不兼容
+  等一串看似无关的假错误——先把第一个 `undefined template` 修掉再看剩下的。补 include 会改变行号，
+  紧接着必须重跑 UHT。见 bug-146、bug-014。
+
+- [2026-10-25] **SceneCapture2D 本地门禁用 `APawn::ReceiveControllerChanged`**：该事件只在
+  服务器和 owning client 触发；客户端 Pawn 的 BeginPlay 可能还没有 Controller，不能在那里用
+  `IsLocallyControlled` 判断。客户端上远端 Pawn 不会触发该事件，所以捕获组件的类默认值必须
+  `CaptureEveryFrame=false` + `CaptureOnMovement=false`，只在本机 Possess 的 Pawn 上打开。
+  `CaptureOnMovement` 只在组件自身 transform 变化时刷新，别人移动不会刷新；多人小地图用 0.1s
+  的 `CaptureScene` 定时器。PIE 多世界共享 `RT_Minimap` 资产，需运行时 RT 或分进程测试。
+
 ## Do-Not-Repeat
 
 <!-- Mistakes made and corrected. Each entry prevents the same mistake recurring. -->
 <!-- Format: [YYYY-MM-DD] Description of what went wrong and what to do instead. -->
 <!-- ⚠️ `.wolf/hooks/pre-write.js` 按本标题（## Do-Not-Repeat）硬编码切分，不可改名或搬走。 -->
 
+- [2026-10-25] **在 `UWidget` / `UUserWidget` 子类里不要把局部变量命名为 `Slot`**：`UWidget` 自带
+  `Slot` 成员，同名局部变量会遮蔽它并触发 C4458（本项目按错误处理）；局部槽位变量用 `CanvasSlot`
+  等带前缀的名字。见 bug-138。
+- [2026-10-25] **头文件用 `TSubclassOf<T>` 时不要只靠前置声明**：必须
+  `#include "Templates/SubclassOf.h"`（`CoreMinimal.h` 只给前置声明，不给定义）。否则无 PCH 的
+  clang 检查会报 `undefined template 'TSubclassOf<...>'`，还会级联出一堆基类转换/成员函数的假错误；
+  补 include 会改行号，紧接着重跑 UHT。见 bug-146。
+- [2026-10-24] **改子 WBP 的类默认值（如 `HotkeyBindings`）前，先检查父 WBP 的设计器实例有没有
+  同名属性覆盖**——实例覆盖会静默遮蔽类默认值，运行时读到的仍是父 WBP 里的旧数组。发现
+  「蓝图里明明配了、运行时却是空/<None>」时先看父 WBP，用 Details 的重置箭头清掉覆盖。见 bug-126。
 - [2026-10-24] **不要在复制的角色蓝图的碰撞重叠 / Tick / BeginPlay 里无条件调 `ShowUI` / `HideUI`**：
   这些逻辑在每个客户端上会为所有角色实例（含远端玩家的模拟代理）执行，主机靠近宝箱就会让每个
   客户端各自弹一次提示。交互提示入口先判 `Is Locally Controlled`，只让本机控制的角色碰本机 UI。见 bug-124。
@@ -660,7 +705,8 @@
   `out-of-line definition ... does not match any declaration`（UHT 自己不会报）。见 bug-023。
 - [2026-10-07] **`UPROPERTY(BlueprintReadOnly/BlueprintReadWrite)` 不要放在 `private:` 区段**：UHT 以
   `-WarningsAsErrors` 运行，直接报 `BlueprintReadOnly should not be used on private members`。
-  想留在 private 就去掉蓝图可见性；否则挪到 protected。见 bug-024。
+  想留在 private 就去掉蓝图可见性；或者改用 `BlueprintGetter = GetXxx` 指向 `BlueprintPure`
+  取值函数（2026-10-24 在 CharacterAttributes 上再次踩到，即用此法解决）；否则挪到 protected。见 bug-024。
 - [2026-10-07] **多方共享的「禁止移动」锁不要用计数，用按来源记账的集合**：计数在「同一来源重复
   请求」时会泄漏（连击切段重复广播 `OnAttackStarted` 就会让锁回不到 0），集合的重复 Add 幂等。
   判断一个共享状态该用哪种抽象，先问「需不需要区分是谁在持有」。见 Decision Log。
@@ -784,6 +830,16 @@
 - [2026-10-22] **`UFUNCTION` 在头文件里声明后必须在 .cpp 提供定义**：漏定义时 UHT 照常生成
   `execXxx` 反射包装，编译通过、链接报 `LNK2019/LNK2001`。看到「exec + 函数名」被引用的未解析符号，
   先查该 UFUNCTION（含 `BlueprintPure` / `BlueprintCallable`）是否有实现。见 bug-109。
+
+- [2026-10-24] **`SceneCaptureSource=SceneColor (HDR)` 的 alpha 是「反向不透明度」**：不透明像素的 Alpha≈0
+  （枚举显示名即 `Inv Opacity in A`，`SceneCapturePixelShader.usf` 也注明 “Artists will have to invert
+  the alpha”）。把该 RT 直接给 UMG `Image` 用会整张透明——RT 预览/缩略图只看 RGB，容易误判成「已经捕获」。
+  UI / 小地图应使用 `Final Color (LDR) in RGB`（Alpha 正常），或走 UI 材质强制 Opacity=1。见 bug-134。
+
+- [2026-10-25] **不要给纯表现用的 Sprite Actor / 小地图图标保留默认碰撞**：`PaperSpriteComponent` 默认
+  `BlockAllDynamic`，会挡住 PlayerStart 的选择与后续玩家 Pawn 的生成（客户端表现为「卡加载 / 没有角色」，
+  监听服务器正常），`Attach` 到角色后还会把角色顶到地图边缘。一律设 `NoCollision`，并关掉
+  Generate Overlap Events / Can Ever Affect Navigation。见 bug-135。
 
 ## Decision Log
 
@@ -1110,3 +1166,32 @@
   显示范围由调用点决定：角色交互提示在入口判 `IsLocallyControlled`，宝箱开关走拥有者客户端的
   `OnActiveContainerChanged`（`COND_OwnerOnly`），全端公告就让每个端各执行一次。把玩法权限塞进
   UI 管理器会误杀合法的全端显示，并掩盖调用点的归属错误。见 bug-124。
+- [2026-10-24] **等级成长用函数曲线，不逐级配置**：`MaxHealth(L) = InitialHealth +
+  HealthPerLevel * (L - 1)`、`MaxEnergy(L)` 同理、`RequiredXP(L) = round(BaseExperienceToNextLevel
+  * ExperienceGrowthFactor ^ (L - 1))`。参数集中在 `UCharacterAttributesSettings`（一类一页），
+  权威端 `BeginPlay` 读 ini，成长参数用 `COND_InitialOnly` 下发，客户端用同一函数算曲线。
+  理由：等级上限 100 时逐级表要写 100 行，调平衡只需改 3 个数；公式与参数一起复制，
+  客户端结果与服务器天然一致，且客户端不读 ini。
+- [2026-10-24] **血条/精力条长度随上限增长**：设计宽度（CanvasPanelSlot 尺寸）× 上限倍率（当前上限 / 1 级上限），倍率夹在 `[1, MaxBarStretch]`（默认 2.5）；高度不变、向右生长。基准尺寸在 `NativeConstruct` 缓存一次（槽位尺寸会被自身拉伸改写，不能每次现取）；开关与倍率放在 WBP 类默认值（纯客户端表现，与 Toast 时长同类，不进 ini）。理由：百分比填充会随上限提高显得「变短」，拉长 bar 让等级成长有直观反馈；倍率上限保证窄屏下不会顶到右上角地图。
+- [2026-10-24] **精力消耗：加速持续扣、翻滚一次性扣，扣费点在「真正生效」之后**：
+  加速的扣费放在 `USprintBoostComponent::TickComponent`（权威端、`bBoostActive` 期间每帧扣
+  `EnergyCostPerSecond * DeltaTime`），**不要**放进 `TickSprintBoost`——后者在速度达到曲线上限后就不再执行，
+  放那里会在加速中途停止扣费；耗尽时 `SetEnergy(0)` + `ResetMaxSpeed()` + 通知。翻滚在
+  `LandRoll_Implementation` 里先查 `GetEnergy() < EnergyCost` 直接拒绝（不扣、不播蒙太奇），
+  蒙太奇成功启动后才扣 `EnergyCost`，失败/冷却中不收费。精力不足提示走 **Server 端判定的
+  `Client_NotifyInsufficientEnergy`**（`UFUNCTION(Client, Reliable)`，由服务器在拒绝/耗尽时调用），
+  客户端收到后经 `UWildforgeUIManager::ShowToast` 弹提示；服务器侧用 `GetTimeSeconds()` 做 1 秒节流，
+  避免持续按住 Shift 时刷屏。消耗值放在各自组件的配置类（`SprintBoostComponentSettings::EnergyCostPerSecond` /
+  `LandRollComponentSettings::EnergyCost`），`COND_InitialOnly` 复制给所有端。理由：客户端自己判断精力会
+  被伪造，提示必须由权威端驱动；扣费时机与玩法结果绑定，被拒的翻滚不应收费。
+- [2026-10-25] **精力自然回复放在 `UCharacterAttributes`，用「最近消耗时间 + 延迟」而不是在各消耗组件里
+  开定时器**：权威端 `TickComponent` 仅在 `Now - LastEnergyDecreaseTime >= EnergyRegenDelay` 后按
+  `EnergyRegenPerSecond` 回复；`SetEnergy` 每次下降都刷新时间戳，因此加速持续扣费期间天然不会边扣边回，
+  属性组件也不需要反向依赖 `USprintBoostComponent` / `ULandRollComponent`。参数进
+  `UCharacterAttributesSettings`（一类一页），`COND_InitialOnly` 下发，客户端 Tick 绝不写 `Energy`。
+  理由：回复规则属于属性本身，未来任何新的消耗来源都会自动获得同样的延迟语义。
+- [2026-10-25] **Toast 的警告样式与重复合并都留在纯客户端表现层**：`ShowToastWarning` 固定红字
+  + 深红底（颜色不进 ini，不驱动玩法；要换肤用 `ShowToastStyled`），默认停留 4 秒；
+  `ShowToastMessage` 对相同文本合并——正在显示的只重置停留计时，队列尾部的直接替换（FadeOut
+  阶段不合并，让旧条正常收尾）。理由：服务器每秒节流的「精力不足」若逐条入队会刷屏，队列满时还会
+  挤掉其它提示；合并保持最新意图可见，又不改变队列上限的语义。

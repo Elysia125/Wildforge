@@ -240,6 +240,432 @@
 		"output": "E:/UE_Projects/Wildforge/Plugins/KawaiiPhysics/Intermediate/Build/Win64/x64/UnrealEditor/Development/KawaiiPhysics/KawaiiPhysicsSimulationTest.cpp.obj"
 	},
 	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystemCommonUI/PerModuleInline.gen.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystemCommonUI/PerModuleInline.gen.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystemCommonUI/PerModuleInline.gen.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystemEditor/PerModuleInline.gen.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystemEditor/PerModuleInline.gen.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystemEditor/PerModuleInline.gen.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/Module.UmgDesignSystem.gen.1.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/Module.UmgDesignSystem.gen.1.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/Module.UmgDesignSystem.gen.1.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/Module.UmgDesignSystem.gen.2.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/Module.UmgDesignSystem.gen.2.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/Module.UmgDesignSystem.gen.2.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/Module.UmgDesignSystem.gen.3.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/Module.UmgDesignSystem.gen.3.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/Module.UmgDesignSystem.gen.3.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/Module.UmgDesignSystem.gen.4.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/Module.UmgDesignSystem.gen.4.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/Module.UmgDesignSystem.gen.4.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/PerModuleInline.gen.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/PerModuleInline.gen.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/PerModuleInline.gen.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystemCommonUI/Private/DsCommonUI.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystemCommonUI/DsCommonUI.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystemCommonUI/DsCommonUI.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystemCommonUI/Private/UmgDesignSystemCommonUIModule.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystemCommonUI/UmgDesignSystemCommonUIModule.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystemCommonUI/UmgDesignSystemCommonUIModule.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystemEditor/Private/DsGalleryTab.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystemEditor/DsGalleryTab.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystemEditor/DsGalleryTab.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystemEditor/Private/DsThemeCustomization.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystemEditor/DsThemeCustomization.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystemEditor/DsThemeCustomization.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystemEditor/Private/UmgDesignSystemEditorModule.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystemEditor/UmgDesignSystemEditorModule.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystemEditor/UmgDesignSystemEditorModule.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/DsAccessibility.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsAccessibility.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsAccessibility.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/DsFocus.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsFocus.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsFocus.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/DsIconLibrary.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsIconLibrary.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsIconLibrary.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/DsInputDevice.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsInputDevice.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsInputDevice.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/DsOverlaySubsystem.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsOverlaySubsystem.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsOverlaySubsystem.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/DsPlayerThemeSubsystem.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsPlayerThemeSubsystem.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsPlayerThemeSubsystem.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/DsSettings.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsSettings.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsSettings.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/DsStyleLibrary.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsStyleLibrary.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsStyleLibrary.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/DsStyles.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsStyles.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsStyles.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/DsTheme.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsTheme.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsTheme.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/DsThemeSubsystem.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsThemeSubsystem.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsThemeSubsystem.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/DsTokenIO.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsTokenIO.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsTokenIO.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Slate/SDsButton.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/SDsButton.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/SDsButton.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Slate/SDsFocusRing.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/SDsFocusRing.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/SDsFocusRing.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Slate/SDsRangeSlider.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/SDsRangeSlider.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/SDsRangeSlider.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Slate/SDsScrollBox.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/SDsScrollBox.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/SDsScrollBox.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Slate/SDsSkeleton.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/SDsSkeleton.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/SDsSkeleton.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Slate/SDsToggle.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/SDsToggle.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/SDsToggle.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Tests/DsStyleTests.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsStyleTests.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsStyleTests.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Tests/DsThemeTests.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsThemeTests.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsThemeTests.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Tests/DsWidgetTests.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsWidgetTests.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsWidgetTests.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/UmgDesignSystemModule.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/UmgDesignSystemModule.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/UmgDesignSystemModule.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsAccordion.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsAccordion.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsAccordion.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsAvatar.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsAvatar.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsAvatar.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsBadge.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsBadge.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsBadge.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsBreadcrumb.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsBreadcrumb.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsBreadcrumb.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsButton.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsButton.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsButton.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsCard.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsCard.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsCard.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsDivider.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsDivider.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsDivider.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsDragDrop.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsDragDrop.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsDragDrop.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsDropdown.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsDropdown.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsDropdown.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsEmptyState.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsEmptyState.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsEmptyState.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsGalleryPalettes.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsGalleryPalettes.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsGalleryPalettes.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsGalleryWidget.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsGalleryWidget.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsGalleryWidget.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsGrid.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsGrid.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsGrid.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsIcon.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsIcon.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsIcon.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsInputPrompt.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsInputPrompt.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsInputPrompt.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsItemSlot.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsItemSlot.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsItemSlot.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsListView.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsListView.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsListView.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsModal.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsModal.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsModal.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsPagination.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsPagination.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsPagination.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsProgressBar.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsProgressBar.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsProgressBar.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsRangeSlider.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsRangeSlider.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsRangeSlider.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsScrollBox.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsScrollBox.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsScrollBox.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsSearchBox.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsSearchBox.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsSearchBox.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsSettingRow.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsSettingRow.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsSettingRow.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsSkeleton.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsSkeleton.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsSkeleton.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsSlider.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsSlider.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsSlider.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsSpacer.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsSpacer.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsSpacer.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsSpinner.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsSpinner.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsSpinner.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsStack.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsStack.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsStack.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsStepper.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsStepper.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsStepper.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsSurface.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsSurface.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsSurface.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsTabs.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsTabs.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsTabs.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsText.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsText.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsText.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsTextArea.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsTextArea.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsTextArea.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsTextBox.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsTextBox.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsTextBox.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsToast.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsToast.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsToast.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Source/UmgDesignSystem/Private/Widgets/DsToggle.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsToggle.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Plugins/Plugins/UmgDesignSystem/Intermediate/Build/Win64/x64/UnrealEditor/Development/UmgDesignSystem/DsToggle.cpp.obj"
+	},
+	{
 		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Adaptor/CharacterAdaptor.cpp",
 		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/CharacterAdaptor.cpp.obj.rsp\" ",
 		"directory": "D:/UE/UE_5.7/Engine/Source",

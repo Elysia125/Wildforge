@@ -434,6 +434,17 @@ UToastWidget *UWildforgeUIManager::ShowToastStyled(const FText &Message,
   return ToastWidget;
 }
 
+UToastWidget *UWildforgeUIManager::ShowToastWarning(const FText &Message,
+                                                    float Duration) {
+  // 警告样式是纯客户端表现（与 WBP 皮肤同类），不进 ini：
+  // 红字 + 深红底，保证在亮色场景里也能一眼看到。
+  static const FLinearColor WarningTextColor(1.0f, 0.25f, 0.2f, 1.0f);
+  static const FLinearColor WarningBackgroundColor(0.35f, 0.02f, 0.02f, 0.9f);
+
+  return ShowToastStyled(Message, WarningTextColor, WarningBackgroundColor,
+                         Duration);
+}
+
 UToastWidget *
 UWildforgeUIManager::ShowToastMessage(const FToastMessage &Message) {
   if (Message.Message.IsEmpty()) {

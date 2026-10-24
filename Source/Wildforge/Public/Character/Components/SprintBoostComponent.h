@@ -14,6 +14,7 @@
 // 只用于 `GetOwnerMovementComponent()` 的返回类型（以及 .cpp 里的实现），
 // 头文件里不需要它的完整定义——不引引擎头能少一层编译依赖。
 class UCharacterMovementComponent;
+class UCharacterAttributes;
 
 // 加速进度的本地广播。
 //
@@ -151,6 +152,18 @@ public:
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SprintBoost",
             meta = (ClampMin = "0", UIMin = "0", ForceUnits = "cm/s"))
   float MinTargetSpeed = 1.0f;
+
+  // ===== 精力消耗（服务器权威）=====
+  //
+  // 加速进行中由权威端按帧从宿主的 `UCharacterAttributes` 扣精力：
+  //   * 起手时要求精力 > 0，否则拒绝并通知拥有者客户端弹提示；
+  //   * 进行中精力耗尽立即 `ResetMaxSpeed()`，并通知拥有者一次；
+  //   * 值本身由权威端从 USprintBoostComponentSettings 读 ini，再 `COND_InitialOnly`
+  //     下发给客户端（客户端只读，用于 UI / 提示文案）。
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated,
+            Category = "SprintBoost|Energy",
+            meta = (ClampMin = "0", UIMin = "0"))
+  float EnergyCostPerSecond = 10.0f;
 
   // ===== 方向门控：只有向前移动时才允许加速 =====
   //
@@ -440,6 +453,11 @@ public:
             Category = "SprintBoost|RPC")
   void Server_StopSpeedBoost();
 
+  // 服务器 -> 拥有者客户端：精力不足提示（加速起手被拒 / 加速中耗尽）。
+  // 只发给拥有者连接（`Client`），由客户端用 UWildforgeUIManager 弹 Toast。
+  UFUNCTION(Client, Reliable, Category = "SprintBoost|RPC")
+  void Client_NotifyInsufficientEnergy(float RequiredEnergy);
+
 protected:
   // Called when the game starts
   virtual void BeginPlay() override;
@@ -620,4 +638,22 @@ private:
   // 注意只标记 Started 那一侧，Stopped 是瞬时事件，不需要单独记。
   void BroadcastBoostStarted();
   void BroadcastBoostStopped(const TCHAR *Reason);
+
+  // ===== 精力消耗（全部只在权威端执行）=====
+
+  // 取宿主的属性组件（没有则返回 nullptr）。
+  UCharacterAttributes *GetOwnerAttributes() const;
+
+  // 加速进行中按 DeltaSeconds 扣精力；耗尽时停止加速并通知拥有者。
+  // 只在权威端、且 `bBoostActive` 为 true 时由 TickComponent 调用。
+  void TickSprintEnergyDrain(float DeltaSeconds);
+
+  // 通知拥有者客户端「精力不足」。内部按 1 秒节流，避免连续请求刷屏。
+  void NotifyInsufficientEnergyOnOwner(float RequiredEnergy);
+
+  // 「宿主没有属性组件」只告警一次，避免每帧刷屏。
+  bool bEnergyAttributesWarned = false;
+
+  // 上一次弹「精力不足」的世界时间（秒），用于节流。
+  float LastInsufficientEnergyToastTime = -1000.0f;
 };

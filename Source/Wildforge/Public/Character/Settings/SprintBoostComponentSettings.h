@@ -71,4 +71,14 @@ public:
             meta = (EditCondition = "bOverride_MontagePlayRate", ClampMin = "0.01",
                     UIMin = "0.01"))
   float MontagePlayRate = 1.0f;
+
+  /** 加速时每秒消耗的精力（0 = 不消耗）。由权威端按帧扣除；精力耗尽会自动停止加速。 */
+  UPROPERTY(Config, EditAnywhere, Category = "Energy",
+            meta = (InlineEditConditionToggle))
+  bool bOverride_EnergyCostPerSecond = false;
+
+  UPROPERTY(Config, EditAnywhere, Category = "Energy",
+            meta = (EditCondition = "bOverride_EnergyCostPerSecond", ClampMin = "0",
+                    UIMin = "0"))
+  float EnergyCostPerSecond = 10.0f;
 };

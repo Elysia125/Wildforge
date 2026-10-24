@@ -1,108 +1,44 @@
 {
-  "session_id": "session-2026-10-24-1746",
-  "started": "2026-10-24T09:46:09.279Z",
+  "session_id": "session-2026-10-24-0113",
+  "started": "2026-10-24T17:13:22.918Z",
   "files_read": {
-    "E:/UE_Projects/Wildforge/Source/Wildforge/Private/World/ChestActor.cpp": {
-      "count": 4,
-      "tokens": 4510,
-      "first_read": "2026-10-24T09:48:52.210Z"
-    },
-    "E:/UE_Projects/Wildforge/Source/Wildforge/Public/ItemSystem/Structs/ItemInfo.h": {
+    "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/CharacterAttributes.cpp": {
       "count": 1,
-      "tokens": 900,
-      "first_read": "2026-10-24T09:48:55.249Z"
+      "tokens": 3311,
+      "first_read": "2026-10-24T17:18:35.003Z"
     },
-    "E:/UE_Projects/Wildforge/Source/Wildforge/Private/ItemSystem/Components/ItemContainer.cpp": {
-      "count": 1,
-      "tokens": 11000,
-      "first_read": "2026-10-24T09:49:01.093Z"
+    "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/LandRollComponent.cpp": {
+      "count": 2,
+      "tokens": 7391,
+      "first_read": "2026-10-24T17:46:31.118Z"
     },
-    "E:/UE_Projects/Wildforge/Source/Wildforge/Public/World/Settings/ChestSettings.h": {
+    "E:/UE_Projects/Wildforge/Source/Wildforge/Public/UI/ToastWidget.h": {
       "count": 1,
-      "tokens": 583,
-      "first_read": "2026-10-24T09:49:01.262Z"
-    },
-    "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/UnrealEditor/Inc/Wildforge/UHT/ChestActor.generated.h": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-10-24T09:51:40.241Z"
-    },
-    "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/UnrealEditor/Inc/Wildforge/UHT/ChestSettings.generated.h": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-10-24T09:51:40.450Z"
+      "tokens": 1986,
+      "first_read": "2026-10-24T17:46:35.709Z"
     }
   },
   "files_written": [
     {
-      "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/World/ChestActor.h",
+      "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/UI/WildforgeUIManager.h",
       "action": "edit",
-      "tokens": 79,
-      "at": "2026-10-24T09:50:53.085Z"
+      "tokens": 43,
+      "at": "2026-10-24T17:14:37.216Z"
     },
     {
-      "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/World/ChestActor.h",
+      "file": "C:/Users/xf317/AppData/Local/Temp/wf-syntax-check.ps1",
       "action": "edit",
-      "tokens": 180,
-      "at": "2026-10-24T09:50:54.357Z"
-    },
-    {
-      "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/World/Settings/ChestSettings.h",
-      "action": "edit",
-      "tokens": 60,
-      "at": "2026-10-24T09:50:55.122Z"
-    },
-    {
-      "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/World/Settings/ChestSettings.h",
-      "action": "edit",
-      "tokens": 314,
-      "at": "2026-10-24T09:50:56.714Z"
-    },
-    {
-      "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/World/ChestActor.cpp",
-      "action": "edit",
-      "tokens": 93,
-      "at": "2026-10-24T09:50:59.267Z"
-    },
-    {
-      "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/World/ChestActor.cpp",
-      "action": "edit",
-      "tokens": 451,
-      "at": "2026-10-24T09:51:04.859Z"
-    },
-    {
-      "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/World/ChestActor.cpp",
-      "action": "edit",
-      "tokens": 312,
-      "at": "2026-10-24T09:51:12.350Z"
-    },
-    {
-      "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/World/ChestActor.cpp",
-      "action": "edit",
-      "tokens": 173,
-      "at": "2026-10-24T09:51:13.695Z"
-    },
-    {
-      "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/World/ChestActor.cpp",
-      "action": "edit",
-      "tokens": 66,
-      "at": "2026-10-24T09:51:19.823Z"
-    },
-    {
-      "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/World/ChestActor.cpp",
-      "action": "edit",
-      "tokens": 64,
-      "at": "2026-10-24T09:51:20.520Z"
+      "tokens": 11,
+      "at": "2026-10-24T17:15:56.921Z"
     }
   ],
   "edit_counts": {
-    "Source/Wildforge/Public/World/ChestActor.h": 2,
-    "Source/Wildforge/Public/World/Settings/ChestSettings.h": 2,
-    "Source/Wildforge/Private/World/ChestActor.cpp": 6
+    "Source/Wildforge/Public/UI/WildforgeUIManager.h": 1,
+    "C:/Users/xf317/AppData/Local/Temp/wf-syntax-check.ps1": 1
   },
-  "anatomy_hits": 4,
-  "anatomy_misses": 2,
-  "repeated_reads_warned": 3,
+  "anatomy_hits": 3,
+  "anatomy_misses": 0,
+  "repeated_reads_warned": 1,
   "cerebrum_warnings": 0,
   "stop_count": 2
 }

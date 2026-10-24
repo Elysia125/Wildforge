@@ -71,4 +71,14 @@ public:
             meta = (EditCondition = "bOverride_MontagePlayRate", ClampMin = "0.01",
                     UIMin = "0.01"))
   float MontagePlayRate = 1.5f;
+
+  /** 每次翻滚消耗的精力（0 = 不消耗）。精力不足时翻滚被拒，并由服务器通知拥有者弹提示。 */
+  UPROPERTY(Config, EditAnywhere, Category = "Energy",
+            meta = (InlineEditConditionToggle))
+  bool bOverride_EnergyCost = false;
+
+  UPROPERTY(Config, EditAnywhere, Category = "Energy",
+            meta = (EditCondition = "bOverride_EnergyCost", ClampMin = "0",
+                    UIMin = "0"))
+  float EnergyCost = 20.0f;
 };
