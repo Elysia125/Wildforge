@@ -414,6 +414,18 @@
 		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/MainUserWidget.cpp.obj"
 	},
 	{
+		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/UI/ToastWidget.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/ToastWidget.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/ToastWidget.cpp.obj"
+	},
+	{
+		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/UI/WildforgeUIManager.cpp",
+		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/WildforgeUIManager.cpp.obj.rsp\" ",
+		"directory": "D:/UE/UE_5.7/Engine/Source",
+		"output": "E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/WildforgeUIManager.cpp.obj"
+	},
+	{
 		"file": "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Utils/WildforgeLog.cpp",
 		"command": "E:/LLVM/bin/clang-cl.exe @\"E:/UE_Projects/Wildforge/Intermediate/Build/Win64/x64/UnrealEditor/Development/Wildforge/WildforgeLog.cpp.obj.rsp\" ",
 		"directory": "D:/UE/UE_5.7/Engine/Source",

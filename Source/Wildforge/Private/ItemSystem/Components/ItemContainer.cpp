@@ -344,6 +344,16 @@ int32 UItemContainer::AddItemStack(const FItemInformation &Item,
                                    int32 Quantity) {
   WF_COMPONENT_AUTHORITY_GUARD(0);
   check(IsInGameThread());
+
+  const int32 Added = AddItemStackInternal(Item, Quantity);
+  if (Added > 0) {
+    NotifyContainerChanged();
+  }
+  return Added;
+}
+
+int32 UItemContainer::AddItemStackInternal(const FItemInformation &Item,
+                                           int32 Quantity) {
   if (Quantity <= 0) {
     return 0;
   }
@@ -353,7 +363,6 @@ int32 UItemContainer::AddItemStack(const FItemInformation &Item,
       Item.IsStackable ? FMath::Max(1, Item.MaxStackSize) : 1;
 
   int32 Remaining = Quantity;
-  bool bChanged = false;
 
   // 1) 优先补进已有的同 ItemID 未满堆
   if (Item.IsStackable) {
@@ -373,7 +382,6 @@ int32 UItemContainer::AddItemStack(const FItemInformation &Item,
         const int32 Add = FMath::Min(StackSize - Current, Remaining);
         Slots[SlotIndex].ItemQuality = Current + Add;
         Remaining -= Add;
-        bChanged = true;
       }
     }
   }
@@ -396,11 +404,6 @@ int32 UItemContainer::AddItemStack(const FItemInformation &Item,
     ++UsedCount;
 
     Remaining -= ThisCount;
-    bChanged = true;
-  }
-
-  if (bChanged) {
-    NotifyContainerChanged();
   }
 
   return Quantity - Remaining;
@@ -855,6 +858,118 @@ bool UItemContainer::MoveItemToContainer(int32 FromSlot,
              *GetNameSafe(this), FromSlot, *GetNameSafe(TargetContainer),
              ToSlot, SourceItem.ItemID, TargetItem.ItemID);
   return true;
+}
+
+int32 UItemContainer::TransferAllToContainer(
+    UItemContainer *TargetContainer) {
+  WF_COMPONENT_AUTHORITY_GUARD(0);
+  check(IsInGameThread());
+
+  if (!TargetContainer) {
+    WFLOG_WARNING("[容器] %s 收到空的全体转移目标容器，忽略。",
+                  *GetNameSafe(GetOwner()));
+    return 0;
+  }
+  if (TargetContainer == this) {
+    WFLOG_WARNING("[容器] %s 的全体转移源与目标是同一个容器，忽略。",
+                  *GetNameSafe(GetOwner()));
+    return 0;
+  }
+  if (!IsAuthoritativeForActorComponent(TargetContainer)) {
+    WFLOG_ERROR("[容器] %s 试图把物品全体转移到非权威端的容器 %s，已拒绝。",
+                *GetNameSafe(GetOwner()),
+                *GetNameSafe(TargetContainer->GetOwner()));
+    return 0;
+  }
+
+  // 快照源槽位：转移会清空 / 改写源槽位，不能边遍历边改。
+  struct FSourceStack {
+    int32 SlotIndex = INDEX_NONE;
+    FItemInformation Item;
+  };
+  TArray<FSourceStack> SourceStacks;
+  SourceStacks.Reserve(UsedCount);
+
+  int32 TotalInSource = 0;
+  for (int32 SlotIndex = 0; SlotIndex < Slots.Num(); ++SlotIndex) {
+    if (!SlotOccupied.IsValidIndex(SlotIndex) || !SlotOccupied[SlotIndex]) {
+      continue;
+    }
+    FSourceStack &Stack = SourceStacks.AddDefaulted_GetRef();
+    Stack.SlotIndex = SlotIndex;
+    Stack.Item = Slots[SlotIndex];
+    TotalInSource += FMath::Max(1, Slots[SlotIndex].ItemQuality);
+  }
+
+  if (SourceStacks.Num() == 0) {
+    WFLOG_INFO("[容器] %s 是空的，全体转移无事可做。",
+               *GetNameSafe(GetOwner()));
+    return 0;
+  }
+
+  int32 TotalMoved = 0;
+  bool bSourceChanged = false;
+  bool bTargetChanged = false;
+
+  for (const FSourceStack &Stack : SourceStacks) {
+    const int32 SourceCount = FMath::Max(1, Stack.Item.ItemQuality);
+
+    // 复用 AddItemStack 的规则：先补同 ItemID 的未满堆，溢出再放空槽。
+    // 这一步只维护目标容器的派生状态，不广播（循环结束后统一广播一次）。
+    const int32 Moved =
+        TargetContainer->AddItemStackInternal(Stack.Item, SourceCount);
+    if (Moved <= 0) {
+      // 这一堆完全放不下（背包已满且没有可合并的未满堆），继续尝试后面的
+      // 物品——不同物品可能有不同的堆叠容量 / 可堆叠性。
+      continue;
+    }
+
+    TotalMoved += Moved;
+    bSourceChanged = true;
+    bTargetChanged = true;
+
+    if (!Slots.IsValidIndex(Stack.SlotIndex) ||
+        !SlotOccupied.IsValidIndex(Stack.SlotIndex) ||
+        !SlotOccupied[Stack.SlotIndex]) {
+      // 快照来自本容器且整个过程在游戏线程同步执行，正常不会走到这里。
+      // 真出现时不能再动源槽位，否则会重复 / 丢失物品，必须留下 ERROR 便于排查。
+      WFLOG_ERROR("[容器] %s 全体转移时源槽位 %d 已失效，跳过移除"
+                  "（可能出现重复物品，请检查容器状态）。",
+                  *GetNameSafe(GetOwner()), Stack.SlotIndex);
+      continue;
+    }
+
+    if (Moved >= SourceCount) {
+      RemoveItemAtSlotInternal(Stack.SlotIndex);
+    } else {
+      // 只转移了一部分（目标在装满前还有局部空间）：剩余数量留在源槽位。
+      Slots[Stack.SlotIndex].ItemQuality = SourceCount - Moved;
+    }
+  }
+
+  // 两个容器各广播一次：槽位控件自己按 (容器, 索引) 拉数据并 diff，
+  // 不需要为每一堆都广播一轮。
+  if (bSourceChanged) {
+    NotifyContainerChanged();
+  }
+  if (bTargetChanged) {
+    TargetContainer->NotifyContainerChanged();
+  }
+
+  const int32 Remaining = TotalInSource - TotalMoved;
+  if (Remaining > 0) {
+    WFLOG_WARNING("[容器] %s 全体转移：目标 %s 只放得下 %d/%d 个物品，"
+                  "剩余 %d 个留在源容器（背包已满或没有可合并的未满堆）。",
+                  *GetNameSafe(GetOwner()),
+                  *GetNameSafe(TargetContainer->GetOwner()), TotalMoved,
+                  TotalInSource, Remaining);
+  } else {
+    WFLOG_INFO("[容器] %s 全体转移完成：%d 个物品 -> %s。",
+               *GetNameSafe(GetOwner()), TotalMoved,
+               *GetNameSafe(TargetContainer->GetOwner()));
+  }
+
+  return TotalMoved;
 }
 
 void UItemContainer::ClearContainer() {

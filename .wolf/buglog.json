@@ -2029,6 +2029,314 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-10-21T16:12:04.000Z"
+    },
+    {
+      "id": "bug-109",
+      "timestamp": "2026-10-21T16:35:07.000Z",
+      "error_message": "Module.Wildforge.2.cpp.obj : error LNK2019: 无法解析的外部符号 UChestWindowWidget::GetChestActor / GetContainer（被 execGetChestActor / execGetContainer 引用）；Module.Wildforge.7.cpp.obj : error LNK2001；UnrealEditor-Wildforge.dll : fatal error LNK1120: 2 个无法解析的外部命令",
+      "file": "Source/Wildforge/Private/World/UI/ChestWindowWidget.cpp",
+      "root_cause": "头文件声明了 UFUNCTION(BlueprintPure) 的 GetChestActor / GetContainer，但 .cpp 里没有提供定义；UHT 生成的反射 exec 包装函数引用这两个符号，链接阶段找不到定义",
+      "fix": "在 ChestWindowWidget.cpp 增加两个 getter 定义，返回 TWeakObjectPtr::Get()（对象已销毁时返回 nullptr）",
+      "tags": [
+        "link-error",
+        "lnk2019",
+        "lnk2001",
+        "ufunction",
+        "missing-definition",
+        "chest"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-21T16:35:07.000Z"
+    },
+    {
+      "id": "bug-110",
+      "timestamp": "2026-10-22T14:50:21.117Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Public/World/UI/ChestWindowWidget.h",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 13→27 lines (2 removed) | Also: *   - `UChestWindowWidget`（本类，Abstract）负责数据注入与关闭请求; *   - 策划在 WBP 里继承它，放一个名为 `ItemContainerGrid` 的 `UI",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "h"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-22T14:54:37.618Z"
+    },
+    {
+      "id": "bug-111",
+      "timestamp": "2026-10-22T14:50:49.306Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Private/World/UI/ChestWindowWidget.cpp",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 15→41 lines (3 removed) | Also: // 容器已经被销毁：没有可关的箱子，也无需再发 RPC。; // 「pending kill」噪音；直接放弃关闭请求。",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-22T14:51:06.380Z"
+    },
+    {
+      "id": "bug-112",
+      "timestamp": "2026-10-22T14:52:18.224Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Private/ItemSystem/Components/ContainerInteractionComponent.cpp",
+      "root_cause": "13 lines replaced/restructured",
+      "fix": "Rewrote 72→119 lines (13 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-22T14:52:18.224Z"
+    },
+    {
+      "id": "bug-113",
+      "timestamp": "2026-10-22T14:56:31.000Z",
+      "error_message": "ChestWindowWidget.cpp 包含不存在的头文件 ItemSystem/UI/ChestContainerGrid.h（项目中没有 ChestContainerGrid 类，编译报 C1083 找不到文件）",
+      "file": "Source/Wildforge/Private/World/UI/ChestWindowWidget.cpp",
+      "root_cause": "WBP 里的变量名是 ChestContainerGrid，但控件类实际是 UItemContainerGrid（头文件 ItemSystem/UI/ItemContainerGrid.h）；按变量名猜了一个同名类并 include，项目里并不存在该类",
+      "fix": "改为 #include \"ItemSystem/UI/ItemContainerGrid.h\"；C++ 属性名 ChestContainerGrid 保持不变以匹配 WBP 绑定",
+      "tags": [
+        "compile-error",
+        "c1083",
+        "include",
+        "chest",
+        "ui",
+        "uasset-binding"
+      ],
+      "related_bugs": [
+        "bug-093",
+        "bug-109"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-22T14:56:31.000Z"
+    },
+    {
+      "id": "bug-114",
+      "timestamp": "2026-10-24T02:21:55.612Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Public/World/ChestActor.h",
+      "root_cause": "7 lines replaced/restructured",
+      "fix": "Rewrote 12→28 lines (7 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "h"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T02:21:55.612Z"
+    },
+    {
+      "id": "bug-115",
+      "timestamp": "2026-10-24T02:22:05.198Z",
+      "error_message": "Wrong condition in logic",
+      "file": "Source/Wildforge/Private/World/ChestActor.cpp",
+      "root_cause": "Condition was: if (!HasAuthority()",
+      "fix": "Changed to: if (!Player)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T02:22:05.198Z"
+    },
+    {
+      "id": "bug-116",
+      "timestamp": "2026-10-24T02:22:15.155Z",
+      "error_message": "Incorrect value in code",
+      "file": "Source/Wildforge/Private/World/ChestActor.cpp",
+      "root_cause": "Had \"GameFramework/Pawn.h\"",
+      "fix": "Changed to \"Engine/World.h\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T02:22:15.155Z"
+    },
+    {
+      "id": "bug-117",
+      "timestamp": "2026-10-24T02:24:00.000Z",
+      "error_message": "宝箱按交互后服务器只播放了开箱表现（BP_OnChestOpened），客户端不弹出宝箱窗口；日志里 ActiveContainer 始终是「无」，没有任何 [宝箱UI] 创建窗口记录。",
+      "file": "Source/Wildforge/Private/World/ChestActor.cpp",
+      "root_cause": "蓝图交互事件直接调用 AChestActor::OpenChest（BlueprintAuthorityOnly）：它只做服务器业务校验并置 bIsOpened（触发 OnRep/BP_OnChestOpened），从不写玩家的 ActiveContainer；而窗口创建只由 UContainerInteractionComponent::OnRep_ActiveContainer 驱动。监听服务器上该调用能落地（主机就是权威端），所以只看得到动画；远程客户端的调用因 BlueprintAuthorityOnly 被引擎静默丢弃（callspace=Absorbed，Actor.cpp:5432），连动画都没有。日志证据：02:13:47.386 服务器 OnRep_bIsOpened、02:13:47.388 客户端收到同一次 RepNotify（证明 BP_OnChestOpened 在各端都会触发），但全程没有 [容器交互] 打开容器 / [宝箱UI] 创建窗口，PIE 结束时 ActiveContainer 仍是「无」。",
+      "fix": "把 OpenChest 改成两端都可调用的统一入口：定位玩家 Pawn 上的 UContainerInteractionComponent 并转发 Server_RequestOpenContainer（服务器上就地同步执行，客户端发 RPC）；原权威逻辑重命名为 OpenChestOnServer，仅由 Server_RequestOpenContainer 调用以避免递归。蓝图现有 Interact→OpenChest 连线无需修改，即可走完整的「服务器校验 → ActiveContainer 复制 → 窗口创建」链路。",
+      "tags": [
+        "chest",
+        "ui",
+        "rpc",
+        "authority",
+        "container",
+        "blueprint"
+      ],
+      "related_bugs": [
+        "bug-093"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T02:24:00.000Z"
+    },
+    {
+      "id": "bug-118",
+      "timestamp": "2026-10-24T02:25:47.095Z",
+      "error_message": "Incorrect value in code",
+      "file": "Source/Wildforge/Public/World/ChestActor.h",
+      "root_cause": "Had `OpenChest`",
+      "fix": "Changed to `OpenChestOnServer`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "h"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T02:25:47.095Z"
+    },
+    {
+      "id": "bug-119",
+      "timestamp": "2026-10-24T02:43:32.336Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Private/ItemSystem/Components/ContainerInteractionComponent.cpp",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 10→16 lines (3 removed) | Also: // 背包还开着时不要抢走它的输入模式与鼠标（两个窗口可以同时存在）。; WFLOG_INFO(\"[宝箱UI] 关闭宝箱窗口时背包仍打开，保留当前输入模式。\"); | Also: // 避免玩家一边开箱一边走位。焦点给窗口本身，键盘事件才能送到 WBP; // （WBP 需要键盘操作时把 Class Defaults 的 Is Focusable 打开）",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-10-24T02:46:26.307Z"
+    },
+    {
+      "id": "bug-120",
+      "timestamp": "2026-10-24T02:45:00.320Z",
+      "error_message": "Incorrect value in code",
+      "file": "C:/Users/xf317/AppData/Local/Temp/wf_syntax_check.ps1",
+      "root_cause": "Had 'Stop'",
+      "fix": "Changed to 'Continue'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ps1"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T02:45:00.320Z"
+    },
+    {
+      "id": "bug-121",
+      "timestamp": "2026-10-24T02:47:58.000Z",
+      "error_message": "宝箱 UI 几乎占据一整块屏幕，且打开后游戏输入（移动/攻击）仍然生效",
+      "file": "Source/Wildforge/Private/ItemSystem/Components/ContainerInteractionComponent.cpp",
+      "root_cause": "UUserWidget::AddToViewport 经 UGameViewportSubsystem 挂控件，FGameViewportWidgetSlot 默认 Anchors=(0,0)-(1,1) 且 Offsets 为零，整个 WBP 被拉伸铺满视口；窗口又用 FInputModeGameAndUI，游戏输入继续生效。",
+      "fix": "UChestWindowWidget 新增 WindowSize（WBP Class Defaults 可调）与 ApplyWindowLayout()：AddToViewport 后按 SetDesiredSize -> SetPosition -> SetAnchors(0.5) -> SetAlignment(0.5) 的顺序固定尺寸并居中（前两步会把 Anchors 重置为 (0,0)，锚点必须最后设）；输入模式改用 FInputModeUIOnly，销毁窗口时背包仍开则恢复 GameAndUI，否则恢复 GameOnly。",
+      "tags": [
+        "umg",
+        "viewport-slot",
+        "anchors",
+        "input-mode",
+        "ui-only",
+        "chest"
+      ],
+      "related_bugs": [
+        "bug-117",
+        "bug-093"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T02:47:58.000Z"
+    },
+    {
+      "id": "bug-122",
+      "timestamp": "2026-10-24T03:43:33.823Z",
+      "error_message": "Build error C2660: UPlayer::GetPlayerController: 函数不接受 0 个参数（WildforgeUIManager.cpp:52 `LocalPlayer->GetPlayerController()`）",
+      "file": "Source/Wildforge/Private/UI/WildforgeUIManager.cpp",
+      "root_cause": "ULocalPlayer 上没有无参的 GetPlayerController()：无参版本属于 FLocalPlayerContext（LocalPlayer.h:65），而 ULocalPlayer 继承的是 UPlayer::GetPlayerController(const UWorld*)（Player.h:67）。写成无参会直接编译失败。",
+      "fix": "改为 LocalPlayer->GetPlayerController(GetWorld())。UPlayer 的实现在 InWorld 非空时按 LocalPlayer 匹配当前世界的 PC（Player.cpp:78-95）；传 GetWorld() 可避免换关卡后拿到已过期的 PlayerController 成员。",
+      "tags": [
+        "compile-error",
+        "localplayer",
+        "playercontroller",
+        "umg",
+        "ui-manager"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T03:50:00"
+    },
+    {
+      "id": "bug-123",
+      "timestamp": "2026-10-24T09:01:14.110Z",
+      "error_message": "PIE: Error: 蓝图运行时错误：\"尝试读取非UClass中的(real)属性CallFunc_GetUIManager_ReturnValue，结果为无\"。节点：ShowUI，图表：EventGraph，函数：ExecuteUbergraph_BP_ChestActor，蓝图：BP_ChestActor（PIE 停止时触发）",
+      "file": "Content/World/Components/Wooden_Chest/BluePrints/BP_ChestActor.uasset（BP_OnChestClosed → GetUIManager → ShowUI）；Source/Wildforge/Private/UI/WildforgeUIManager.cpp",
+      "root_cause": "PIE 结束时的清理顺序：本地玩家子系统 WildforgeUIManager_0 在 09:01:14.109 已 Deinitialize（PIE_0 的 RemoveAllUI 随后打印），而角色的 EndPlay 在 .110 才跑：ContainerInteractionComponent::EndPlay → Chest->CloseChest → SetOpenedState(false) → OnRep_bIsOpened → 蓝图 BP_OnChestClosed。此时 UGameplayStatics::GetPlayerController 已拿不到带 LocalPlayer 的 PC，GetUIManager 按设计返回 null；蓝图未做 Is Valid 就把纯节点的返回值当 self 调 ShowUI，Blueprint VM 在 ProcessContextOpcode 里报 AccessNone。消息里的 (real) 指该属性是 UClass 上的真实属性（这里是编译器生成的 UFunction 返回临时值 CallFunc_GetUIManager_ReturnValue），与浮点类型无关。",
+      "fix": "在 BP_ChestActor 的 BP_OnChestClosed 里给 GetUIManager 的返回值接 Is Valid，仅在有效时调用 ShowUI。更根本的做法：不要在世界 actor 的关闭表现事件里操作用户界面——BP_OnChestClosed 在服务器端和销毁流程也会触发；UI 的关闭/恢复应放到本地玩家的交互组件或控制器客户端路径，并同样判空。",
+      "tags": [
+        "blueprint",
+        "access-none",
+        "ui-manager",
+        "local-player",
+        "pie-shutdown",
+        "lifecycle",
+        "chest"
+      ],
+      "related_bugs": [
+        "bug-122",
+        "bug-121"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T09:01:14.110Z"
+    },
+    {
+      "id": "bug-124",
+      "timestamp": "2026-10-24T09:10:00.000Z",
+      "error_message": "用户反馈：监听服务器方式下，服务器端出现 ShowUI 后所有客户端也会出现（与『ShowUI 只影响本地』的说明不符）",
+      "file": "Content/World/Components/Wooden_Chest/BluePrints/BP_ChestActor.uasset（BP_OnChestOpened / BP_OnChestClosed）；Source/Wildforge/Private/UI/WildforgeUIManager.cpp",
+      "root_cause": "ShowUI 本身不复制，创建的是调用进程本地 PlayerController 名下的控件；但调用点位于 OnRep_bIsOpened 驱动的 BP_OnChestOpened/BP_OnChestClosed 中，这些事件在服务器（SetOpenedState 手动补调）和每个客户端（bIsOpened 属性复制后触发）都会执行。于是每个端各自执行一次本地的 GetUIManager→ShowUI，各自 CreateWidget/AddToViewport，结果所有窗口都出现。日志 09.04.34 同一秒内出现两条 BP_OnChestClosed（.625 服务器端随后 ShowUI 创建 U_InteractWidget_C，.630 另一端；后者复用分支因控件已可见而未打创建日志）即为多端执行的证据。",
+      "fix": "若只想让操作者看到：把 UI 调用移出世界 actor 的全局表现事件，改到拥有者客户端路径（UContainerInteractionComponent::OnRep_ActiveContainer，ActiveContainer 是 COND_OwnerOnly 复制），并保留 Is Valid 判空。若确实要全端显示：保留在复制事件里让每个端各跑一次本地 ShowUI 是正确做法，但控件仍是各端独立实例，不是同一个对象被复制。",
+      "tags": [
+        "ui-manager",
+        "replication",
+        "listen-server",
+        "local-player",
+        "blueprint",
+        "chest",
+        "umg"
+      ],
+      "related_bugs": [
+        "bug-123",
+        "bug-121"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-24T09:10:00.000Z"
+    },
+    {
+      "id": "bug-125",
+      "timestamp": "2026-10-24T09:51:04.864Z",
+      "error_message": "Significant refactor of ",
+      "file": "Source/Wildforge/Private/World/ChestActor.cpp",
+      "root_cause": "11 lines replaced/restructured",
+      "fix": "Rewrote 23→40 lines (11 removed) | Also: WFLOG_INFO(\"[配置] %s 生效值：容量 %d 格，战利品 %d~%d 件，权限模式=%; *GetName(), Capacity, LootCountMin, LootCountMax, | Also: \"（容量 %d，战利品 %d~%d）。\",; *GetName(), Capacity, LootCountMin, LootCountMax);",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "cpp"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-10-24T09:51:20.525Z"
     }
   ]
 }

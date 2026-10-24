@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-21T16:10:05.399Z
-> Files: 110 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-24T09:51:20.507Z
+> Files: 117 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -11,7 +11,7 @@
 - `.ignore` (~30 tok)
 - `CLAUDE.local.md` — CLAUDE.LOCAL.md (~1605 tok)
 - `CLAUDE.LOCAL.md` — CLAUDE.LOCAL.md (~1424 tok)
-- `CLAUDE.md` — CLAUDE.md (~2680 tok)
+- `CLAUDE.md` — CLAUDE.md (~2863 tok)
 - `README.md` — Project documentation (~11 tok)
 - `Wildforge.code-workspace` (~4460 tok)
 - `Wildforge.uproject` (~124 tok)
@@ -20,6 +20,7 @@
 
 - `wf_clangd_info.ps1` (~82 tok)
 - `wf_fix_clangd.js` — Declares fs (~96 tok)
+- `wf_syntax_check.ps1` — Declares Invoke (~661 tok)
 - `wf_wolf_record.js` — fs: eolOf (~992 tok)
 - `wf-crawl-check-msvc.ps1` — 单 TU 真编译级检查（cl.exe /Zs 语法检查），用 UBT 自己生成的 MSVC 形态 obj.rsp + 真实的 MSVC PCH。 (~980 tok)
 - `wf-crawl-check.ps1` — 单 TU 真编译级检查（clang-cl -fsyntax-only），针对本次 UBT 生成的 MSVC 形态 obj.rsp。 (~835 tok)
@@ -33,7 +34,7 @@
 - `DefaultEditor.ini` (~14878 tok)
 - `DefaultEditorPerProjectUserSettings.ini` (~19 tok)
 - `DefaultEngine.ini` (~942 tok)
-- `DefaultGame.ini` — 含 UItemSystemSettings 的 ItemTable 路径（Project Settings 序列化到此） (~36 tok)
+- `DefaultGame.ini` (~114 tok)
 - `DefaultInput.ini` (~3677 tok)
 
 ## Source/Wildforge/
@@ -80,8 +81,8 @@
 
 ## Source/Wildforge/Private/ItemSystem/Components/
 
-- `ContainerInteractionComponent.cpp` — 实现：BeginPlay 权威端读 UContainerInteractionSettings；EndPlay 权威端关闭当前宝箱、客户端先清空 ActiveContainer 再走 OnRep（避免析构期重复发关闭 RPC）；OnRep_ActiveContainer → UpdateChestWindow（仅本地 PC：按宝箱 ChestWindowClass 建 UChestWindowWidget，Initialize 后 AddToViewport(10) + GameAndUI + 光标）→ 广播；DestroyChestWindow 恢复 GameOnly/隐藏光标（背包仍开时保留）；Server_RequestOpenContainer 校验 PC/Pawn/权限/距离 → Chest->OpenChest（失败保留原活动容器）→ 关闭前一个宝箱 → SetActiveContainer；Server_RequestCloseContainer 调 Chest->CloseChest 后清空；Server_MoveItemBetweenContainers 双端权限+距离校验后 MoveItemToContainer (~4400 tok)
-- `ItemContainer.cpp` — 实现：Slots/SlotOccupied 的复制条件由 virtual GetContentsReplicationCondition 决定（基类 COND_OwnerOnly，StorageContainer 覆写 COND_None）；AccessMode/AccessOwner/AllowedPlayers 复制 + HasAccess/CanBeAccessedBy(BlueprintNativeEvent)/权威 setter；MoveItemToContainer 支持移动/合并/交换并双端广播；所有 Server_* 先过 CanCurrentRpcCallerAccess；派生索引 FreeSlots/ItemIDToSlot/UsedCount 服务器维护、客户端 RebuildDerivedState (~10000 tok)
+- `ContainerInteractionComponent.cpp` — 交互组件实现：ValidateTransferRequest 统一校验 PC/Pawn/权限/距离；Server_RequestOpenContainer 对宝箱调 OpenChestOnServer（避免 OpenChest 递归）后写 ActiveContainer；拥有者端创建宝箱窗口并 ApplyWindowLayout 居中定尺寸、切 FInputModeUIOnly；销毁窗口时按背包状态恢复 GameAndUI 或 GameOnly；含跨容器移动与全体转移 RPC (~5200 tok)
+- `ItemContainer.cpp` — 容器核心实现：复制数组 + 派生索引重建；`AddItemStackInternal`（先并入同 ItemID 未满堆、再填空槽，不广播）供 `AddItemStack` 与 `TransferAllToContainer` 复用；`TransferAllToContainer` 快照源槽逐堆转移、部分装不下留在源容器、每个容器只广播一次；全部修改函数走 `WF_CONTAINER_AUTHORITY_GUARD` (~11000 tok)
 - `PlayerInventory.cpp` — UPlayerInventory 实现（固定容器类型为 PlayerInventory） (~100 tok)
 - `QuickContainer.cpp` — UQuickContainer 实现：遍历快捷键配置，在拥有者 Actor 上按函数名动态绑定输入按键（FInputActionHandlerDynamicSignature），使用 WFLOG_* 记录配置、绑定失败与成功 (~404 tok)
 - `StorageContainer.cpp` — include "ItemSystem/Components/StorageContainer.h" (~78 tok)
@@ -102,6 +103,8 @@
 ## Source/Wildforge/Private/UI/
 
 - `MainUserWidget.cpp` — 主 HUD 控件：NativeConstruct 先试一次 TryInitializeQuickBar（客户端 Pawn 未到就交给 OnPossessedPawnChanged 补第二枪），NativeDestruct 退订；文件头有大段「快捷栏初始化时序」说明（控件由 PlayerController 的 BeginPlay 创建，早于角色 BeginPlay） (~2400 tok)
+- `ToastWidget.cpp` — 实现：三类显示入口（ShowToast / ShowToastStyled / ShowToastMessage）+ 待显示队列（MaxQueuedMessages 上限，满时丢排队最久的一条）+ FadeIn→Hold→FadeOut 状态机（NativeTick 驱动 RenderOpacity）；BP_OnToastShown / FadeOutStarted / Hidden / QueueEmptied 蓝图钩子供 WBP 动画接管（bUseNativeFade=false）；未构造先入队、NativeConstruct 按状态重放 (~4100 tok)
+- `WildforgeUIManager.cpp` — 实现：按类引用 ShowUI/HideUI/RemoveUI/RemoveAllUI（每个类一个实例、Entries 只增不删）+ 无参 bool 展示判定（BindCanShowFunction 在绑定时就校验签名，绑定对象失效自动解绑）+ Toast 便捷入口（ShowToast / ShowToastStyled / ShowToastMessage / ClearToasts / IsToastActive / GetToastWidget / SetToastWidgetClass）：首次调用按 UToastSettings 的软类引用懒创建 UToastWidget 并复用，运行时覆盖优先并缓存解析结果 (~7000 tok)
 
 ## Source/Wildforge/Private/Utils/
 
@@ -109,11 +112,11 @@
 
 ## Source/Wildforge/Private/World/
 
-- `ChestActor.cpp` — 实现：构造时建 UStorageContainer 并 bReplicates；复制 ChestLevel/ChestWindowClass/bIsOpened；BeginPlay 仅权威端读 UChestSettings（容量/战利品数量）→ SetAccessMode → 初始化容器（已有容量则跳过，避免清空）→ GenerateLoot；GenerateLoot 按等级稀有度池（Common→C/U，Rare→R/E，Legendary→E/L）从 DT_Items 筛 ItemID、Fisher-Yates 洗牌、RandRange 取件数、AddItemByID 逐个放入；SetChestLevel/SetOpenedState 在服务器手动补 OnRep；OpenChest 校验权限/窗口类/容器状态并维护 ActiveUsers（首个打开者才播开箱）；CloseChest 移除打开者、空集才播关箱、null Player=强制关闭 (~3600 tok)
+- `ChestActor.cpp` — 实现：构造建 UStorageContainer + bReplicates；服务器 BeginPlay 读 UChestSettings → 初始化容器 → GenerateLoot（等级稀有度池 + Fisher-Yates；每堆数量按 LootStackMin~LootStackMax 随机并按物品 MaxStackSize / IsStackable 夹紧）；OpenChest 转发交互组件；OpenChestOnServer 校验权限 / 窗口类并维护 ActiveUsers；SetOpenedState / OnRep 驱动 BP_OnChestOpened/Closed。 (~4600 tok)
 
 ## Source/Wildforge/Private/World/UI/
 
-- `ChestWindowWidget.cpp` — 实现：InitializeChestWindow 存弱引用并把容器交给 BindWidgetOptional 的 ItemContainerGrid（缺控件 WARNING、空容器 ERROR），最后调蓝图 OnChestWindowInitialized；RequestCloseChest 沿「OwningPlayer → Pawn 上的 UContainerInteractionComponent → Server_RequestCloseContainer」发关闭（世界 Actor 无 owning connection，见 bug-093），容器已非 ActiveContainer / 关卡销毁中时静默返回；NativeDestruct 兜底再请求一次 (~900 tok)
+- `ChestWindowWidget.cpp` — 宝箱窗口实现：InitializeChestWindow 注入宝箱/容器并绑定宝箱与背包两个网格，关闭/全体转移经玩家交互组件发 RPC；ApplyWindowLayout 按 WindowSize 固定尺寸居中（先设尺寸/位置、最后设锚点与对齐，见 GameViewportSubsystem）；NativeDestruct 兜底发关闭请求 (~2600 tok)
 
 ## Source/Wildforge/Public/Character/
 
@@ -165,8 +168,8 @@
 
 ## Source/Wildforge/Public/ItemSystem/Components/
 
-- `ContainerInteractionComponent.h` — 玩家侧容器交互通道（挂 APlayerCharacter，每玩家一份）：Server_RequestOpen/CloseContainer + Server_MoveItemBetweenContainers 三个 RPC；ActiveContainer（COND_OwnerOnly + RepNotify）+ OnActiveContainerChanged；宝箱窗口生命周期也在本组件（Transient ChestWindow、bAppliedChestInputMode、EndPlay 关箱）；MaxInteractionDistance 权威端读 ini 后 COND_InitialOnly 复制；文档含世界 Actor 无 owning connection 的信任边界说明 (~2100 tok)
-- `ItemContainer.h` — 容器核心：复制数组 Slots/SlotOccupied + 非复制派生索引；复制条件走 virtual GetContentsReplicationCondition（GetLifetimeReplicatedProps 只在 CDO 上调用，只能按类选）；访问权限 AccessMode/AccessOwner/AllowedPlayers + HasAccess/CanBeAccessedBy；MoveItemToContainer 跨容器移动/合并/交换；修改函数 BlueprintAuthorityOnly + 权威门禁 (~4200 tok)
+- `ContainerInteractionComponent.h` — 容器交互组件声明：ActiveContainer（COND_OwnerOnly）与交互距离（COND_InitialOnly）复制；打开/关闭宝箱、跨容器移动、全体转移 Server RPC；宝箱窗口生命周期与输入模式恢复的说明 (~2200 tok)
+- `ItemContainer.h` — 容器组件声明：复制 `Slots` / `SlotOccupied` + 派生索引；增删改查/整理/调整大小均为 `BlueprintAuthorityOnly`，另有 `Server_*` RPC 兜底；权限模式 `HasAccess` / `IsOwnedBy`；新增 `TransferAllToContainer`（全体转移）与私有 `AddItemStackInternal`（无广播原语） (~3800 tok)
 - `PlayerInventory.h` — UPlayerInventory：UItemContainer 子类，构造时固定容器类型为 PlayerInventory；内容复制条件继承基类 COND_OwnerOnly (~300 tok)
 - `StorageContainer.h` — 世界容器组件（UItemContainer 子类，构造锁定 WorldStorage + 内容复制覆写为 COND_None）；**保持通用**：宝箱等级 / 战利品 / 开箱表现都在 AChestActor，不要往这里加宝箱专属字段 (~520 tok)
 
@@ -205,6 +208,13 @@
 ## Source/Wildforge/Public/UI/
 
 - `MainUserWidget.h` — UMainUserWidget：BindWidget 持有 InventoryWidget / QuickBarWidget，ShowInventory（蓝图事件）切换背包可见性；新增 HandlePossessedPawnChanged + TryInitializeQuickBar（快捷栏容器晚绑） (~700 tok)
+- `ToastMessage.h` — FToastMessage（BlueprintType）：Message / TextColor / BackgroundColor / Icon + IconTint / Duration（<=0 回退控件默认时长）；全部只影响客户端表现 (~370 tok)
+- `ToastWidget.h` — UToastWidget（Abstract）：队列化 Toast 控件基类；公开 ShowToast / ShowToastStyled / ShowToastMessage / ClearToasts / 查询；BindWidget `MessageText`（必需）+ `BackgroundBorder` / `IconImage`（可选）；默认样式与 DefaultDuration / FadeInDuration / FadeOutDuration / MaxQueuedMessages / bUseNativeFade 均可在 WBP 类默认值调；BP_OnToast* 四个表现事件；私有状态机 + 待显示队列 + Slate 重建重放 (~2300 tok)
+- `WildforgeUIManager.h` — UWildforgeUIManager（ULocalPlayerSubsystem，纯客户端）：以 TSubclassOf<UUserWidget> 为键展示/收起/移除界面；每个类可绑定无参返回 bool 的展示判定函数（动态委托）；Toast 便捷 API（ShowToast* / ClearToasts / IsToastActive / Get/SetToastWidgetClass）；不管输入模式与鼠标显隐 (~3000 tok)
+
+## Source/Wildforge/Public/UI/Settings/
+
+- `ToastSettings.h` — UToastSettings（UDeveloperSettings）：ToastWidgetClass（TSoftClassPtr<UToastWidget>，指向 WBP 子类，首次弹提示时加载）+ ZOrder（默认 100，仅首次创建生效）；表现参数仍在 WBP 类默认值，不放进 ini (~450 tok)
 
 ## Source/Wildforge/Public/Utils/
 
@@ -214,12 +224,12 @@
 
 ## Source/Wildforge/Public/World/
 
-- `ChestActor.h` — 可交互宝箱（bReplicates）：EChestLevel 放 Actor（驱动掉落/表现/UI，**不进** UStorageContainer）+ UStorageContainer + ChestWindowClass（TSubclassOf<UChestWindowWidget>，蓝图类默认值指定）+ AccessMode；OpenChest/CloseChest（BlueprintAuthorityOnly）校验权限/窗口类并维护服务器 ActiveUsers（最后一人离开才播关箱）；BP_OnChestOpened/Closed/LevelChanged 蓝图事件；容量与战利品数量可被 UChestSettings ini 覆盖 (~1900 tok)
+- `ChestActor.h` — 可交互宝箱：等级 + 世界容器 + 开箱表现 + 宝箱窗口；LootCountMin/Max 控制堆数，LootStackMin/Max 控制每堆数量（按物品 MaxStackSize 夹紧）。 (~2200 tok)
 
 ## Source/Wildforge/Public/World/Settings/
 
-- `ChestSettings.h` — 宝箱（`AChestActor`）的可调数值。 (~583 tok)
+- `ChestSettings.h` — 宝箱（`AChestActor`）的可调数值：容量、战利品堆数、每堆数量；仅权威端读取。 (~1000 tok)
 
 ## Source/Wildforge/Public/World/UI/
 
-- `ChestWindowWidget.h` — 宝箱窗口的 C++ 基类（必须由蓝图子类指定具体外观）。 (~721 tok)
+- `ChestWindowWidget.h` — 宝箱窗口 C++ 基类（Abstract）：数据注入、关闭/全体转移请求、ApplyWindowLayout；WindowSize 在 WBP Class Defaults 调整；文档说明 AddToViewport 默认全屏与 UIOnly 输入策略 (~1800 tok)

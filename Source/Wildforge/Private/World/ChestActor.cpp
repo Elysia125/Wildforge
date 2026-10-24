@@ -2,7 +2,10 @@
 
 #include "World/ChestActor.h"
 
+#include "Engine/World.h"
+#include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
+#include "ItemSystem/Components/ContainerInteractionComponent.h"
 #include "ItemSystem/Components/StorageContainer.h"
 #include "ItemSystem/Database/ItemDatabaseSubsystem.h"
 #include "ItemSystem/Enums/ItemRarity.h"
@@ -77,9 +80,11 @@ void AChestActor::BeginPlay() {
   }
 
   WFLOG_INFO("[宝箱] %s 服务器 BeginPlay：等级=%d，容量类默认值=%d，"
-             "战利品数量类默认值=%d~%d，自动生成=%s。",
+             "战利品堆数类默认值=%d~%d，每堆数量类默认值=%d~%d，"
+             "自动生成=%s。",
              *GetName(), static_cast<int32>(ChestLevel), Capacity, LootCountMin,
-             LootCountMax, bGenerateLootOnBeginPlay ? TEXT("是") : TEXT("否"));
+             LootCountMax, LootStackMin, LootStackMax,
+             bGenerateLootOnBeginPlay ? TEXT("是") : TEXT("否"));
 
   if (!Container) {
     WFLOG_ERROR("[宝箱] %s 没有 Container（UStorageContainer）组件，"
@@ -129,8 +134,9 @@ void AChestActor::ApplyGameplaySettingsOverrides() {
   const UChestSettings *Settings = UChestSettings::Get();
   if (!Settings) {
     WFLOG_ERROR("[配置] %s 取不到 UChestSettings（CDO 为空），保留类默认值"
-                "（容量 %d，战利品 %d~%d）。",
-                *GetName(), Capacity, LootCountMin, LootCountMax);
+                "（容量 %d，战利品 %d~%d 堆，每堆 %d~%d 个）。",
+                *GetName(), Capacity, LootCountMin, LootCountMax, LootStackMin,
+                LootStackMax);
     return;
   }
 
@@ -170,10 +176,34 @@ void AChestActor::ApplyGameplaySettingsOverrides() {
                *GetName(), LootCountMax);
   }
 
+  if (Settings->bOverride_LootStackMin) {
+    const int32 OldMin = LootStackMin;
+    LootStackMin = FMath::Max(1, Settings->LootStackMin);
+    WFLOG_INFO("[配置] %s 每堆战利品数量下限被 ini 覆盖：类默认值 %d -> 生效 %d"
+               "（ini=%d）。",
+               *GetName(), OldMin, LootStackMin, Settings->LootStackMin);
+  } else {
+    WFLOG_INFO("[配置] %s 每堆战利品数量下限没有 ini 覆盖，用类默认值 %d。",
+               *GetName(), LootStackMin);
+  }
+
+  if (Settings->bOverride_LootStackMax) {
+    const int32 OldMax = LootStackMax;
+    LootStackMax = FMath::Max(1, Settings->LootStackMax);
+    WFLOG_INFO("[配置] %s 每堆战利品数量上限被 ini 覆盖：类默认值 %d -> 生效 %d"
+               "（ini=%d）。",
+               *GetName(), OldMax, LootStackMax, Settings->LootStackMax);
+  } else {
+    WFLOG_INFO("[配置] %s 每堆战利品数量上限没有 ini 覆盖，用类默认值 %d。",
+               *GetName(), LootStackMax);
+  }
+
   // 类默认值也可能被蓝图改成负数（编辑器 Clamp 不是运行时保证）。
   Capacity = FMath::Max(1, Capacity);
   LootCountMin = FMath::Max(0, LootCountMin);
   LootCountMax = FMath::Max(0, LootCountMax);
+  LootStackMin = FMath::Max(1, LootStackMin);
+  LootStackMax = FMath::Max(1, LootStackMax);
 
   if (LootCountMax < LootCountMin) {
     WFLOG_WARNING("[配置] %s 的战利品数量下限 %d 大于上限 %d，已把上限抬到下限。",
@@ -181,9 +211,16 @@ void AChestActor::ApplyGameplaySettingsOverrides() {
     LootCountMax = LootCountMin;
   }
 
-  WFLOG_INFO("[配置] %s 生效值：容量 %d 格，战利品 %d~%d 件，权限模式=%d。",
-             *GetName(), Capacity, LootCountMin, LootCountMax,
-             static_cast<int32>(AccessMode));
+  if (LootStackMax < LootStackMin) {
+    WFLOG_WARNING("[配置] %s 的每堆数量下限 %d 大于上限 %d，已把上限抬到下限。",
+                  *GetName(), LootStackMin, LootStackMax);
+    LootStackMax = LootStackMin;
+  }
+
+  WFLOG_INFO("[配置] %s 生效值：容量 %d 格，战利品 %d~%d 堆，"
+             "每堆 %d~%d 个，权限模式=%d。",
+             *GetName(), Capacity, LootCountMin, LootCountMax, LootStackMin,
+             LootStackMax, static_cast<int32>(AccessMode));
 }
 
 void AChestActor::GenerateLoot() {
@@ -254,35 +291,52 @@ void AChestActor::GenerateLoot() {
   const int32 Count = FMath::Min(
       FMath::Min(DesiredCount, Candidates.Num()), CapacityLeft);
   if (Count < DesiredCount) {
-    WFLOG_WARNING("[宝箱] %s 期望生成 %d 件战利品，实际只能放 %d 件"
+    WFLOG_WARNING("[宝箱] %s 期望生成 %d 堆战利品，实际只能放 %d 堆"
                   "（候选物品 %d 件，空位 %d 格）。",
                   *GetName(), DesiredCount, Count, Candidates.Num(),
                   CapacityLeft);
   }
 
   int32 AddedCount = 0;
+  int32 TotalQuantity = 0;
   for (int32 Index = 0; Index < Count; ++Index) {
     const int32 ItemID = Candidates[Index];
-    const int32 Added = Container->AddItemByID(ItemID, 1);
+    const FItemInformation *Definition = Database->GetItemDefinition(ItemID);
+    if (!Definition) {
+      WFLOG_WARNING("[宝箱] %s 取不到 ItemID=%d 的定义，跳过。", *GetName(),
+                    ItemID);
+      continue;
+    }
+
+    // 每堆数量先在配置范围内随机，再按物品自身规则夹紧：
+    // 不可堆叠恒为 1；可堆叠不超过 MaxStackSize。夹紧后一次只占一个槽位。
+    const int32 ItemMaxStack =
+        Definition->IsStackable ? FMath::Max(1, Definition->MaxStackSize) : 1;
+    const int32 StackMin = FMath::Clamp(LootStackMin, 1, ItemMaxStack);
+    const int32 StackMax = FMath::Clamp(LootStackMax, StackMin, ItemMaxStack);
+    const int32 Quantity = FMath::RandRange(StackMin, StackMax);
+
+    const int32 Added = Container->AddItemByID(ItemID, Quantity);
     if (Added <= 0) {
-      WFLOG_WARNING("[宝箱] %s 放入 ItemID=%d 失败（容器是否已满？）。",
-                    *GetName(), ItemID);
+      WFLOG_WARNING("[宝箱] %s 放入 ItemID=%d（数量 %d）失败"
+                    "（容器是否已满？）。",
+                    *GetName(), ItemID, Quantity);
       continue;
     }
 
     ++AddedCount;
-    const FItemInformation *Definition = Database->GetItemDefinition(ItemID);
-    WFLOG_INFO("[宝箱] %s 生成战利品：ItemID=%d，名称=%s，稀有度=%d，数量=%d。",
-               *GetName(), ItemID,
-               Definition ? *Definition->ItemName.ToString() : TEXT("未知"),
-               Definition ? static_cast<int32>(Definition->ItemRarity) : -1,
-               Added);
+    TotalQuantity += Added;
+    WFLOG_INFO("[宝箱] %s 生成战利品：ItemID=%d，名称=%s，稀有度=%d，"
+               "数量=%d（随机范围 %d~%d，物品堆叠上限 %d）。",
+               *GetName(), ItemID, *Definition->ItemName.ToString(),
+               static_cast<int32>(Definition->ItemRarity), Added, StackMin,
+               StackMax, ItemMaxStack);
   }
 
-  WFLOG_INFO("[宝箱] %s 战利品生成完成：等级 %d，候选 %d 件，期望 %d 件，"
-             "实际放入 %d 件。",
+  WFLOG_INFO("[宝箱] %s 战利品生成完成：等级 %d，候选 %d 件，期望 %d 堆，"
+             "实际放入 %d 堆（共 %d 个）。",
              *GetName(), static_cast<int32>(ChestLevel), Candidates.Num(),
-             DesiredCount, AddedCount);
+             DesiredCount, AddedCount, TotalQuantity);
 }
 
 void AChestActor::SetChestLevel(EChestLevel InChestLevel) {
@@ -342,8 +396,69 @@ void AChestActor::SetOpenedState(bool bNewOpened) {
 }
 
 bool AChestActor::OpenChest(APlayerController *Player) {
+  // 统一入口：蓝图可能在服务器（监听服务器 / 单机）或客户端调用。真正的
+  // 权威流程必须走玩家身上的 UContainerInteractionComponent——世界宝箱没有
+  // owning connection，客户端直接对它发 Server RPC 会被引擎静默丢弃
+  // （bug-093）。这里只负责把请求转交给正确的通道。
+  if (!Player) {
+    if (UWorld *World = GetWorld()) {
+      Player = World->GetFirstPlayerController();
+      if (Player) {
+        WFLOG_WARNING("[宝箱] %s 的打开请求没有传 PlayerController，"
+                      "回退到第一个玩家 %s。",
+                      *GetName(), *GetNameSafe(Player));
+      }
+    }
+  }
+
+  // 客户端上蓝图可能传了服务器 / 其它玩家的 PC：Server RPC 需要拥有连接，
+  // 用非本地 PC 会再次被丢弃。退回本地 PC；服务器端仍会重新校验调用者身份。
+  if (!HasAuthority() && Player && !Player->IsLocalController()) {
+    if (UWorld *World = GetWorld()) {
+      if (APlayerController *LocalPC = World->GetFirstPlayerController()) {
+        WFLOG_WARNING("[宝箱] %s 收到非本地 PC %s 的打开请求，"
+                      "改用本地 PC %s（Server RPC 需要拥有连接，"
+                      "见 bug-093）。",
+                      *GetName(), *GetNameSafe(Player), *GetNameSafe(LocalPC));
+        Player = LocalPC;
+      }
+    }
+  }
+
+  if (!Player) {
+    WFLOG_ERROR("[宝箱] %s 收到打开请求，但拿不到 PlayerController。",
+                *GetName());
+    return false;
+  }
+  if (!Container) {
+    WFLOG_ERROR("[宝箱] %s 没有 Container，无法打开。", *GetName());
+    return false;
+  }
+
+  APawn *Pawn = Player->GetPawn();
+  UContainerInteractionComponent *Interaction =
+      Pawn ? Pawn->FindComponentByClass<UContainerInteractionComponent>()
+           : nullptr;
+  if (!Interaction) {
+    WFLOG_ERROR("[宝箱] 玩家 %s 的 Pawn %s 上没有 "
+                "UContainerInteractionComponent，无法转发打开请求。",
+                *GetNameSafe(Player), *GetNameSafe(Pawn));
+    return false;
+  }
+
+  WFLOG_INFO("[宝箱] %s 收到打开请求（玩家=%s，本端权威=%d），"
+             "转交交互组件 Server_RequestOpenContainer。",
+             *GetName(), *GetNameSafe(Player), HasAuthority() ? 1 : 0);
+
+  // Server RPC：服务器上就地同步执行；客户端上发到服务器。
+  Interaction->Server_RequestOpenContainer(Container);
+  return true;
+}
+
+bool AChestActor::OpenChestOnServer(APlayerController *Player) {
   if (!HasAuthority()) {
-    WFLOG_ERROR("[宝箱] %s 在非权威端调用 OpenChest，已忽略。", *GetName());
+    WFLOG_ERROR("[宝箱] %s 在非权威端调用 OpenChestOnServer，已忽略。",
+                *GetName());
     return false;
   }
   if (!Player) {

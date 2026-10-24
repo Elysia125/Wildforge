@@ -58,6 +58,8 @@ Wildforge 是一个 **Unreal Engine 5.7** 的第一人称游戏（源自 First P
 **UI 层**（UMG，由 `BindWidget`/`BindWidgetAnim` 驱动）
 - `UMainUserWidget`（`UI/`）——持有 `UInventoryUserWidget` 并切换其可见性。
 - `AWildforgePlayerController`（`Core/`）——`ShowInventory()` 在 `FInputModeGameAndUI`（显示光标）与 `FInputModeGameOnly`（隐藏光标）之间切换。
+- `UWildforgeUIManager`（`UI/`）——**每个本地玩家一份**的 `ULocalPlayerSubsystem`：按**类引用**统一管理视口界面（`ShowUI` / `HideUI` / `RemoveUI` / `RemoveAllUI`，每个类最多一个实例）。可为每个界面类绑定**无参、返回 bool** 的 UFUNCTION 作为展示判定（`BindCanShowFunction`），每次 `ShowUI` 前求值，false 则不展示。另提供 Toast 便捷入口（`ShowToast` / `ShowToastStyled` / `ShowToastMessage` / `ClearToasts` / `IsToastActive` / `SetToastWidgetClass`），首次调用按 `UToastSettings` 懒创建并复用 `UToastWidget`。纯客户端、不复制；**不接管输入模式**（仍由背包 / 宝箱窗口各自管理）。
+- `UToastSettings`（`UI/Settings/`）——Toast 控件类（`TSoftClassPtr<UToastWidget>`）与 `ZOrder`；纯客户端表现配置（Project Settings > Game > 提示（Toast）），不驱动玩法。停留时长 / 淡入淡出 / 队列上限仍在 Toast WBP 的类默认值上。
 - `UInventoryUserWidget`（`ItemSystem/UI/`）——在所属**Pawn**（而非 Controller）上查找 `UItemContainer`，初始化网格，并用 `WidgetSwitcher` 切换背包页（第 0 页）/ 合成页（第 1 页），带控件动画。
 - `UItemContainerGrid`（`ItemSystem/UI/`）——`UniformGridPanel` + `ScrollBox`，订阅 `OnContainerChanged`，保持控件数量等于容量，并根据物品数据刷新格子。
 - `UInventorySlotWidget`（`ItemSystem/UI/`）——单个格子；`BindWidget` 名称至关重要（必须与 UMG 中的名称完全一致）。
@@ -72,6 +74,8 @@ Wildforge 是一个 **Unreal Engine 5.7** 的第一人称游戏（源自 First P
 - 字段用**短名不加前缀**（`Cooldown` / `MontagePlayRate` / `MaxDistance`…），归属由「属于哪个类」承担——
   不要把多组件的配置挤进同一个类再靠前缀区分。每项写成 `bOverride_X`（勾选 = 覆盖，`InlineEditConditionToggle`）+ 值的成对属性。
 - **只有权威端读 ini**，客户端的那份值由各组件的 `COND_InitialOnly` 复制下发。
+  例外：纯客户端 UI 表现配置（如 `UToastSettings` 的控件类 / ZOrder）只在本地读，因为它不驱动玩法；
+  不得借这个例外把速度 / 冷却 / 伤害等玩法数值放到客户端读取。
 - 各组件的 `ApplyGameplaySettingsOverrides()`（权威端 `BeginPlay` 调用）在组件本地做覆盖、夹紧与 `[配置]` 日志；
   `APlayerCharacter::PostNetInit()` 在客户端打印同一批生效值，用于与服务器日志对照。
 - 与 `UItemSystemSettings`（物品表路径）同属一类，都在 Project Settings > Project > Game。

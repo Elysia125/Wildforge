@@ -32,10 +32,11 @@ class UStorageContainer;
  * ## 打开 / 关闭流程
  *
  * 打开（客户端输入 -> 服务器）：
- *   1. 客户端调用玩家角色上 `UContainerInteractionComponent::Server_RequestOpenContainer`
+ *   1. 蓝图 / 输入调用 `OpenChest`（任意端都可以）；它找到玩家角色上的
+ *      `UContainerInteractionComponent` 并转发到 `Server_RequestOpenContainer`
  *      （世界 Actor 没有 owning connection，不能直接对宝箱发 Server RPC）；
  *   2. 服务器校验玩家、权限、距离；
- *   3. 服务器调用 `OpenChest`：校验容器权限与 `ChestWindowClass`，把
+ *   3. 服务器调用 `OpenChestOnServer`：校验容器权限与 `ChestWindowClass`，把
  *      `bIsOpened` 置 true；
  *   4. `OnRep_bIsOpened` 在各端调用 `BP_OnChestOpened`；
  *   5. 交互组件把容器写进玩家的 `ActiveContainer`，拥有者客户端据此创建
@@ -54,7 +55,9 @@ class UStorageContainer;
  * ## 掉落
  *
  * `BeginPlay`（仅服务器）按 `ChestLevel` 从物品 DataTable 里筛选稀有度合适的
- * 物品，随机挑 `LootCountMin ~ LootCountMax` 件放进容器。等级与数量的全局
+ * 物品，随机挑 `LootCountMin ~ LootCountMax` 堆放进容器；每堆的数量在
+ * `LootStackMin ~ LootStackMax` 内随机，并按物品自身的 `IsStackable` /
+ * `MaxStackSize` 夹紧（不可堆叠物品恒为 1）。等级、堆数与每堆数量的全局
  * 默认值可以用 `UChestSettings`（ini）覆盖；每个宝箱也可以在类默认值里单独改。
  */
 UCLASS()
@@ -91,17 +94,33 @@ public:
   }
 
   /**
-   * 服务器：校验玩家权限并触打开箱表现（`BP_OnChestOpened`）。
+   * 打开宝箱的**统一入口**（蓝图 / 输入调这个，任意端都可以）。
    *
-   * 只做权限与配置校验，**不校验距离**（距离属于玩家交互组件
-   * `UContainerInteractionComponent`）。返回 false 时调用方不应把容器设为
-   * 玩家的活动容器。
+   * 它不直接改状态，而是找到 `Player` 控制的 Pawn 上的
+   * `UContainerInteractionComponent`，转发 `Server_RequestOpenContainer`：
+   *   - 服务器上 Server RPC 就地同步执行，随后 `SetActiveContainer` 创建窗口；
+   *   - 客户端上 RPC 发到服务器，`ActiveContainer` 复制回来后再创建窗口。
+   * 因此蓝图不需要自己判断权威端，也不会再出现「客户端直接调权威函数、
+   * 被引擎静默丢弃」的失效。
    *
-   * 窗口显示不在这里：玩家交互组件在同一个服务器调用链里把容器写入
-   * `ActiveContainer`，拥有者客户端据此创建窗口。
+   * 返回值只表示**请求是否已发出**（客户端拿不到服务器的即时结论）；
+   * 真正的权限 / 距离 / 窗口类校验在 `OpenChestOnServer` 里。
    */
-  UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Chest")
+  UFUNCTION(BlueprintCallable, Category = "Chest")
   bool OpenChest(APlayerController *Player);
+
+  /**
+   * 服务器专用实现：校验容器权限与 `ChestWindowClass`，把 `bIsOpened` 置
+   * true（触发 `BP_OnChestOpened`）并维护 `ActiveUsers`。
+   *
+   * **只应由 `UContainerInteractionComponent::Server_RequestOpenContainer`
+   * 在服务器上调用**（窗口显示依赖它在同一个调用链里写入客户端可用状态）。
+   * 蓝图请调 `OpenChest`，不要直接调这个——客户端没有 owning connection，
+   * 直接对宝箱发请求会被引擎丢弃（bug-093）。
+   *
+   * 只做权限与配置校验，**不校验距离**（距离属于玩家交互组件）。
+   */
+  bool OpenChestOnServer(APlayerController *Player);
 
   /**
    * 服务器：记录玩家离开宝箱；最后一名打开者离开时触关箱表现
@@ -155,8 +174,8 @@ protected:
    * 宝箱窗口 UI 类（在宝箱蓝图类默认值里指定一个继承
    * `UChestWindowWidget` 的 WBP）。
    *
-   * 为空时 `OpenChest` 会拒绝打开：否则玩家会进入「有活动容器但没有窗口」
-   * 的卡死状态。
+   * 为空时 `OpenChestOnServer` 会拒绝打开：否则玩家会进入「有活动容器但
+   * 没有窗口」的卡死状态。
    */
   UPROPERTY(EditAnywhere, Replicated, BlueprintReadOnly, Category = "Chest|UI",
             meta = (DisplayName = "宝箱窗口 UI 类"))
@@ -190,6 +209,16 @@ protected:
   UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Chest|Loot",
             meta = (ClampMin = "0", UIMin = "0"))
   int32 LootCountMax = 4;
+
+  /** 每堆战利品随机数量的下限（按物品 MaxStackSize 夹紧；不可堆叠物品恒为 1）。 */
+  UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Chest|Loot",
+            meta = (ClampMin = "1", UIMin = "1"))
+  int32 LootStackMin = 1;
+
+  /** 每堆战利品随机数量的上限（小于下限时会被抬到下限，且不超过物品 MaxStackSize）。 */
+  UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Chest|Loot",
+            meta = (ClampMin = "1", UIMin = "1"))
+  int32 LootStackMax = 3;
 
   /** 是否处于打开表现状态（复制；变化时触发蓝图开 / 关事件）。 */
   UPROPERTY(ReplicatedUsing = OnRep_bIsOpened, BlueprintReadOnly,

@@ -14,7 +14,8 @@
  *
  * 覆盖语义（与 `UPlayerCharacterSettings` 等配置类一致）：
  *   - `bOverride_X` 不勾选 = 宝箱 Actor 用自己的类默认值
- *     （`AChestActor::Capacity` / `LootCountMin` / `LootCountMax`）；
+ *     （`AChestActor::Capacity` / `LootCountMin` / `LootCountMax` /
+ *     `LootStackMin` / `LootStackMax`）；
  *   - 勾选 = 用这里的值覆盖，服务器在 `AChestActor::BeginPlay` 读取并夹紧。
  *
  * ⚠️ **只有权威端读它**：客户端不拿这些值驱动玩法。容器容量由复制下来的
@@ -66,4 +67,29 @@ public:
             meta = (EditCondition = "bOverride_LootCountMax", ClampMin = "0",
                     UIMin = "0"))
   int32 LootCountMax = 4;
+
+  /** 是否用 ini 的值覆盖「每堆战利品数量下限」。 */
+  UPROPERTY(Config, EditAnywhere, Category = "Chest",
+            meta = (InlineEditConditionToggle))
+  bool bOverride_LootStackMin = false;
+
+  /**
+   * 每堆战利品随机数量的下限（按物品 `MaxStackSize` 夹紧；
+   * 不可堆叠物品恒为 1）。
+   */
+  UPROPERTY(Config, EditAnywhere, Category = "Chest",
+            meta = (EditCondition = "bOverride_LootStackMin", ClampMin = "1",
+                    UIMin = "1"))
+  int32 LootStackMin = 1;
+
+  /** 是否用 ini 的值覆盖「每堆战利品数量上限」。 */
+  UPROPERTY(Config, EditAnywhere, Category = "Chest",
+            meta = (InlineEditConditionToggle))
+  bool bOverride_LootStackMax = false;
+
+  /** 每堆战利品随机数量的上限（小于下限时会被抬到下限，且不超过物品 MaxStackSize）。 */
+  UPROPERTY(Config, EditAnywhere, Category = "Chest",
+            meta = (EditCondition = "bOverride_LootStackMax", ClampMin = "1",
+                    UIMin = "1"))
+  int32 LootStackMax = 3;
 };

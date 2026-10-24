@@ -60,6 +60,9 @@
   只保留可调用的 `Server_CancelAttack()` / `CancelAttack()` / `Multicast_CancelAttack()`，不要覆写
   `APlayerCharacter::Jump()` 或在代码里判断按键。C++ 负责权威状态与可调用 API，触发时机交给蓝图。
   见 bug-091。
+- [2026-10-24] **按钮的点击动画交给蓝图**：C++ 只提供 `BP_OnCloseButtonClicked` /
+  `BP_OnTransferAllButtonClicked` 这类 `BlueprintImplementableEvent`，在发 Server RPC **之前**调用；
+  不要在 C++ 里硬编码缩放/位移等表现，具体动画由 WBP 的动画轨道或蓝图事件实现。
 
 ## Key Learnings
 
@@ -481,6 +484,57 @@
 - [2026-10-22] **`OpenChest` 在没有 `ChestWindowClass` 时必须拒绝**：否则玩家会进入「有活动容器
   但客户端建不出窗口」的卡死状态；容器未初始化（容量 0）同理。窗口类为空属于配置错误，记 ERROR
   并在服务器入口拦住，不要留给客户端兜底。
+- [2026-10-24] **WBP 子类是否 tick 由「原生父类是否带 `DisableNativeTick` 元数据」决定**：
+  `UUserWidget` 自身带该 meta，所以直接继承它建的 WBP 默认不 tick；但本项目的原生子类
+  （如 `UToastWidget`，未带该 meta）会让 WBP 子类自动获得 tick —— 编译器按
+  `FBlueprintEditorUtils::GetNativeParent(BP)->HasMetaData("DisableNativeTick")` 计算
+  （`WidgetBlueprint.cpp:1544-1566`、`WidgetBlueprintCompiler.cpp:692`；运行时判定在
+  `UserWidget.cpp:2339-2365`）。所以在 `NativeTick` 里做 UI 计时（Toast 淡入淡出）是可靠的；
+  一旦给类加上 `meta = (DisableNativeTick)`，NativeTick 会静默不跑，必须改用定时器或 WBP 动画。
+  注意 `UField::HasMetaData` **不查父类**，元数据不会从 `UUserWidget` 继承下来。
+- [2026-10-24] **宝箱开箱表现与窗口是两条独立链路**：`bIsOpened`（`OnRep_bIsOpened` →
+  `BP_OnChestOpened`）在各端都会触发（服务器本地补一次 + 客户端复制触发），但它只驱动动画；
+  窗口只由 `ActiveContainer` 的 `OnRep_ActiveContainer` 创建。客户端直接调
+  `BlueprintAuthorityOnly` 的 `OpenChest` 根本到不了服务器，所以既没有动画也没有窗口。
+  日志对照：同一次开箱服务器与客户端各有一条 `BP_OnChestOpened`，但 `ActiveContainer`
+  始终为「无」、没有 `[宝箱UI]` 创建记录。见 bug-117。
+- [2026-10-24] **`AddToViewport` 的默认视口槽是铺满全屏，不是 WBP 设计器里的尺寸**：
+  UE 5.7 的 `UUserWidget::AddToViewport` 走 `UGameViewportSubsystem`，新建
+  `FGameViewportWidgetSlot` 默认 `Anchors=(0,0)-(1,1)`、`Alignment=(0,0)`、Offsets 全 0，
+  根控件因此被拉满视口。要固定尺寸居中必须显式改视口槽，且顺序不能换：
+  `SetDesiredSizeInViewport` / `SetPositionInViewport` 内部都会把 Anchors 重置为 `(0,0)`
+  （`GameViewportSubsystem.cpp:269-291`），`SetAnchorsInViewport(0.5,0.5)` +
+  `SetAlignmentInViewport(0.5,0.5)` 必须最后调用。见 bug-121。
+- [2026-10-24] **`FInputModeUIOnly` 会调 `GameViewportClient::SetIgnoreInput(true)`**，游戏输入
+  （移动/攻击/交互）全部停用；关闭窗口时不能一律恢复 GameOnly，背包仍开着就要恢复
+  GameAndUI，否则玩家卡在「能点 UI、不能移动」。另外 `FInputModeUIOnly::SetWidgetToFocus`
+  对 `SupportsKeyboardFocus()==false` 的控件会记一条 `LogPlayerController` Error；
+  `UUserWidget` 默认 `bIsFocusable=false`，只有 WBP 勾了 Is Focusable 才设焦点。见 bug-121。
+- [2026-10-24] **`ULocalPlayer` 上没有无参的 `GetPlayerController()`**：无参版本属于
+  `FLocalPlayerContext`（`LocalPlayer.h:65`）；`ULocalPlayer` 继承的是
+  `UPlayer::GetPlayerController(const UWorld*)`（`Player.h:67`，实现在 `Player.cpp:78-95`：
+  `InWorld` 为空时直接返回成员 PC，否则在当前世界里按 LocalPlayer 匹配）。在
+  `ULocalPlayerSubsystem` 里取控制器要写 `LocalPlayer->GetPlayerController(GetWorld())`，
+  传世界还能避免换关卡后拿到过期的成员 PC。见 bug-122。
+- [2026-10-24] **UE 5.7 的 `UUserWidget` 没有 `SetZOrderInViewport`**（Runtime 全量 grep 无匹配，
+  只有 `AddToViewport(ZOrder)`）：视口层级只在加入时指定。已显示的控件要换层级只能
+  `RemoveFromParent()` 后重新 `AddToViewport(NewZOrder)`——那会释放并重建 Slate，
+  `NativeConstruct` 会再跑一次，控件必须能从自身状态重放（见 bug-013）。
+
+- [2026-10-24] **`UToastWidget` 空闲时会把自己 `SetVisibility(Collapsed)`**（`NativeConstruct` 与
+  `FinishActiveToast` 都这么做）。管理器复用已创建的 Toast 时**不要**每次走 `ShowUI`——它的
+  「从收起状态恢复」分支会每弹一条记一次 INFO，并短暂把空控件设成 Visible；只有新建或发现控件
+  不在视口时才走 `ShowUI`。Toast 的 `StartActiveToast` 自己会把可见性切回 `HitTestInvisible`，
+  所以复用路径不需要管理器碰可见性。
+
+- [2026-10-24] **`UIManager::ShowUI` 是「调用进程本地」的，不是「只在服务器屏幕」的**：控件对象与
+  `AddToViewport` 都不复制，但 `BP_OnChestOpened` / `BP_OnChestClosed` 这类由 `OnRep_bIsOpened`
+  驱动的事件在服务器（`SetOpenedState` 手动补调）和每个客户端（属性复制触发）都会执行——每个端
+  各自调本地的 `ShowUI`、各自 `CreateWidget`，所以所有窗口都会出现，不是同一个控件被复制。是否
+  「所有客户端显示」由调用点决定：只在拥有者客户端执行的路径（如 `ActiveContainer` 的
+  `OnRep_ActiveContainer`，`COND_OwnerOnly`）才只影响该玩家。另外，复制的角色蓝图在每个客户端
+  上都有实例，碰撞重叠 / Tick 也会为**远端角色的模拟代理**执行；交互提示逻辑必须在入口用
+  `IsLocallyControlled` 过滤，否则主机角色靠近宝箱会让每个客户端都弹提示。见 bug-124。
 
 ## Do-Not-Repeat
 
@@ -488,6 +542,21 @@
 <!-- Format: [YYYY-MM-DD] Description of what went wrong and what to do instead. -->
 <!-- ⚠️ `.wolf/hooks/pre-write.js` 按本标题（## Do-Not-Repeat）硬编码切分，不可改名或搬走。 -->
 
+- [2026-10-24] **不要在复制的角色蓝图的碰撞重叠 / Tick / BeginPlay 里无条件调 `ShowUI` / `HideUI`**：
+  这些逻辑在每个客户端上会为所有角色实例（含远端玩家的模拟代理）执行，主机靠近宝箱就会让每个
+  客户端各自弹一次提示。交互提示入口先判 `Is Locally Controlled`，只让本机控制的角色碰本机 UI。见 bug-124。
+- [2026-10-24] **蓝图里拿 `GetUIManager` 之后必须先 `Is Valid` 再调 `ShowUI`/`HideUI`**：它是
+  `ULocalPlayerSubsystem`，PIE 结束时本地玩家先于 actor 的 EndPlay 销毁，`BP_OnChestClosed`
+  这类关闭表现事件仍会触发，此时返回 null，纯节点返回值直接当 self 用会报 AccessNone。
+  UI 也不要放在世界 actor 的「服务器与客户端都会触发」的表现事件里，应放到本地玩家的客户端路径。见 bug-123。
+- [2026-10-24] **不要假设 `AddToViewport` 会沿用 WBP 设计器里的窗口尺寸**：默认视口槽铺满全屏；
+  需要居中固定尺寸时按「设尺寸/位置 → 锚点/对齐」的顺序显式设置视口槽，尺寸做成 WBP 可调属性
+  （`WindowSize`）。「只接收 UI 输入」的窗口用 `FInputModeUIOnly`，关闭时按其它 UI 状态恢复
+  （背包仍开 → GameAndUI，否则 GameOnly），不要继续用 GameAndUI。见 bug-121。
+- [2026-10-24] **不要把 `BlueprintAuthorityOnly` 的函数直接当作蓝图的交互入口**（如 `AChestActor::OpenChest`）：
+  它只做权威状态、不会驱动 `ActiveContainer` 这类 UI 链路，客户端调用还会被静默丢弃。
+  交互入口要写成两端可调用的转发函数，内部走玩家身上的 `Server_*` RPC；权威逻辑另起名字
+  （`OpenChestOnServer`）只给 RPC 调用。见 bug-117。
 - [2026-10-07] **任何「写回基准值」的复位函数，写之前必须先确认基准值已捕获**：基准值的默认 0
   与「角色不能动」的合法速度 0 无法区分，未捕获就写回会把角色永久钉在原地（本项目第一次攻击
   就这样锁死了双方角色）。用显式标志位（`bBaseSpeedValid`）+ 写入口的兜底闸门，不要靠数值判断。
@@ -712,6 +781,9 @@
 - [2026-10-22] **不要再把宝箱等级 / 战利品规则加回 `UStorageContainer`**：等级属于 `AChestActor`，
   容器组件要保持通用（尸体、熔炉、掉落箱都能复用）。掉落筛选走
   `UItemDatabaseSubsystem::GetAllItemIDs` + 稀有度池，不要在容器里写宝箱逻辑。
+- [2026-10-22] **`UFUNCTION` 在头文件里声明后必须在 .cpp 提供定义**：漏定义时 UHT 照常生成
+  `execXxx` 反射包装，编译通过、链接报 `LNK2019/LNK2001`。看到「exec + 函数名」被引用的未解析符号，
+  先查该 UFUNCTION（含 `BlueprintPure` / `BlueprintCallable`）是否有实现。见 bug-109。
 
 ## Decision Log
 
@@ -994,6 +1066,10 @@
   Fisher-Yates 洗牌保证一箱不重复 ItemID，件数 `LootCountMin..Max`；容量与件数的全局默认值
   走 `UChestSettings`（ini），单箱可在类默认值覆盖。只从 `UItemDatabaseSubsystem::GetAllItemIDs`
   取 ItemID 再 `AddItemByID`，不缓存 `FItemInformation` 指针。
+- [2026-10-24] **宝箱战利品每堆数量 = 配置范围 + 物品堆叠上限双重夹紧**：
+  `LootStackMin/Max`（类默认值 + `UChestSettings` ini）控制随机范围，生成时按
+  `IsStackable ? MaxStackSize : 1` 夹紧，保证一次只占一个槽位；不可堆叠物品恒为 1。
+  `LootCountMin/Max` 的语义因此明确为「堆数」而不是「总个数」。
 - [2026-10-22] **宝箱窗口类由宝箱蓝图指定**：C++ 只提供 abstract `UChestWindowWidget` 基类
   （可选 `ItemContainerGrid` + `OnChestWindowInitialized` 蓝图事件），`AChestActor` 上
   `TSubclassOf<UChestWindowWidget> ChestWindowClass`（复制）；服务器 `OpenChest` 校验非空，
@@ -1002,3 +1078,35 @@
   首个打开者置 true（`BP_OnChestOpened`），最后一名离开置 false（`BP_OnChestClosed`）；
   `ActiveUsers` 不复制（客户端只关心 `bIsOpened`），后加入的客户端也能通过初始复制看到正确状态。
   关闭走玩家交互组件 `Server_RequestCloseContainer`（世界 Actor 无 owning connection，见 bug-093）。
+- [2026-10-22] **宝箱「全部转移」= `UItemContainer::TransferAllToContainer` + 玩家交互组件的
+  `Server_TransferAllFromContainer`**：转移规则复用 `AddItemStackInternal`（先并入同 ItemID 的
+  未满堆、再填空槽），容量不足时**部分转移**（装不下的留在源容器），不整单失败；源/目标各只
+  广播一次 `OnContainerChanged`。RPC 必须在玩家身上而不是宝箱上（bug-093），服务器用
+  `ValidateTransferRequest` 重新校验调用者身份、两端 `HasAccess` 与距离；客户端只传两个容器指针。
+- [2026-10-24] **Toast 采用「单控件 + 内部队列 + C++ 原生淡入淡出 + 蓝图事件接管」**：
+  队列在控件内部（一次显示一条，按到达顺序播），`FToastMessage` 承载文本/颜色/图标/时长；
+  时长、淡入淡出、队列上限都是 WBP 类默认值上的 `UPROPERTY`（纯客户端表现，不走 ini、不复制、
+  不需要权威端）。默认 `bUseNativeFade=true` 由 C++ 在 `NativeTick` 里写 `RenderOpacity`；
+  关掉后 C++ 完全不碰 RenderOpacity，由 `BP_OnToastShown` / `BP_OnToastFadeOutStarted` 播放
+  WBP 动画接管，但队列节奏仍按 `FadeInDuration` / `FadeOutDuration` 推进。理由：Toast 是本地 UI，
+  多条同时到达时顺序播放比堆叠多个控件简单，蓝图只负责皮肤与自定义动画。
+- [2026-10-24] **界面统一管理选 `ULocalPlayerSubsystem` + 「类引用」键 + 可绑定判定委托**
+  （`UWildforgeUIManager`）：每个本地玩家一份；`ShowUI / HideUI / RemoveUI(TSubclassOf<UUserWidget>)`
+  统一管理视口界面，每个类最多一个实例；`FWildforgeCanShowUIDelegate`（无参返回 bool）可绑到任意
+  UObject 的 UFUNCTION（`BindCanShowFunction` 在绑定时校验签名，`BindCanShowDelegate` 收现成委托），
+  每次 `ShowUI` 前求值，false 则不展示；绑定对象销毁时自动解绑并按允许处理（死引用不该永久挡路）。
+  判定只影响「展示」请求，不会自动关闭已显示的界面；输入模式仍由背包 / 宝箱窗口各自管理（bug-121）。
+  理由：UI 纯客户端且按本地玩家隔离；类引用是蓝图最自然的传参方式；判定挂在角色 / 组件上比
+  塞进 WBP 更灵活（同一个界面可随游戏状态换判定）。
+- [2026-10-24] **Toast 便捷接口挂在 `UWildforgeUIManager` 上，控件类走 `UToastSettings`（UDeveloperSettings）**：
+  `ShowToast / ShowToastStyled / ShowToastMessage` 首次调用时按配置的 `TSoftClassPtr<UToastWidget>`
+  `LoadSynchronous` 并懒创建，之后复用同一个实例（并发提示由 `UToastWidget` 内部排队）；
+  `SetToastWidgetClass` 提供运行时覆盖，换类会先移除旧实例。控件类 / ZOrder 属于「绑定信息」放 ini；
+  停留时长 / 淡入淡出 / 队列上限仍是 WBP 类默认值，不重复进 ini。理由：调用方只需要一行代码，
+  不需要自己持有控件引用或忘记 Remove；界面皮肤的更换不该要求改代码。
+- [2026-10-24] **不在 `UWildforgeUIManager::ShowUI` 里做「该不该由这个玩家显示」的统一判断**：
+  管理器是每本地玩家一份的纯表现机制，`GetOwningPlayerController()` 永远是本机 PC，
+  `IsLocalController()` 恒为 true；调用者是谁、UI 属于哪个玩家，管理器从现有签名里拿不到。
+  显示范围由调用点决定：角色交互提示在入口判 `IsLocallyControlled`，宝箱开关走拥有者客户端的
+  `OnActiveContainerChanged`（`COND_OwnerOnly`），全端公告就让每个端各执行一次。把玩法权限塞进
+  UI 管理器会误杀合法的全端显示，并掩盖调用点的归属错误。见 bug-124。

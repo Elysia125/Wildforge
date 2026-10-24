@@ -65,6 +65,11 @@ private:
   // Quantity < 0 表示全部扣除。返回实际扣除的数量；不广播。
   int32 RemoveByItemIDInternal(int32 ItemID, int32 Quantity);
 
+  // AddItemStack 的无广播实现：优先补进同 ItemID 的未满堆，溢出部分放入
+  // 空槽。返回实际加入的数量。供 AddItemStack 与 TransferAllToContainer
+  // 共用，保证「合并优先」的规则只有一份。
+  int32 AddItemStackInternal(const FItemInformation &Item, int32 Quantity);
+
   // 把「已占用槽位」从 ItemIDToSlot 索引里摘掉（不碰 Slots / UsedCount）。
   // 供 RemoveItemAtSlotInternal / SwapSlots / MoveItemToContainer 共用。
   void DetachOccupiedSlotFromIndex(int32 SlotIndex);
@@ -249,6 +254,19 @@ public:
             Category = "ItemContainer")
   bool MoveItemToContainer(int32 FromSlot, UItemContainer *TargetContainer,
                            int32 ToSlot);
+
+  /**
+   * 把本容器里的物品**全部**转移到目标容器（服务器权威）。
+   *
+   * 容量语义：目标优先合并到同 ItemID 的未满堆（可堆叠物品），剩余数量再
+   * 放入空槽；目标装不下的部分**留在本容器**，不会凭空丢弃。返回实际转移的
+   * 物品数量（按个数计，不是堆数）。
+   *
+   * 调用方（玩家交互组件）负责校验两个容器的访问权限与交互距离。
+   */
+  UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly,
+            Category = "ItemContainer")
+  int32 TransferAllToContainer(UItemContainer *TargetContainer);
 
   UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly,
             Category = "ItemContainer")

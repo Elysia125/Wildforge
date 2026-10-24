@@ -26,10 +26,13 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActiveContainerChanged,
  * （见 bug-093）。所以跨容器 / 宝箱交互的 RPC 必须挂在**玩家自己的角色**上，
  * 由服务器在角色上校验「玩家 → 容器」的权限与距离。
  *
- * ## 三个入口
+ * ## 四个入口
  *
  * - `Server_MoveItemBetweenContainers`：把物品从任意一个容器（背包 / 快捷栏 / 宝箱）
  *   移到另一个容器。同容器拖拽也走它，和跨容器拖拽统一一条服务器校验路径。
+ * - `Server_TransferAllFromContainer`：把源容器里的物品全部转入目标容器
+ *   （宝箱窗口的「全部转移」按钮）。目标优先合并同 ItemID 的未满堆，装不下的
+ *   部分留在源容器。
  * - `Server_RequestOpenContainer` / `Server_RequestCloseContainer`：记录玩家当前
  *   打开的容器（`ActiveContainer`，`COND_OwnerOnly` 复制给拥有者），宝箱 UI 订阅
  *   `OnActiveContainerChanged` 后按它显示内容。
@@ -119,6 +122,19 @@ public:
                                         UItemContainer *ToContainer,
                                         int32 ToSlot);
 
+  /**
+   * 请求把 `FromContainer` 里的物品**全部**转移到 `ToContainer`
+   * （宝箱窗口的「全部转移」按钮）。
+   *
+   * 服务器校验权限与距离后调用 `UItemContainer::TransferAllToContainer`：
+   * 目标优先合并同 ItemID 的未满堆，剩余数量再放入空槽；装不下的部分留在
+   * 源容器。客户端只传容器指针，不传任何物品数据。
+   */
+  UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable,
+            Category = "Container|Interaction|RPC")
+  void Server_TransferAllFromContainer(UItemContainer *FromContainer,
+                                       UItemContainer *ToContainer);
+
   /** 当前打开的容器变化时广播（服务器写入后本地广播；拥有者客户端 OnRep 后广播）。 */
   UPROPERTY(BlueprintAssignable, Category = "Container|Interaction")
   FOnActiveContainerChanged OnActiveContainerChanged;
@@ -170,6 +186,14 @@ private:
   bool HasInteractionRange(UItemContainer *Container,
                            APlayerController *Player) const;
 
+  /**
+   * 两个转移 RPC 共用的服务器校验：调用者身份、源 / 目标容器权限、交互距离。
+   * 只有全部通过才允许修改容器。`ActionName` 只用于日志。
+   */
+  bool ValidateTransferRequest(UItemContainer *FromContainer,
+                               UItemContainer *ToContainer,
+                               const TCHAR *ActionName) const;
+
   /** 服务器：写入 ActiveContainer 并广播（服务器不会自动收到 OnRep）。 */
   void SetActiveContainer(UItemContainer *Container);
 
@@ -178,10 +202,18 @@ private:
    *
    * 只在本地控制器上创建 UMG；专用服务器与模拟代理直接走销毁分支。
    * 非宝箱容器（玩家背包 / 快捷栏）不创建窗口。
+   *
+   * 窗口创建后按 WBP 的 `WindowSize` 居中定位，并切换到 `FInputModeUIOnly`
+   * （开箱期间不接收游戏输入）。
    */
   void UpdateChestWindow(UItemContainer *Container);
 
-  /** 销毁当前宝箱窗口并恢复输入模式（若本组件设置过）。 */
+  /**
+   * 销毁当前宝箱窗口并恢复输入模式（若本组件设置过）。
+   *
+   * 背包仍打开时恢复背包用的 `FInputModeGameAndUI`（保留鼠标与游戏输入），
+   * 否则恢复 `FInputModeGameOnly`。
+   */
   void DestroyChestWindow();
 
   /** 本地背包 UI 是否正开着（关闭宝箱窗口时不要抢走它的鼠标 / 输入模式）。 */

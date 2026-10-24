@@ -241,10 +241,24 @@ void UContainerInteractionComponent::UpdateChestWindow(
   NewWindow->InitializeChestWindow(Chest, Container);
   NewWindow->AddToViewport(10);
 
-  // 宝箱窗口需要鼠标点击，同时保留游戏输入（与背包一致的 GameAndUI）。
-  FInputModeGameAndUI InputMode;
+  // AddToViewport 默认把控件铺满全屏；按 WBP Class Defaults 里的 WindowSize
+  // 改成固定尺寸并按视口中心摆放。
+  NewWindow->ApplyWindowLayout();
+
+  // 开箱期间只接收 UI 输入：移动 / 攻击 / 交互等游戏输入全部暂停，
+  // 避免玩家一边开箱一边走位。
+  FInputModeUIOnly InputMode;
+  if (NewWindow->IsFocusable()) {
+    // 只有 WBP 在 Class Defaults 里开了 Is Focusable 才设置焦点：
+    // UUserWidget 默认不接收键盘焦点，强行设置会让引擎记一条
+    // LogPlayerController Error。鼠标点击不依赖焦点。
+    InputMode.SetWidgetToFocus(NewWindow->TakeWidget());
+  } else {
+    WFLOG_INFO("[宝箱UI] %s 未开启 Is Focusable：窗口只响应鼠标；"
+               "需要键盘操作时请在 WBP Class Defaults 里打开。",
+               *NewWindow->GetClass()->GetName());
+  }
   InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-  InputMode.SetHideCursorDuringCapture(false);
   PC->SetInputMode(InputMode);
   PC->SetShowMouseCursor(true);
   bAppliedChestInputMode = true;
@@ -275,9 +289,15 @@ void UContainerInteractionComponent::DestroyChestWindow() {
     return;
   }
 
-  // 背包还开着时不要抢走它的输入模式与鼠标（两个窗口可以同时存在）。
+  // 宝箱窗口用的是 UIOnly：背包还开着时必须恢复背包自己的 GameAndUI，
+  // 否则玩家会卡在「能点 UI、但不能移动」的状态（两个窗口可以同时存在）。
   if (IsInventoryOpenOnOwningPlayer()) {
-    WFLOG_INFO("[宝箱UI] 关闭宝箱窗口时背包仍打开，保留当前输入模式。");
+    FInputModeGameAndUI InventoryInputMode;
+    InventoryInputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+    InventoryInputMode.SetHideCursorDuringCapture(false);
+    PC->SetInputMode(InventoryInputMode);
+    PC->SetShowMouseCursor(true);
+    WFLOG_INFO("[宝箱UI] 关闭宝箱窗口时背包仍打开，恢复 GameAndUI 输入模式。");
     return;
   }
 
@@ -333,8 +353,10 @@ void UContainerInteractionComponent::Server_RequestOpenContainer_Implementation(
   // 宝箱：先让宝箱做业务校验（权限 / 窗口类 / 容器状态）并触发开箱表现。
   // 窗口显示不在这里直接做——下面写入 ActiveContainer 后，拥有者客户端的
   // OnRep_ActiveContainer 会按 ChestWindowClass 创建窗口。
+  // 注意调用的是 OpenChestOnServer：OpenChest 是给蓝图用的统一入口，
+  // 它会再转回本函数，直接调会递归。
   if (AChestActor *Chest = Cast<AChestActor>(Container->GetOwner())) {
-    if (!Chest->OpenChest(PC)) {
+    if (!Chest->OpenChestOnServer(PC)) {
       WFLOG_WARNING("[容器交互] 玩家 %s 打开宝箱 %s 失败"
                     "（权限 / 窗口类 / 容器状态校验未通过）。",
                     *GetNameSafe(PC), *GetNameSafe(Chest));
@@ -408,6 +430,58 @@ void UContainerInteractionComponent::
   SetActiveContainer(nullptr);
 }
 
+bool UContainerInteractionComponent::ValidateTransferRequest(
+    UItemContainer *FromContainer, UItemContainer *ToContainer,
+    const TCHAR *ActionName) const {
+  APlayerController *PC = GetOwningPlayerController();
+  if (!PC) {
+    WFLOG_WARNING("[容器交互] %s 请求被拒：%s 没有 PlayerController。",
+                  ActionName, *GetNameSafe(GetOwner()));
+    return false;
+  }
+  if (PC->GetPawn() != GetOwner()) {
+    WFLOG_WARNING("[容器交互] %s 请求被拒：%s 不是该 Controller 当前控制的 "
+                  "Pawn。",
+                  ActionName, *GetNameSafe(GetOwner()));
+    return false;
+  }
+  if (!FromContainer || !ToContainer) {
+    WFLOG_WARNING("[容器交互] %s 请求被拒：源或目标容器为空。", ActionName);
+    return false;
+  }
+
+  // 权限：源与目标都必须允许该玩家访问。客户端只传容器指针，物品数据由
+  // 服务器从容器里读取；这里绝不能相信客户端传来的任何物品定义。
+  if (!FromContainer->HasAccess(PC)) {
+    WFLOG_WARNING("[容器交互] %s 请求被拒：玩家 %s 无权访问源容器 %s"
+                  "（权限模式=%d）。",
+                  ActionName, *GetNameSafe(PC), *GetNameSafe(FromContainer),
+                  static_cast<int32>(FromContainer->GetAccessMode()));
+    return false;
+  }
+  if (!ToContainer->HasAccess(PC)) {
+    WFLOG_WARNING("[容器交互] %s 请求被拒：玩家 %s 无权访问目标容器 %s"
+                  "（权限模式=%d）。",
+                  ActionName, *GetNameSafe(PC), *GetNameSafe(ToContainer),
+                  static_cast<int32>(ToContainer->GetAccessMode()));
+    return false;
+  }
+
+  // 距离：玩家自己的容器永远通过；世界容器必须在交互距离内。
+  if (!HasInteractionRange(FromContainer, PC)) {
+    WFLOG_WARNING("[容器交互] %s 请求被拒：源容器 %s 不在交互距离内。",
+                  ActionName, *GetNameSafe(FromContainer));
+    return false;
+  }
+  if (!HasInteractionRange(ToContainer, PC)) {
+    WFLOG_WARNING("[容器交互] %s 请求被拒：目标容器 %s 不在交互距离内。",
+                  ActionName, *GetNameSafe(ToContainer));
+    return false;
+  }
+
+  return true;
+}
+
 bool UContainerInteractionComponent::Server_MoveItemBetweenContainers_Validate(
     UItemContainer *FromContainer, int32 FromSlot, UItemContainer *ToContainer,
     int32 ToSlot) {
@@ -421,51 +495,11 @@ void UContainerInteractionComponent::
     Server_MoveItemBetweenContainers_Implementation(
         UItemContainer *FromContainer, int32 FromSlot,
         UItemContainer *ToContainer, int32 ToSlot) {
+  if (!ValidateTransferRequest(FromContainer, ToContainer, TEXT("转移"))) {
+    return;
+  }
+
   APlayerController *PC = GetOwningPlayerController();
-  if (!PC) {
-    WFLOG_WARNING("[容器交互] 转移请求被拒：%s 没有 PlayerController。",
-                  *GetNameSafe(GetOwner()));
-    return;
-  }
-  if (PC->GetPawn() != GetOwner()) {
-    WFLOG_WARNING(
-        "[容器交互] 转移请求被拒：%s 不是该 Controller 当前控制的 Pawn。",
-        *GetNameSafe(GetOwner()));
-    return;
-  }
-  if (!FromContainer || !ToContainer) {
-    WFLOG_WARNING("[容器交互] 转移请求被拒：源或目标容器为空。");
-    return;
-  }
-
-  // 权限：源与目标都必须允许该玩家访问。客户端只传指针 + 槽位，物品数据由
-  // 服务器从源容器读取；这里绝不能相信客户端传来的任何物品定义。
-  if (!FromContainer->HasAccess(PC)) {
-    WFLOG_WARNING("[容器交互] 转移请求被拒：玩家 %s 无权访问源容器 %s"
-                  "（权限模式=%d）。",
-                  *GetNameSafe(PC), *GetNameSafe(FromContainer),
-                  static_cast<int32>(FromContainer->GetAccessMode()));
-    return;
-  }
-  if (!ToContainer->HasAccess(PC)) {
-    WFLOG_WARNING("[容器交互] 转移请求被拒：玩家 %s 无权访问目标容器 %s"
-                  "（权限模式=%d）。",
-                  *GetNameSafe(PC), *GetNameSafe(ToContainer),
-                  static_cast<int32>(ToContainer->GetAccessMode()));
-    return;
-  }
-
-  // 距离：玩家自己的容器永远通过；世界容器必须在交互距离内。
-  if (!HasInteractionRange(FromContainer, PC)) {
-    WFLOG_WARNING("[容器交互] 转移请求被拒：源容器 %s 不在交互距离内。",
-                  *GetNameSafe(FromContainer));
-    return;
-  }
-  if (!HasInteractionRange(ToContainer, PC)) {
-    WFLOG_WARNING("[容器交互] 转移请求被拒：目标容器 %s 不在交互距离内。",
-                  *GetNameSafe(ToContainer));
-    return;
-  }
 
   // 真正的合并 / 交换规则由服务器上的容器决定。
   if (!FromContainer->MoveItemToContainer(FromSlot, ToContainer, ToSlot)) {
@@ -479,4 +513,39 @@ void UContainerInteractionComponent::
   WFLOG_INFO("[容器交互] 玩家 %s 完成转移：%s[%d] -> %s[%d]。",
              *GetNameSafe(PC), *GetNameSafe(FromContainer), FromSlot,
              *GetNameSafe(ToContainer), ToSlot);
+}
+
+bool UContainerInteractionComponent::Server_TransferAllFromContainer_Validate(
+    UItemContainer *FromContainer, UItemContainer *ToContainer) {
+  // 只做廉价参数检查；真实的权限 / 距离 / 容量判断在实现里做。
+  return FromContainer != nullptr && ToContainer != nullptr;
+}
+
+void UContainerInteractionComponent::
+    Server_TransferAllFromContainer_Implementation(
+        UItemContainer *FromContainer, UItemContainer *ToContainer) {
+  if (FromContainer == ToContainer) {
+    WFLOG_WARNING("[容器交互] 全体转移请求被拒：源与目标是同一个容器 %s。",
+                  *GetNameSafe(FromContainer));
+    return;
+  }
+
+  if (!ValidateTransferRequest(FromContainer, ToContainer, TEXT("全体转移"))) {
+    return;
+  }
+
+  APlayerController *PC = GetOwningPlayerController();
+  const int32 Moved = FromContainer->TransferAllToContainer(ToContainer);
+
+  if (Moved <= 0) {
+    WFLOG_WARNING("[容器交互] 玩家 %s 的全体转移没有移动任何物品：%s -> %s"
+                  "（目标已满且没有可合并的未满堆）。",
+                  *GetNameSafe(PC), *GetNameSafe(FromContainer),
+                  *GetNameSafe(ToContainer));
+    return;
+  }
+
+  WFLOG_INFO("[容器交互] 玩家 %s 完成全体转移：%s -> %s，共 %d 个物品。",
+             *GetNameSafe(PC), *GetNameSafe(FromContainer),
+             *GetNameSafe(ToContainer), Moved);
 }
