@@ -4,6 +4,7 @@
 
 #include "Animation/AnimInstance.h"
 #include "Character/Components/CharacterAttributes.h"
+#include "Character/Player/PlayerCharacter.h"
 #include "Character/Settings/SprintBoostComponentSettings.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/World.h"
@@ -23,6 +24,9 @@ namespace {
 // 而真正需要留痕的变化（复位：几百 cm/s 的跳变 / 基准改写 / BeginPlay 首次同步）
 // 都会远远越过它。所以判据是**变化量**，不是变化次数。
 constexpr float MirrorSignificantDeltaCms = 25.0f;
+
+/** 「精力不足」提示的停留时长（秒）：反复触发的短反馈，不用 Toast 的 4 秒默认值。 */
+constexpr float InsufficientEnergyToastDuration = 1.5f;
 } // namespace
 
 // ===== 速度提升（长按加速）=====
@@ -201,6 +205,7 @@ void USprintBoostComponent::ApplyGameplaySettingsOverrides() {
 void USprintBoostComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) {
   // next-tick 链的回调绑在 this 上，组件销毁时必须主动清掉，
   // 否则回调可能打到「正在销毁」的对象上。
+  CancelPendingStart(TEXT("组件 EndPlay"));
   ClearSprintBoostTimer();
   Super::EndPlay(EndPlayReason);
 }
@@ -458,9 +463,11 @@ void USprintBoostComponent::Client_NotifyInsufficientEnergy_Implementation(
     float RequiredEnergy) {
   // 本函数只会在拥有者客户端执行（服务器发 Client RPC 时不会本地执行）。
   if (UWildforgeUIManager *UIManager = UWildforgeUIManager::GetUIManager(this)) {
-    UIManager->ShowToastWarning(FText::FromString(TEXT("精力不足，无法加速")));
-    WFLOG_INFO("[加速] 已向拥有者客户端弹出精力不足提示（每秒消耗 %.2f）。",
-               RequiredEnergy);
+    UIManager->ShowToastWarning(FText::FromString(TEXT("精力不足，无法加速")),
+                                InsufficientEnergyToastDuration);
+    WFLOG_INFO("[加速] 已向拥有者客户端弹出精力不足提示"
+               "（每秒消耗 %.2f，停留 %.2fs）。",
+               RequiredEnergy, InsufficientEnergyToastDuration);
   } else {
     WFLOG_WARNING("[加速] 精力不足，但本端取不到 UWildforgeUIManager，"
                   "无法弹提示（专用服务器 / 无本地玩家属于正常情况）。");
@@ -777,6 +784,17 @@ bool USprintBoostComponent::StartSpeedBoost_Implementation(
     return false;
   }
 
+  // 移动锁门槛：翻滚 / 攻击 / 滑行 / 趴下期间不接受新的加速请求。
+  // 翻滚与加速通常绑在同一个 Shift 上（翻滚先起手时这里会挡住紧随其后的加速请求），
+  // 避免加速蒙太奇盖掉翻滚、或在翻滚失败时把剩余精力一路耗到 0。
+  if (APlayerCharacter *Player = Cast<APlayerCharacter>(GetOwner())) {
+    if (Player->IsMovementLocked()) {
+      WFLOG_INFO("[加速] 被拒：宿主正处于移动锁中（翻滚 / 攻击等）。宿主 %s",
+                 *Who);
+      return false;
+    }
+  }
+
   // 精力门槛：加速是持续消耗，起手时只要求「还有精力」，能撑多久由扣费决定。
   // 客户端不能自己判（能量是服务器权威值），拒绝原因由 Client RPC 通知拥有者弹提示。
   if (EnergyCostPerSecond > 0.0f) {
@@ -862,17 +880,61 @@ bool USprintBoostComponent::StartSpeedBoost_Implementation(
   const float UseInterval =
       (BoostInterval >= 0.0f) ? BoostInterval : DefaultBoostInterval;
 
+  // 长按阈值：先登记，按住满阈值才真正开始。
+  // 蓝图在按下 Shift 时同时请求「翻滚」与「加速」，若不延迟，短按翻滚也会
+  // 顺带启动加速（精力不足时把剩余精力一路耗到 0）。
+  if (HoldThreshold > KINDA_SMALL_NUMBER) {
+    if (bPendingStart) {
+      WFLOG_INFO("[加速] 已有长按启动在等待，忽略重复请求（阈值 %.2fs）。宿主 %s",
+                 HoldThreshold, *Who);
+      return false;
+    }
+
+    const UWorld *World = GetWorld();
+    if (World == nullptr) {
+      WFLOG_WARNING("[加速] 被拒：World 为空，无法登记长按启动。宿主 %s", *Who);
+      return false;
+    }
+
+    PendingTargetMaxSpeed = TargetMaxSpeed;
+    PendingBoostDuration = UseDuration;
+    PendingBoostInterval = UseInterval;
+    bPendingStart = true;
+    World->GetTimerManager().SetTimer(
+        PendingStartTimerHandle, this,
+        &USprintBoostComponent::CommitPendingStart, HoldThreshold, false);
+
+    WFLOG_INFO("[加速] 已登记长按启动：按住 %.2fs 后才真正加速"
+               "（目标 %.2f，时长 %.2fs，间隔 %.3fs）。宿主 %s",
+               HoldThreshold, TargetMaxSpeed, UseDuration, UseInterval, *Who);
+    return true;
+  }
+
+  ActivateSpeedBoost(TargetMaxSpeed, UseDuration, UseInterval);
+  return true;
+}
+
+void USprintBoostComponent::ActivateSpeedBoost(float InTargetMaxSpeed,
+                                               float InBoostDuration,
+                                               float InBoostInterval) {
+  UCharacterMovementComponent *Movement = GetOwnerMovementComponent();
+  if (Movement == nullptr) {
+    WFLOG_WARNING("[加速] 启动失败：宿主 %s 上没有移动组件。",
+                  GetOwner() ? *GetOwner()->GetName() : TEXT("None"));
+    return;
+  }
+
   // 先还原基准速度，再抓一次基准：避免上一轮加速后的值被当成基准值
   ResetMaxSpeed();
   CaptureBaseMaxSpeed();
 
   BoostState.StartSpeed = Movement->MaxWalkSpeed;
-  BoostState.TargetSpeed = TargetMaxSpeed;
-  BoostState.BoostDuration = FMath::Max(UseDuration, KINDA_SMALL_NUMBER);
+  BoostState.TargetSpeed = InTargetMaxSpeed;
+  BoostState.BoostDuration = FMath::Max(InBoostDuration, KINDA_SMALL_NUMBER);
   BoostState.ElapsedTime = 0.0f;
   bBoostActive = true;
   BoostAlpha = 0.0f;
-  LastTargetSpeed = TargetMaxSpeed;
+  LastTargetSpeed = InTargetMaxSpeed;
   // 代次自增：上一轮遗留的 next-tick 回调即使还在路上，也不会再续挂定时器
   ++BoostState.Generation;
 
@@ -893,15 +955,15 @@ bool USprintBoostComponent::StartSpeedBoost_Implementation(
     // 可选表现照旧同步（蒙太奇为空时是一次安全空操作）
     Multicast_PlaySprintMontage(NAME_None);
     Multicast_PlaySprintEffects();
-    return true;
+    return;
   }
 
-  if (UseInterval > 0.0f) {
+  if (InBoostInterval > 0.0f) {
     // 固定间隔：普通循环定时器
     BoostState.bIntervalTimer = true;
     World->GetTimerManager().SetTimer(BoostState.TimerHandle, this,
                                       &USprintBoostComponent::TickSprintBoost,
-                                      UseInterval, true);
+                                      InBoostInterval, true);
   } else {
     // 每帧：必须用 next-tick 定时器链，后续每帧由 TickSprintBoost 自己续挂。
     // 不能写 SetTimer(..., 0.f, /*bLoop=*/true)：引擎对 InRate <= 0 的处理是「清掉该句柄上的
@@ -920,19 +982,85 @@ bool USprintBoostComponent::StartSpeedBoost_Implementation(
   Multicast_PlaySprintMontage(NAME_None);
   Multicast_PlaySprintEffects();
 
-  WFLOG_INFO("[加速] 开始：长按阈值 %.2fs，速度 %.2f -> %.2f"
+  WFLOG_INFO("[加速] 开始：速度 %.2f -> %.2f"
              "（基准 %.2f / 蹲伏 %.2f，比例 %.3f），用时 %.3fs，"
              "刷新间隔 %.3fs，每秒耗精力 %.2f。%s",
-             HoldThreshold, BoostState.StartSpeed, BoostState.TargetSpeed,
+             BoostState.StartSpeed, BoostState.TargetSpeed,
              BoostState.BaseMaxWalkSpeed,
              BoostState.BaseMaxWalkSpeedCrouched,
-             BoostState.CrouchSpeedRatio, BoostState.BoostDuration, UseInterval,
-             EnergyCostPerSecond, *GetSprintBoostDebugString());
-  return true;
+             BoostState.CrouchSpeedRatio, BoostState.BoostDuration,
+             InBoostInterval, EnergyCostPerSecond,
+             *GetSprintBoostDebugString());
+}
+
+void USprintBoostComponent::CommitPendingStart() {
+  if (!bPendingStart) {
+    return;
+  }
+  bPendingStart = false;
+
+  if (!IsAuthoritativeForActorComponent(this)) {
+    return;
+  }
+
+  const FString Who = GetOwner() ? GetOwner()->GetName() : TEXT("None");
+
+  if (!bCanSprint) {
+    WFLOG_WARNING("[加速] 长按到点但 bCanSprint=false，取消本次加速。宿主 %s",
+                  *Who);
+    return;
+  }
+
+  // 翻滚 / 攻击等移动锁：即便登记时还没有锁，到点时也要再查一次
+  // （输入事件的执行顺序不保证，翻滚可能在 Start 请求之后才起手）。
+  if (APlayerCharacter *Player = Cast<APlayerCharacter>(GetOwner())) {
+    if (Player->IsMovementLocked()) {
+      WFLOG_INFO("[加速] 长按到点但宿主仍在移动锁中（翻滚 / 攻击等），"
+                 "取消本次加速。宿主 %s",
+                 *Who);
+      return;
+    }
+  }
+
+  UCharacterAttributes *Attributes = GetOwnerAttributes();
+  if (EnergyCostPerSecond > 0.0f && Attributes != nullptr &&
+      Attributes->GetEnergy() <= KINDA_SMALL_NUMBER) {
+    WFLOG_WARNING("[加速] 长按到点但精力已耗尽（当前 %.2f），取消本次加速。宿主 %s",
+                  Attributes->GetEnergy(), *Who);
+    NotifyInsufficientEnergyOnOwner(EnergyCostPerSecond);
+    return;
+  }
+
+  WFLOG_INFO("[加速] 长按到点，开始加速。宿主 %s", *Who);
+  ActivateSpeedBoost(PendingTargetMaxSpeed, PendingBoostDuration,
+                     PendingBoostInterval);
+}
+
+void USprintBoostComponent::CancelPendingStart(const TCHAR *Reason) {
+  if (!bPendingStart) {
+    return;
+  }
+
+  bPendingStart = false;
+  PendingTargetMaxSpeed = 0.0f;
+  PendingBoostDuration = 0.0f;
+  PendingBoostInterval = 0.0f;
+
+  if (const UWorld *World = GetWorld()) {
+    World->GetTimerManager().ClearTimer(PendingStartTimerHandle);
+  }
+  PendingStartTimerHandle.Invalidate();
+
+  WFLOG_INFO("[加速] 已取消长按等待中的加速：%s。宿主 %s", Reason,
+             GetOwner() ? *GetOwner()->GetName() : TEXT("None"));
 }
 
 void USprintBoostComponent::ResetMaxSpeed_Implementation() {
   WF_COMPONENT_AUTHORITY_GUARD(void());
+
+  // 松键 / 翻滚 / 其它系统复位：长按还没到点时直接取消，
+  // 否则加速会在玩家已经松手或进入翻滚之后突然启动。
+  CancelPendingStart(TEXT("收到停止 / 复位请求"));
 
   const bool bWasActive = bBoostActive;
 

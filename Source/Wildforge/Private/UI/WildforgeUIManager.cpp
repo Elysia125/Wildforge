@@ -5,6 +5,7 @@
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 #include "UI/Settings/ToastSettings.h"
+#include "UI/ToastStack.h"
 #include "UI/ToastWidget.h"
 #include "UObject/UnrealType.h"
 #include "Utils/WildforgeLog.h"
@@ -21,6 +22,16 @@
 // ================= 生命周期 =================
 
 void UWildforgeUIManager::Deinitialize() {
+  // 提示控件不在 Entries 里（同一个提示类可能同时有多条实例），必须先单独清掉，
+  // 否则换关卡 / 断线后会残留在屏幕上。
+  if (ToastStack) {
+    WFLOG_INFO("UIManager::Deinitialize: 清理提示堆叠器"
+               "（正在显示 %d 条，待显示 %d 条）",
+               ToastStack->GetActiveCount(), ToastStack->GetPendingCount());
+    ToastStack->Shutdown();
+    ToastStack = nullptr;
+  }
+
   // LocalPlayer 销毁（换关卡 / 断线）时，AddToViewport 的控件不会自动消失，
   // 不主动移除的话会残留在屏幕上。展示判定绑定随子系统一起销毁，无需处理。
   RemoveAllUI();
@@ -406,13 +417,15 @@ UToastWidget *UWildforgeUIManager::ShowToast(const FText &Message) {
     return nullptr;
   }
 
-  UToastWidget *ToastWidget = EnsureToastWidget();
-  if (!ToastWidget) {
+  // 默认样式（颜色 / 图标 / 时长）取自提示控件类默认值：控件实例要等堆叠器决定
+  // 有空位时才创建，排队中的提示也必须先有一条完整数据。
+  const TSubclassOf<UToastWidget> ToastClass = ResolveToastWidgetClass();
+  if (!ToastClass) {
     return nullptr;
   }
 
-  ToastWidget->ShowToast(Message);
-  return ToastWidget;
+  return ShowToastInternal(
+      UToastWidget::MakeDefaultToastMessage(ToastClass, Message));
 }
 
 UToastWidget *UWildforgeUIManager::ShowToastStyled(const FText &Message,
@@ -425,13 +438,13 @@ UToastWidget *UWildforgeUIManager::ShowToastStyled(const FText &Message,
     return nullptr;
   }
 
-  UToastWidget *ToastWidget = EnsureToastWidget();
-  if (!ToastWidget) {
+  const TSubclassOf<UToastWidget> ToastClass = ResolveToastWidgetClass();
+  if (!ToastClass) {
     return nullptr;
   }
 
-  ToastWidget->ShowToastStyled(Message, TextColor, BackgroundColor, Duration);
-  return ToastWidget;
+  return ShowToastInternal(UToastWidget::MakeStyledToastMessage(
+      ToastClass, Message, TextColor, BackgroundColor, Duration));
 }
 
 UToastWidget *UWildforgeUIManager::ShowToastWarning(const FText &Message,
@@ -453,43 +466,69 @@ UWildforgeUIManager::ShowToastMessage(const FToastMessage &Message) {
     return nullptr;
   }
 
-  UToastWidget *ToastWidget = EnsureToastWidget();
-  if (!ToastWidget) {
-    return nullptr;
-  }
-
-  ToastWidget->ShowToastMessage(Message);
-  return ToastWidget;
+  return ShowToastInternal(Message);
 }
 
-bool UWildforgeUIManager::ClearToasts(bool bClearActive) {
-  UToastWidget *ToastWidget = GetToastWidget();
-  if (!ToastWidget) {
-    WFLOG_INFO("UIManager::ClearToasts: 提示控件尚未创建，无需清空");
-    return false;
-  }
-
-  ToastWidget->ClearToasts(bClearActive);
-  return true;
-}
-
-bool UWildforgeUIManager::IsToastActive() {
-  const UToastWidget *ToastWidget = GetToastWidget();
-  return ToastWidget && ToastWidget->IsToastActive();
-}
-
-UToastWidget *UWildforgeUIManager::GetToastWidget() {
+UToastWidget *UWildforgeUIManager::ShowToastInternal(const FToastMessage &Message) {
   const TSubclassOf<UToastWidget> ToastClass = ResolveToastWidgetClass();
   if (!ToastClass) {
     return nullptr;
   }
 
-  return Cast<UToastWidget>(GetUIWidget(ToastClass));
+  // 展示判定仍然是「按类」求值：以前在 ShowUI 创建控件时求值，现在每条提示
+  // 显示前都求值一次——判定为 false 期间不会创建 / 补位新的提示，
+  // 已经在显示的那些保持原状（与 ShowUI 的语义一致）。
+  if (!CanShowUI(ToastClass)) {
+    WFLOG_INFO("UIManager: 提示类 %s 的展示判定返回 false，本次不显示：%s",
+               *ToastClass->GetName(), *Message.Message.ToString());
+    return nullptr;
+  }
+
+  UToastStack *Stack = EnsureToastStack(ToastClass);
+  if (!Stack) {
+    return nullptr;
+  }
+
+  UToastWidget *Entry = Stack->ShowToastMessage(Message);
+  if (!Entry) {
+    // 已满 / 打开合并时的同文本合并 / 队列尾部替换：不是错误，堆叠器里已有详细日志。
+    WFLOG_INFO("UIManager: 提示已交给堆叠器处理（当前没有新开一格）：%s",
+               *Message.Message.ToString());
+  }
+  return Entry;
+}
+
+bool UWildforgeUIManager::ClearToasts(bool bClearActive) {
+  if (!ToastStack) {
+    WFLOG_INFO("UIManager::ClearToasts: 提示堆叠器尚未创建，无需清空");
+    return false;
+  }
+
+  ToastStack->Clear(bClearActive);
+  return true;
+}
+
+bool UWildforgeUIManager::IsToastActive() {
+  return ToastStack && ToastStack->IsActive();
+}
+
+UToastWidget *UWildforgeUIManager::GetToastWidget() {
+  // 同时可能有多条：返回最上面（最早开始）的那条；没有正在显示时返回空。
+  return ToastStack ? ToastStack->GetTopEntry() : nullptr;
 }
 
 bool UWildforgeUIManager::SetToastWidgetClass(
     TSubclassOf<UToastWidget> InToastWidgetClass) {
   if (!InToastWidgetClass) {
+    // 恢复配置类前也要清掉现有堆叠器：它的控件类不会自己变。
+    if (ToastStack) {
+      WFLOG_INFO("UIManager::SetToastWidgetClass: 清除运行时覆盖，先清空当前提示"
+                 "（正在显示 %d 条，待显示 %d 条）",
+                 ToastStack->GetActiveCount(), ToastStack->GetPendingCount());
+      ToastStack->Shutdown();
+      ToastStack = nullptr;
+    }
+
     ToastWidgetClassOverride = nullptr;
     ResolvedToastWidgetClass = nullptr;
     bTriedResolveToastWidgetClass = false;
@@ -519,13 +558,15 @@ bool UWildforgeUIManager::SetToastWidgetClass(
     return true;
   }
 
-  // 换皮肤前先清掉旧实例：否则屏幕上会同时存在两套提示控件，
-  // 旧实例里的待显示队列也不会再被消费。
-  if (UToastWidget *OldToastWidget = GetToastWidget()) {
-    WFLOG_INFO("UIManager::SetToastWidgetClass: 换类前移除旧提示控件 %s"
-               "（其正在显示与排队中的提示会丢失）",
-               *OldToastWidget->GetClass()->GetName());
-    RemoveUI(OldToastWidget->GetClass());
+  // 换皮肤前先清掉旧堆叠器：否则屏幕上会同时存在两套提示控件，
+  // 旧堆叠器里的待显示队列也不会再被消费。
+  if (ToastStack) {
+    WFLOG_INFO("UIManager::SetToastWidgetClass: 换类前清空旧提示"
+               "（控件类 %s，正在显示 %d 条，待显示 %d 条；这些提示会丢失）",
+               *GetNameSafe(ToastStack->GetEntryClass().Get()),
+               ToastStack->GetActiveCount(), ToastStack->GetPendingCount());
+    ToastStack->Shutdown();
+    ToastStack = nullptr;
   }
 
   ToastWidgetClassOverride = InToastWidgetClass;
@@ -616,42 +657,44 @@ TSubclassOf<UToastWidget> UWildforgeUIManager::ResolveToastWidgetClass() {
   return ResolvedToastWidgetClass;
 }
 
-UToastWidget *UWildforgeUIManager::EnsureToastWidget() {
-  const TSubclassOf<UToastWidget> ToastClass = ResolveToastWidgetClass();
+UToastStack *
+UWildforgeUIManager::EnsureToastStack(const TSubclassOf<UToastWidget> &ToastClass) {
   if (!ToastClass) {
     return nullptr;
   }
 
-  // 已经创建过：直接复用。Toast 空闲时会把自己 Collapsed，不能走 ShowUI
-  // 的「从收起状态恢复」分支（那会每弹一条都记一次 INFO，还会短暂显示空控件）。
-  if (UToastWidget *ExistingToast = Cast<UToastWidget>(GetUIWidget(ToastClass))) {
-    if (ExistingToast->IsInViewport()) {
-      return ExistingToast;
-    }
-
-    // 被外部移出视口（不是通过管理器 RemoveUI）时补挂回去；
-    // 走 ShowUI 以保持 Entries 的状态一致，也遵守可能存在的展示判定。
-    UUserWidget *ReAdded = ShowUI(ToastClass, ResolveToastZOrder());
-    UToastWidget *ReAddedToast = Cast<UToastWidget>(ReAdded);
-    if (!ReAddedToast) {
-      WFLOG_ERROR("UIManager: 提示控件 %s 不在视口里，重新挂回失败",
-                  *ToastClass->GetName());
-      return nullptr;
-    }
-    return ReAddedToast;
+  if (ToastStack && ToastStack->GetEntryClass() == ToastClass) {
+    return ToastStack;
   }
 
-  const int32 ToastZOrder = ResolveToastZOrder();
-  UUserWidget *CreatedWidget = ShowUI(ToastClass, ToastZOrder);
-  UToastWidget *CreatedToast = Cast<UToastWidget>(CreatedWidget);
-  if (!CreatedToast) {
-    // ShowUI 对「判定拒绝 / 创建失败 / 没有本地 PC」已经记过日志，这里不重复。
+  // 类变了（运行时覆盖被改过）：旧堆叠器整只作废，换类重建。
+  if (ToastStack) {
+    WFLOG_INFO("UIManager: 提示控件类已变化（%s -> %s），重建提示堆叠器"
+               "（正在显示与排队中的提示会丢失）",
+               *GetNameSafe(ToastStack->GetEntryClass().Get()),
+               *ToastClass->GetName());
+    ToastStack->Shutdown();
+    ToastStack = nullptr;
+  }
+
+  APlayerController *PlayerController = GetOwningPlayerController();
+  if (!PlayerController) {
+    WFLOG_ERROR("UIManager: 拿不到本地 PlayerController，无法创建提示控件"
+                "（专用服务器没有本地 UI；客户端请等 Pawn / Controller 就绪后再调用）");
     return nullptr;
   }
 
-  WFLOG_INFO("UIManager: 已创建提示控件 %s（ZOrder=%d）",
+  const int32 ToastZOrder = ResolveToastZOrder();
+  ToastStack = UToastStack::Create(this, ToastClass, ToastZOrder);
+  if (!ToastStack) {
+    WFLOG_ERROR("UIManager: 提示堆叠器创建失败（类 %s）",
+                *ToastClass->GetName());
+    return nullptr;
+  }
+
+  WFLOG_INFO("UIManager: 已创建提示堆叠器（提示控件类 %s，ZOrder=%d）",
              *ToastClass->GetName(), ToastZOrder);
-  return CreatedToast;
+  return ToastStack;
 }
 
 int32 UWildforgeUIManager::ResolveToastZOrder() const {

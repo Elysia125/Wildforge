@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-24T17:15:56.908Z
-> Files: 137 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-25T15:04:45.007Z
+> Files: 148 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -11,14 +11,17 @@
 - `.ignore` (~30 tok)
 - `CLAUDE.local.md` — CLAUDE.LOCAL.md (~1605 tok)
 - `CLAUDE.LOCAL.md` — CLAUDE.LOCAL.md (~1424 tok)
-- `CLAUDE.md` — CLAUDE.md (~2863 tok)
+- `CLAUDE.md` — CLAUDE.md (~2969 tok)
 - `README.md` — Project documentation (~11 tok)
 - `Wildforge.code-workspace` (~4460 tok)
 - `Wildforge.uproject` (~124 tok)
 
 ## C:/Users/xf317/AppData/Local/Temp/
 
+- `wf_buglog_append.js` — Declares fs (~616 tok)
+- `wf_buglog_append2.js` — Declares fs (~401 tok)
 - `wf_capture_parent.py` — p, field (~539 tok)
+- `wf_check_tu.ps1` (~177 tok)
 - `wf_clangd_info.ps1` (~82 tok)
 - `wf_dump_current.py` — log, get, call, describe_slot (~1064 tok)
 - `wf_dump_inventory.py` — log, get, call, describe_slot (~753 tok)
@@ -29,12 +32,16 @@
 - `wf_dump_widget2.py` — object: get, dump_widget (~982 tok)
 - `wf_dump_widget4.py` — object: log, get, dump_widget (~1022 tok)
 - `wf_dump_widget5.py` — log, get, dump (~1043 tok)
+- `wf_extract_all_strings.js` — Declares fs (~94 tok)
+- `wf_extract_strings.js` — Declares fs (~192 tok)
 - `wf_find_tree.py` — log, get (~444 tok)
 - `wf_fix_clangd.js` — Declares fs (~96 tok)
 - `wf_introspect.py` — log (~343 tok)
 - `wf_introspect2.py` — p (~847 tok)
+- `wf_read_tail.ps1` (~127 tok)
 - `wf_subobjects.py` — p, try_prop (~1206 tok)
 - `wf_syntax_check.ps1` — Declares Invoke (~661 tok)
+- `wf_toast_check.ps1` (~165 tok)
 - `wf_tree_full.py` — log, get, call, describe_slot (~1088 tok)
 - `wf_tree.py` — p, field, walk (~635 tok)
 - `wf_widgets.py` — p, field (~906 tok)
@@ -87,9 +94,9 @@
 - `BlinkComponent.cpp` — 闪现实现：Sweep + 落点校验全在权威端；**新增 BeginPlay**（唯一职责是应用 ini 覆盖），4 项调参 COND_InitialOnly（含原先根本没复制的 BlinkCooldown） (~5300 tok)
 - `CharacterAttributes.cpp` — 属性组件实现：权威端 ini 覆盖、等级曲线、精力自然回复 Tick（最近消耗后延迟 EnergyRegenDelay 秒，再按 EnergyRegenPerSecond 回复） (~4000 tok)
 - `CrawlingComponent.cpp` — 趴下实现：姿态/过渡状态机 + 速度镜像（一律经 SprintBoostComponent::SetBaseMaxSpeed）；BeginPlay 先应用 5 项 ini 覆盖、再订阅动画回调 (~10500 tok)
-- `LandRollComponent.cpp` — Fill out your copyright notice in the Description page of Project Settings. (~7391 tok)
+- `LandRollComponent.cpp` — 「精力不足」提示的停留时长（秒）：反复触发的短反馈，不用 Toast 的 4 秒默认值。 (~7541 tok)
 - `SlideComponent.cpp` — 滑行实现：速度曲线两端各跑一份（所以调参必须复制）；BeginPlay 先应用 14 项 ini 覆盖，全部 COND_InitialOnly (~10000 tok)
-- `SprintBoostComponent.cpp` — Fill out your copyright notice in the Description page of Project Settings. (~11798 tok)
+- `SprintBoostComponent.cpp` — 「精力不足」提示的停留时长（秒）：反复触发的短反馈，不用 Toast 的 4 秒默认值。 (~12855 tok)
 
 ## Source/Wildforge/Private/Character/Player/
 
@@ -128,8 +135,10 @@
 ## Source/Wildforge/Private/UI/
 
 - `MainUserWidget.cpp` — Fill out your copyright notice in the Description page of Project Settings. (~3318 tok)
-- `ToastWidget.cpp` — Toast 状态机：排队与淡入/停留/淡出、相同文本合并（正在显示则重置停留，队尾相同则替换）、蓝图钩子与 Slate 重建重放。 (~3000 tok)
-- `WildforgeUIManager.cpp` — 管理器实现：视口界面懒创建/移除、CanShow 判定求值、Toast 懒创建与警告样式（ShowToastWarning 红字深红底）。 (~6200 tok)
+- `ToastStack.cpp` — 多提示堆叠器实现：创建 `UToastStackWidget`（VerticalBox 宿主），每条提示新建控件进出 VerticalBox；默认不合并相同文本（`bMergeSameText=false`），播完自动上移并补位 (~3400 tok)
+- `ToastStackWidget.cpp` — 幂等构建控件树（根 CanvasPanel + 顶部居中 AutoSize VerticalBox），ConfigureLayout 设 `TopPadding`；兼容 WBP 子类里已有的 `ToastContainer` (~1100 tok)
+- `ToastWidget.cpp` — 单条提示控件实现：淡入/停留/淡出状态机（NativeTick 计时）、控件内部同文本合并（仅直接使用控件时）、结束后广播 OnToastFinished；堆叠器路径每个实例只播一条 (~3300 tok)
+- `WildforgeUIManager.cpp` — 本地玩家 UI 子系统实现：按类管理视口界面与 CanShowUI 判定；Toast 入口委托给懒创建的 `UToastStack`（解析 UToastSettings、换类时重建）；Deinitialize 先关堆叠器 (~6300 tok)
 
 ## Source/Wildforge/Private/Utils/
 
@@ -164,7 +173,7 @@
 - `CrawlingComponent.h` — 趴下（爬行）组件（服务器权威）：爬行速度/奔跑阈值/播速带 Replicated + ini 覆盖；速度改写一律经 USprintBoostComponent::SetBaseMaxSpeed (~5100 tok)
 - `LandRollComponent.h` — 翻滚组件（服务器权威）。 (~3702 tok)
 - `SlideComponent.h` — 滑行（低姿态冲刺滑铲）组件（服务器权威）：14 项调参带 Replicated（COND_InitialOnly）+ ini 覆盖；两端各跑同一份速度曲线所以必须复制 (~5600 tok)
-- `SprintBoostComponent.h` — 加速（长按冲刺）组件 —— **服务器权威**。 (~6950 tok)
+- `SprintBoostComponent.h` — 加速（长按冲刺）组件接口：服务器权威、复制字段、HoldThreshold 长按启动定时器、RPC 与调试。 (~7600 tok)
 - `structs/AttackMontageData.h` — FAttackMontageData：Montage + SectionNames（TArray<FName>，默认 {NAME_None}），攻击蒙太奇分段数据 (~150 tok)
 - `WeaponAttackProfile.h` — 武器攻击配置：**一件武器一份**的招式表；做成蓝图子类（Class Reference/TSubclassOf，数据读 CDO），`AttackMontageList` 非空时覆盖角色默认表 (~550 tok)
 
@@ -235,12 +244,14 @@
 
 - `MainUserWidget.h` — Fill out your copyright notice in the Description page of Project Settings. (~1222 tok)
 - `ToastMessage.h` — FToastMessage（BlueprintType）：Message / TextColor / BackgroundColor / Icon + IconTint / Duration（<=0 回退控件默认时长）；全部只影响客户端表现 (~370 tok)
-- `ToastWidget.h` — Toast 提示控件基类（必须由蓝图子类提供具体外观）。 (~1986 tok)
-- `WildforgeUIManager.h` — 每本地玩家一份的界面管理器：按类管理视口界面 + 可绑定展示判定；Toast 入口 ShowToast / ShowToastStyled / ShowToastWarning / ShowToastMessage（警告样式红字深红底，默认 4 秒）。 (~2700 tok)
+- `ToastStack.h` — 多提示堆叠器：每个本地玩家一份，由 `UWildforgeUIManager` 懒创建并持有；管理 VerticalBox 里的活动提示与待显示队列（默认不合并相同文本） (~1250 tok)
+- `ToastStackWidget.h` — 提示堆叠容器（**纯 C++ 构建，不需要 WBP**）：根 CanvasPanel + 顶部居中 VerticalBox，纵向排列由 UMG 负责、不会重叠、自动上移；ConfigureLayout 设 TopPadding (~900 tok)
+- `ToastWidget.h` — 单条提示控件：文本 / 颜色 / 图标 / 时长；`MaxVisibleToasts` / `RowGap` / `TopPadding` / `MaxQueuedMessages` / `bMergeSameText` 的类默认值由堆叠器读取；播完广播 OnToastFinished (~3100 tok)
+- `WildforgeUIManager.h` — 界面展示判定函数：返回 true = 允许展示，false = 拒绝展示。 (~2875 tok)
 
 ## Source/Wildforge/Public/UI/Settings/
 
-- `ToastSettings.h` — UToastSettings（UDeveloperSettings）：ToastWidgetClass（TSoftClassPtr<UToastWidget>，指向 WBP 子类，首次弹提示时加载）+ ZOrder（默认 100，仅首次创建生效）；表现参数仍在 WBP 类默认值，不放进 ini (~450 tok)
+- `ToastSettings.h` — 提示（Toast）的项目设置。 (~369 tok)
 
 ## Source/Wildforge/Public/Utils/
 

@@ -6,20 +6,40 @@
 #include "Styling/SlateColor.h"
 #include "Utils/WildforgeLog.h"
 
-void UToastWidget::ShowToast(const FText &Message) {
+namespace {
+/**
+ * 取提示控件类的类默认值对象（读默认样式 / 堆叠参数用）。
+ *
+ * 类为空或不是 UToastWidget 子类时回退到原生基类 CDO——调用方只会传配置好的
+ * WBP 子类，这个兜底只是避免空指针把一次提示变成崩溃。
+ */
+const UToastWidget *ResolveToastDefaults(const UClass *ToastClass) {
+  if (ToastClass && ToastClass->IsChildOf(UToastWidget::StaticClass())) {
+    if (const UToastWidget *ClassDefaults =
+            Cast<UToastWidget>(ToastClass->GetDefaultObject())) {
+      return ClassDefaults;
+    }
+  }
+  return GetDefault<UToastWidget>();
+}
+} // namespace
+
+FToastMessage UToastWidget::BuildDefaultToast(const FText &Message) const {
   FToastMessage Toast;
   Toast.Message = Message;
   Toast.TextColor = DefaultTextColor;
   Toast.BackgroundColor = DefaultBackgroundColor;
   Toast.Icon = DefaultIcon;
   Toast.IconTint = DefaultIconTint;
+  // <= 0 表示「用 DefaultDuration」，由 ShowToastMessage 统一解析。
   Toast.Duration = 0.0f;
-  ShowToastMessage(Toast);
+  return Toast;
 }
 
-void UToastWidget::ShowToastStyled(const FText &Message, FLinearColor TextColor,
-                                   FLinearColor BackgroundColor,
-                                   float Duration) {
+FToastMessage UToastWidget::BuildStyledToast(const FText &Message,
+                                             FLinearColor TextColor,
+                                             FLinearColor BackgroundColor,
+                                             float Duration) const {
   FToastMessage Toast;
   Toast.Message = Message;
   Toast.TextColor = TextColor;
@@ -27,7 +47,31 @@ void UToastWidget::ShowToastStyled(const FText &Message, FLinearColor TextColor,
   Toast.Icon = DefaultIcon;
   Toast.IconTint = DefaultIconTint;
   Toast.Duration = Duration;
-  ShowToastMessage(Toast);
+  return Toast;
+}
+
+FToastMessage
+UToastWidget::MakeDefaultToastMessage(const UClass *ToastClass,
+                                      const FText &Message) {
+  return ResolveToastDefaults(ToastClass)->BuildDefaultToast(Message);
+}
+
+FToastMessage UToastWidget::MakeStyledToastMessage(
+    const UClass *ToastClass, const FText &Message, FLinearColor TextColor,
+    FLinearColor BackgroundColor, float Duration) {
+  return ResolveToastDefaults(ToastClass)
+      ->BuildStyledToast(Message, TextColor, BackgroundColor, Duration);
+}
+
+void UToastWidget::ShowToast(const FText &Message) {
+  ShowToastMessage(BuildDefaultToast(Message));
+}
+
+void UToastWidget::ShowToastStyled(const FText &Message, FLinearColor TextColor,
+                                   FLinearColor BackgroundColor,
+                                   float Duration) {
+  ShowToastMessage(
+      BuildStyledToast(Message, TextColor, BackgroundColor, Duration));
 }
 
 void UToastWidget::ShowToastMessage(const FToastMessage &Message) {
@@ -234,10 +278,24 @@ void UToastWidget::StartActiveToast(const FToastMessage &Toast) {
     ApplyFadeOpacity(0.0f);
   }
 
+  if (!bUseNativeFade) {
+    // WBP 动画模式：C++ 不驱动 RenderOpacity，视觉完全由 BP_OnToastShown /
+    // BP_OnToastFadeOutStarted 里播放的动画负责。
+    //
+    // 上一次淡出可能把不透明度留在 0，而这一次淡入若没有从头重播（动画播放器
+    // 状态残留、动画被其它逻辑打断），提示就会「已经显示但看不见」——这正是
+    // 「有时候不显示提示」的一种来源。这里先停掉残留动画并把不透明度复位成
+    // 1：淡入动画正常播放时会在下一帧覆盖它；动画缺失时至少能看见提示。
+    StopAllAnimations();
+    SetRenderOpacity(1.0f);
+  }
+
   WFLOG_INFO("[Toast] 开始显示提示（待显示 %d 条，停留 %.2fs，淡入 %.2fs，"
-             "淡出 %.2fs）：%s",
+             "淡出 %.2fs，原生淡入淡出=%s）：%s",
              PendingToasts.Num(), ActiveHoldDuration, FadeInDuration,
-             FadeOutDuration, *ActiveToast.Message.ToString());
+             FadeOutDuration,
+             bUseNativeFade ? TEXT("开") : TEXT("关（WBP 动画）"),
+             *ActiveToast.Message.ToString());
 
   if (bIsConstructed) {
     BP_OnToastShown(ActiveToast);
@@ -296,6 +354,10 @@ void UToastWidget::FinishActiveToast(bool bStartNext) {
   if (bIsConstructed && PendingToasts.Num() == 0) {
     BP_OnToastQueueEmptied();
   }
+
+  // 控件真正回到空闲：通知 C++ 监听者（多提示堆叠器据此移除控件、上移其余提示并补位）。
+  // 上面两个提前 return 的分支（蓝图又弹了一条 / 内部队列接着播）不算空闲，不广播。
+  OnToastFinished.Broadcast(this, FinishedToast);
 }
 
 void UToastWidget::ApplyToastVisuals(const FToastMessage &Toast) {

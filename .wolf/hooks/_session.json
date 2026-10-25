@@ -1,44 +1,12 @@
 {
-  "session_id": "session-2026-10-24-0113",
-  "started": "2026-10-24T17:13:22.918Z",
-  "files_read": {
-    "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/CharacterAttributes.cpp": {
-      "count": 1,
-      "tokens": 3311,
-      "first_read": "2026-10-24T17:18:35.003Z"
-    },
-    "E:/UE_Projects/Wildforge/Source/Wildforge/Private/Character/Components/LandRollComponent.cpp": {
-      "count": 2,
-      "tokens": 7391,
-      "first_read": "2026-10-24T17:46:31.118Z"
-    },
-    "E:/UE_Projects/Wildforge/Source/Wildforge/Public/UI/ToastWidget.h": {
-      "count": 1,
-      "tokens": 1986,
-      "first_read": "2026-10-24T17:46:35.709Z"
-    }
-  },
-  "files_written": [
-    {
-      "file": "E:/UE_Projects/Wildforge/Source/Wildforge/Public/UI/WildforgeUIManager.h",
-      "action": "edit",
-      "tokens": 43,
-      "at": "2026-10-24T17:14:37.216Z"
-    },
-    {
-      "file": "C:/Users/xf317/AppData/Local/Temp/wf-syntax-check.ps1",
-      "action": "edit",
-      "tokens": 11,
-      "at": "2026-10-24T17:15:56.921Z"
-    }
-  ],
-  "edit_counts": {
-    "Source/Wildforge/Public/UI/WildforgeUIManager.h": 1,
-    "C:/Users/xf317/AppData/Local/Temp/wf-syntax-check.ps1": 1
-  },
-  "anatomy_hits": 3,
+  "session_id": "session-2026-10-25-2309",
+  "started": "2026-10-25T15:09:53.145Z",
+  "files_read": {},
+  "files_written": [],
+  "edit_counts": {},
+  "anatomy_hits": 0,
   "anatomy_misses": 0,
-  "repeated_reads_warned": 1,
+  "repeated_reads_warned": 0,
   "cerebrum_warnings": 0,
-  "stop_count": 2
+  "stop_count": 1
 }

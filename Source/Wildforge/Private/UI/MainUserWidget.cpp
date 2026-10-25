@@ -286,6 +286,7 @@ void UMainUserWidget::UpdateAttributeBarLengths() {
   UCharacterAttributes *Attributes = BoundAttributes.Get();
   if (!Attributes) {
     return;
+    
   }
 
   // 1 级上限就是曲线起点。这两个值来自服务器下发的成长参数（COND_InitialOnly），

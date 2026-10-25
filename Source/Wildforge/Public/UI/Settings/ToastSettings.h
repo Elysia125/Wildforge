@@ -15,8 +15,8 @@ class UToastWidget;
  * 序列化到 `Config/DefaultGame.ini` 的 `[/Script/Wildforge.ToastSettings]` 段。
  *
  * 这里只放「用哪个控件类、挂在哪一层」这类**绑定信息**；
- * 停留时长 / 淡入淡出 / 队列上限等表现参数仍然在 Toast WBP 的类默认值上
- *（`UToastWidget` 的 `Toast|Timing` / `Toast|Queue` 分类），不要在 ini 里再抄一份。
+ * 停留时长 / 淡入淡出 / 同时显示条数 / 行距 / 队列上限等表现参数仍然在 Toast WBP 的类默认值上
+ *（`UToastWidget` 的 `Toast|Timing` / `Toast|Stack` / `Toast|Queue` 分类），不要在 ini 里再抄一份。
  *
  * 纯客户端配置：`UWildforgeUIManager` 只在有本地玩家的端读取它。
  */

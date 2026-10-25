@@ -10,15 +10,30 @@
 class UBorder;
 class UImage;
 class UTextBlock;
+class UToastWidget;
+
+/**
+ * 一条提示播完（淡出结束、控件回到空闲）时广播。
+ *
+ * Sender = 刚播完的控件；Toast = 它刚显示的内容。仅 C++ 使用：
+ * 多提示堆叠器 `UToastStack` 据此回收控件、把下面的提示整体上移并从队列补位。
+ */
+DECLARE_MULTICAST_DELEGATE_TwoParams(FWildforgeToastFinished, UToastWidget *,
+                                     const FToastMessage &);
 
 /**
  * Toast 提示控件基类（必须由蓝图子类提供具体外观）。
  *
  * ## 功能
  *
- * 一次显示一条提示，内部用队列保存「同时到达」的其余提示，当前提示淡出后
- * 自动接着显示下一条。C++ 负责文本 / 颜色 / 图标、队列顺序与淡入淡出计时，
- * WBP 只负责排版与皮肤。
+ * 一个控件实例负责**一条**提示的显示与淡入淡出计时；内部队列仍保留（同时到达的
+ * 其余提示排队，当前提示淡出后自动接着播），方便蓝图单独使用这个控件。
+ *
+ * 管理器（`UWildforgeUIManager`）走的是「多条同时显示」的路径：
+ * `UToastStack` 为每条提示创建一个独立实例，加进 `UToastStackWidget` 的
+ * `VerticalBox` 里纵向排列（UMG 负责布局，天然不重叠；播完移除后其余自动上移）。
+ * 每个实例只显示一条提示，所以**不会复用**已经播完的控件（复用会把 WBP 淡出
+ * 动画写过的子控件不透明度带进下一条，见 bug-149 / bug-159）。
  *
  * ## 必需 / 可选绑定（UMG 里的控件名必须逐字一致）
  *
@@ -107,6 +122,53 @@ public:
   UFUNCTION(BlueprintPure, Category = "Toast")
   FToastMessage GetActiveToast() const { return ActiveToast; }
 
+  /** 当前是否处于淡出阶段（淡出中的提示不再参与「相同文本合并」）。 */
+  UFUNCTION(BlueprintPure, Category = "Toast")
+  bool IsToastFadingOut() const { return Phase == EToastPhase::FadeOut; }
+
+  /** 同时最多显示几条提示（`UToastStack` 读取；<= 0 按 1 处理）。 */
+  UFUNCTION(BlueprintPure, Category = "Toast|Stack")
+  int32 GetMaxVisibleToasts() const { return MaxVisibleToasts; }
+
+  /** 多条提示上下堆叠时相邻两行卡片的间距（像素，`UToastStack` 读取）。 */
+  UFUNCTION(BlueprintPure, Category = "Toast|Stack")
+  float GetRowGap() const { return RowGap; }
+
+  /** 堆叠容器距屏幕顶边的距离（像素，`UToastStack` 读取）。 */
+  UFUNCTION(BlueprintPure, Category = "Toast|Stack")
+  float GetTopPadding() const { return TopPadding; }
+
+  /** 待显示队列上限（<= 0 表示不限制，`UToastStack` 读取）。 */
+  UFUNCTION(BlueprintPure, Category = "Toast|Queue")
+  int32 GetMaxQueuedMessages() const { return MaxQueuedMessages; }
+
+  /** 相同文本的提示是否合并（`UToastStack` 读取；默认 false）。 */
+  UFUNCTION(BlueprintPure, Category = "Toast|Queue")
+  bool GetMergeSameText() const { return bMergeSameText; }
+
+  /**
+   * 一条提示播完（控件回到空闲）时广播。仅 C++：多提示堆叠器据此回收控件。
+   *
+   * 控件内部队列接着播下一条时**不会**广播（那时控件不空闲）。
+   */
+  FWildforgeToastFinished OnToastFinished;
+
+  /**
+   * 用某个提示控件类（WBP 子类）的**类默认值**补全一条「默认样式」提示。
+   *
+   * 管理器在创建控件实例之前就需要完整的 `FToastMessage`（排队 / 合并都靠它），
+   * 所以在类上提供入口，避免管理器直接读控件的属性。
+   */
+  static FToastMessage MakeDefaultToastMessage(const UClass *ToastClass,
+                                               const FText &Message);
+
+  /** 同上，但指定文本颜色 / 背景颜色 / 停留时长（图标仍取类默认值）。 */
+  static FToastMessage MakeStyledToastMessage(const UClass *ToastClass,
+                                              const FText &Message,
+                                              FLinearColor TextColor,
+                                              FLinearColor BackgroundColor,
+                                              float Duration);
+
 protected:
   virtual void NativeConstruct() override;
   virtual void NativeDestruct() override;
@@ -171,13 +233,52 @@ protected:
   float FadeOutDuration = 0.25f;
 
   /**
-   * 待显示队列上限（不含正在显示的那条）。
+   * 待显示队列上限（不含正在显示的那几条）。
    *
    * <= 0 表示不限制。队列已满时新提示仍会入队，但会丢弃排队最久的一条。
+   * 管理器路径下由 `UToastStack` 读取（取提示控件 WBP 子类的类默认值）。
    */
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Toast|Queue",
             meta = (ClampMin = "0", UIMin = "0"))
   int32 MaxQueuedMessages = 5;
+
+  /**
+   * 相同文本的提示是否合并（`UToastStack` 读取）。
+   *
+   * 默认 **false**：每次触发都新开一格，重复触发同一条警告（例如连续按冲刺）
+   * 会占满多个格子，便于确认「同时显示 N 条」的效果。
+   *
+   * 打开后回到「相同文本只保留一条」：正在显示的只重置停留计时，队列尾部的
+   * 相同文本直接替换。
+   */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Toast|Queue")
+  bool bMergeSameText = false;
+
+  /**
+   * 同时最多显示几条提示（`UToastStack` 读取）。
+   *
+   * 超过这个数量后新提示进入待显示队列；某一格播完时，它下面的提示整体上移一格，
+   * 队列头部补进空出来的最后一格——**每条提示的剩余时间不受移动影响**。
+   * <= 0 按 1 处理。
+   */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Toast|Stack",
+            meta = (ClampMin = "1", UIMin = "1"))
+  int32 MaxVisibleToasts = 5;
+
+  /**
+   * 多条提示上下堆叠时，相邻两行卡片之间的间距（像素）。
+   *
+   * 由 `UToastStackWidget` 的 `VerticalBox` 用行尾 padding 实现；卡片高度由
+   * 提示 WBP 自己的布局决定（当前皮肤为固定 60 像素），支持逐条高度不同。
+   */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Toast|Stack",
+            meta = (ClampMin = "0.0", UIMin = "0.0"))
+  float RowGap = 8.0f;
+
+  /** 堆叠容器（`VerticalBox`）距屏幕顶边的距离（像素）。 */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Toast|Stack",
+            meta = (ClampMin = "0.0", UIMin = "0.0"))
+  float TopPadding = 40.0f;
 
   /**
    * 是否由 C++ 驱动 RenderOpacity 淡入淡出。
@@ -204,6 +305,14 @@ protected:
   TObjectPtr<UImage> IconImage;
 
 private:
+  /** 用当前实例的默认样式补全一条提示（ShowToast 使用 / 静态入口复用）。 */
+  FToastMessage BuildDefaultToast(const FText &Message) const;
+
+  /** 用当前实例的默认图标补全一条指定颜色与时长的提示（ShowToastStyled 使用）。 */
+  FToastMessage BuildStyledToast(const FText &Message, FLinearColor TextColor,
+                                 FLinearColor BackgroundColor,
+                                 float Duration) const;
+
   /** 把一条提示放进待显示队列；队列满时丢弃排队最久的一条。 */
   void EnqueueToast(const FToastMessage &Toast);
 

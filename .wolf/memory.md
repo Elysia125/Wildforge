@@ -1186,3 +1186,149 @@
 | 01:19 | Session end: 2 writes across 2 files (WildforgeUIManager.h, wf-syntax-check.ps1) | 1 reads | ~3365 tok |
 | 01:30 | 补充 ReceiveControllerChanged 的 BP 实现步骤（事件 + 共享函数 + 定时器 + 自机/他人 Sprite） | BP_WildforgeCharacter（只读）、.wolf/cerebrum.md、.wolf/memory.md | 已答复，待用户验证 | ~6k |
 | 01:31 | Session end: 2 writes across 2 files (WildforgeUIManager.h, wf-syntax-check.ps1) | 1 reads | ~3365 tok |
+| 01:51 | Edited Source/Wildforge/Private/UI/ToastWidget.cpp | added 1 condition(s) | ~216 |
+
+## Session: 2026-10-24 01:52
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 01:53 | Created C:/Users/xf317/AppData/Local/Temp/wf_toast_check.ps1 | — | ~165 |
+| 01:54 | Edited Source/Wildforge/Private/Character/Components/LandRollComponent.cpp | 3→6 lines | ~48 |
+| 01:54 | Edited Source/Wildforge/Private/Character/Components/LandRollComponent.cpp | expanded (+6 lines) | ~92 |
+| 01:54 | Created C:/Users/xf317/AppData/Local/Temp/wf_check_tu.ps1 | — | ~177 |
+| 01:55 | Created C:/Users/xf317/AppData/Local/Temp/wf_buglog_append.js | — | ~616 |
+| 01:55 | 诊断翻滚失败路径与 Toast 不显示原因 | LandRollComponent.cpp, ToastWidget.cpp | 确认失败不扣精力；发现失败仍吃冷却、WBP 动画模式下不透明度可能残留 0 | ~6000 |
+| 01:55 | 修复翻滚失败回滚冷却/次数；Toast 启动前重置动画与不透明度 | Source/Wildforge/Private/Character/Components/LandRollComponent.cpp; Source/Wildforge/Private/UI/ToastWidget.cpp | clang-cl 语法检查 EXIT=0 | ~3000 |
+| 01:55 | 记录 bug-148/149，更新 cerebrum 与 anatomy | .wolf/buglog.json; .wolf/cerebrum.md; .wolf/anatomy.md | 已完成 | ~1500 |
+| 01:56 | Session end: 5 writes across 4 files (wf_toast_check.ps1, LandRollComponent.cpp, wf_check_tu.ps1, wf_buglog_append.js) | 1 reads | ~8524 tok |
+| 12:02 | Created C:/Users/xf317/AppData/Local/Temp/wf_read_tail.ps1 | — | ~127 |
+| 12:02 | Created C:/Users/xf317/AppData/Local/Temp/wf_extract_strings.js | — | ~192 |
+| 12:03 | Created C:/Users/xf317/AppData/Local/Temp/wf_extract_all_strings.js | — | ~94 |
+| 12:05 | Edited Source/Wildforge/Public/Character/Components/SprintBoostComponent.h | 2→5 lines | ~71 |
+| 12:05 | Edited Source/Wildforge/Public/Character/Components/SprintBoostComponent.h | expanded (+14 lines) | ~146 |
+| 12:05 | Edited Source/Wildforge/Public/Character/Components/SprintBoostComponent.h | expanded (+8 lines) | ~113 |
+| 12:05 | Edited Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp | 3→4 lines | ~53 |
+| 12:05 | Edited Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp | modified EndPlay() | ~67 |
+| 12:05 | Edited Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp | modified ResetMaxSpeed_Implementation() | ~67 |
+| 12:05 | Edited Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp | added 2 condition(s) | ~117 |
+| 12:06 | Edited Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp | added 12 condition(s) | ~1599 |
+| 12:07 | Created C:/Users/xf317/AppData/Local/Temp/wf_buglog_append2.js | — | ~401 |
+| 12:07 | 定位“精力不足翻滚却清空精力”：Shift 同时绑定翻滚与加速，蓝图按下即发 StartSpeedBoost，HoldThreshold 未生效 | SprintBoostComponent.cpp | 日志实证翻滚后约 30ms 启动加速；加速把剩余精力扣到 0 | ~8000 |
+| 12:07 | 实现 HoldThreshold 延时启动 + 移动锁门禁 + 松键/翻滚取消待启动 | SprintBoostComponent.h; SprintBoostComponent.cpp | UHT 成功；clang-cl 语法检查 EXIT=0 | ~6000 |
+| 12:07 | 记录 bug-151，更新 cerebrum/anatomy/memory | .wolf/buglog.json; .wolf/cerebrum.md; .wolf/anatomy.md | 已完成 | ~1500 |
+| 12:08 | Session end: 17 writes across 10 files (wf_toast_check.ps1, LandRollComponent.cpp, wf_check_tu.ps1, wf_buglog_append.js, wf_read_tail.ps1) | 7 reads | ~51361 tok |
+
+## Session: 2026-10-25 18:17
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:25 | Created Saved/TmpDump/dump_toast.py | — | ~1512 |
+| 18:26 | Created Saved/TmpDump/dump_anim.py | — | ~1389 |
+| 18:26 | Created Saved/TmpDump/dump_anim2.py | — | ~1472 |
+
+## Session: 2026-10-25 18:31
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:37 | Edited Source/Wildforge/Public/UI/ToastWidget.h | expanded (+14 lines) | ~175 |
+| 18:37 | Edited Source/Wildforge/Public/UI/ToastWidget.h | expanded (+49 lines) | ~516 |
+| 18:37 | Edited Source/Wildforge/Public/UI/ToastWidget.h | expanded (+21 lines) | ~226 |
+| 18:37 | Edited Source/Wildforge/Public/UI/ToastWidget.h | expanded (+8 lines) | ~124 |
+| 18:37 | Edited Source/Wildforge/Private/UI/ToastWidget.cpp | added 2 condition(s) | ~671 |
+| 18:37 | Edited Source/Wildforge/Private/UI/ToastWidget.cpp | added 4 condition(s) | ~309 |
+| 18:37 | Edited Source/Wildforge/Private/UI/ToastWidget.cpp | 4→8 lines | ~64 |
+| 18:38 | Created Source/Wildforge/Public/UI/ToastStack.h | — | ~1000 |
+| 18:38 | Created Source/Wildforge/Private/UI/ToastStack.cpp | — | ~2592 |
+| 18:38 | Edited Source/Wildforge/Public/UI/WildforgeUIManager.h | 3→4 lines | ~22 |
+| 18:38 | Edited Source/Wildforge/Public/UI/WildforgeUIManager.h | expanded (+7 lines) | ~152 |
+| 18:38 | Edited Source/Wildforge/Public/UI/WildforgeUIManager.h | 11→12 lines | ~103 |
+| 18:38 | Edited Source/Wildforge/Public/UI/WildforgeUIManager.h | 30→34 lines | ~297 |
+| 18:38 | Edited Source/Wildforge/Public/UI/WildforgeUIManager.h | expanded (+13 lines) | ~116 |
+| 18:38 | Edited Source/Wildforge/Public/UI/WildforgeUIManager.h | expanded (+9 lines) | ~72 |
+| 18:38 | Edited Source/Wildforge/Private/UI/WildforgeUIManager.cpp | 3→4 lines | ~35 |
+| 18:38 | Edited Source/Wildforge/Private/UI/WildforgeUIManager.cpp | added 1 condition(s) | ~159 |
+| 18:38 | Edited Source/Wildforge/Private/UI/WildforgeUIManager.cpp | added 2 condition(s) | ~866 |
+| 18:38 | Edited Source/Wildforge/Private/UI/WildforgeUIManager.cpp | added 1 condition(s) | ~536 |
+| 18:39 | Edited Source/Wildforge/Private/UI/WildforgeUIManager.cpp | modified EnsureToastStack() | ~313 |
+| 18:39 | Edited Source/Wildforge/Public/UI/ToastStack.h | 2→2 lines | ~20 |
+| 18:39 | Edited Source/Wildforge/Private/Character/Components/LandRollComponent.cpp | 4→9 lines | ~62 |
+| 18:39 | Edited Source/Wildforge/Private/Character/Components/LandRollComponent.cpp | 5→6 lines | ~97 |
+| 18:39 | Edited Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp | 2→5 lines | ~47 |
+| 18:39 | Edited Source/Wildforge/Private/Character/Components/SprintBoostComponent.cpp | 4→6 lines | ~97 |
+| 18:39 | Edited Source/Wildforge/Private/UI/ToastStack.cpp | inline fix | ~13 |
+
+## Session: 2026-10-25 18:40
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:41 | Edited CLAUDE.md | 2→2 lines | ~149 |
+| 18:41 | Edited Source/Wildforge/Public/UI/Settings/ToastSettings.h | 2→2 lines | ~39 |
+| 18:40 | UHT + clangd 数据库重新生成（GenerateClangDatabase） | Intermediate/Build、compile_commands.json | Succeeded，UHT 7 files written | ~1k |
+| 18:40 | 全量构建 WildforgeEditor | Source/Wildforge | Result: Succeeded（37/37，含 ToastStack.cpp） | ~2k |
+| 18:42 | 更新文档与状态：Toast 堆叠器设计、bug-159、anatomy、CLAUDE.md | .wolf/*、CLAUDE.md、ToastSettings.h | 已同步 | ~2k |
+| 18:44 | 最终增量构建（注释改动后） | WildforgeUIManager.cpp 等 5 步 | Result: Succeeded | ~400 |
+
+### 会话摘要（2026-10-25）
+
+- 修复「排队 Toast 闪一下就没」：根因是 WBP 淡出动画把子控件 `MessageText` 的 `RenderOpacity`
+  留在 0，而旧实现复用同一个 `UToastWidget`、bug-149 的兜底只复位根控件。新增 `UToastStack`
+  （一格一控件、播完移除），从结构上消除动画残留跨消息泄漏。
+- 新增多提示堆叠：同时最多 `MaxVisibleToasts`（默认 5，WBP 类默认值可配）条，自上而下按
+  `RowGap` 排列；某格结束后其余各格 `SetRenderTranslation` 上移，各自计时不变；队列补进空槽。
+- 翻滚 / 加速的「精力不足」提示时长改为 1.5 秒（`InsufficientEnergyToastDuration`）。
+- 验证：UHT GenerateClangDatabase 成功；全量构建 WildforgeEditor 37/37 成功。
+| 18:43 | Session end: 2 writes across 2 files (CLAUDE.md, ToastSettings.h) | 0 reads | ~202 tok |
+| 18:54 | Created Saved/Python/toast_inspect.py | — | ~1320 |
+| 18:55 | Created Saved/Python/toast_tree_probe.py | — | ~877 |
+| 18:56 | Created Saved/Python/toast_objdump.py | — | ~354 |
+| 18:56 | Created Saved/Python/toast_slot_probe.py | — | ~682 |
+| 18:57 | Created Saved/Python/toast_layout_probe.py | — | ~476 |
+| 18:59 | Edited Source/Wildforge/Public/UI/ToastWidget.h | GetToastCardHeight() → GetTopPadding() | ~125 |
+| 18:59 | Edited Source/Wildforge/Public/UI/ToastWidget.h | expanded (+6 lines) | ~135 |
+| 18:59 | Edited Source/Wildforge/Public/UI/ToastWidget.h | 4→5 lines | ~64 |
+| 18:59 | Edited Source/Wildforge/Private/UI/ToastWidget.cpp | removed 30 lines | ~20 |
+| 18:59 | Edited Source/Wildforge/Private/UI/ToastWidget.cpp | 3→2 lines | ~16 |
+| 18:59 | Created Source/Wildforge/Public/UI/ToastStackWidget.h | — | ~544 |
+| 18:59 | Created Source/Wildforge/Private/UI/ToastStackWidget.cpp | — | ~926 |
+| 18:59 | Edited Source/Wildforge/Public/UI/ToastStack.h | 3→4 lines | ~26 |
+| 18:59 | Edited Source/Wildforge/Public/UI/ToastStack.h | expanded (+6 lines) | ~102 |
+| 18:59 | Edited Source/Wildforge/Public/UI/ToastStack.h | 14→11 lines | ~79 |
+| 18:59 | Edited Source/Wildforge/Public/UI/ToastStack.h | 23→21 lines | ~139 |
+| 19:00 | Edited Source/Wildforge/Private/UI/ToastStack.cpp | 5→8 lines | ~75 |
+| 19:00 | Edited Source/Wildforge/Private/UI/ToastStack.cpp | added 2 condition(s) | ~304 |
+| 19:00 | Edited Source/Wildforge/Private/UI/ToastStack.cpp | added 1 condition(s) | ~55 |
+| 19:00 | Edited Source/Wildforge/Private/UI/ToastStack.cpp | added 3 condition(s) | ~562 |
+| 19:00 | Edited Source/Wildforge/Private/UI/ToastStack.cpp | 12→12 lines | ~96 |
+| 19:00 | Edited Source/Wildforge/Private/UI/ToastStack.cpp | removed 27 lines | ~10 |
+| 19:00 | Edited Source/Wildforge/Private/UI/ToastStack.cpp | reduced (-30 lines) | ~59 |
+| 19:00 | Edited Source/Wildforge/Public/UI/WildforgeUIManager.h | 8→9 lines | ~98 |
+
+## Session: 2026-10-25 19:04
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:07 | Edited CLAUDE.md | inline fix | ~116 |
+| 19:07 | Edited CLAUDE.md | inline fix | ~27 |
+| 19:08 | Toast 堆叠改为纯 C++ VerticalBox 宿主：新增 UToastStackWidget，提示控件作为子项加入，UMG 负责纵向排列 / 自动上移 | Source/Wildforge/Public/UI/ToastStackWidget.h, Source/Wildforge/Private/UI/ToastStackWidget.cpp, Source/Wildforge/Public/UI/ToastStack.h, Source/Wildforge/Private/UI/ToastStack.cpp, Source/Wildforge/Public/UI/ToastWidget.h, Source/Wildforge/Private/UI/ToastWidget.cpp | UHT + WildforgeEditor 全量构建通过（38/38） | ~4200 |
+| 19:08 | 更新 Toast 架构文档与记忆（VerticalBox、TopPadding、bug-165） | CLAUDE.md, .wolf/anatomy.md, .wolf/cerebrum.md, .wolf/buglog.json | 文档与 buglog 已同步；运行时叠放效果待用户在编辑器中确认 | ~2600 |
+| 19:09 | Session end: 2 writes across 1 files (CLAUDE.md) | 3 reads | ~3058 tok |
+| 22:56 | Created Saved/Python/readlog.ps1 | — | ~146 |
+| 22:57 | Edited Source/Wildforge/Public/UI/ToastWidget.h | 3→7 lines | ~88 |
+| 22:57 | Edited Source/Wildforge/Public/UI/ToastWidget.h | expanded (+12 lines) | ~120 |
+| 22:57 | Edited Source/Wildforge/Public/UI/ToastStack.h | 4→7 lines | ~61 |
+| 22:57 | Edited Source/Wildforge/Public/UI/ToastStack.h | 2→5 lines | ~45 |
+| 22:57 | Edited Source/Wildforge/Private/UI/ToastStack.cpp | added 1 condition(s) | ~294 |
+| 22:58 | Edited Source/Wildforge/Private/UI/ToastStack.cpp | modified GetMaxQueuedMessages() | ~88 |
+| 22:58 | Edited Source/Wildforge/Private/UI/ToastStack.cpp | modified TEXT() | ~87 |
+| 22:58 | Edited Source/Wildforge/Private/UI/WildforgeUIManager.cpp | inline fix | ~14 |
+| 22:58 | Edited Source/Wildforge/Public/UI/WildforgeUIManager.h | 7→11 lines | ~108 |
+| 23:04 | Edited CLAUDE.md | inline fix | ~34 |
+| 23:04 | Edited CLAUDE.md | inline fix | ~36 |
+| 23:05 | 定位「多次触发只显示一条」：日志确认被相同文本合并；新增 bMergeSameText（默认 false），堆叠器仅在开启时合并 | Source/Wildforge/Public/UI/ToastWidget.h, Source/Wildforge/Public/UI/ToastStack.h, Source/Wildforge/Private/UI/ToastStack.cpp, Source/Wildforge/Public/UI/WildforgeUIManager.h, Source/Wildforge/Private/UI/WildforgeUIManager.cpp | UHT + MSVC 语法检查 + WildforgeEditor 全量构建通过（37/37） | ~2800 |
+| 23:05 | 同步文档与 buglog（默认不合并、bug-166） | CLAUDE.md, .wolf/anatomy.md, .wolf/cerebrum.md, .wolf/buglog.json | 已同步；等待用户重启编辑器测试 | ~1800 |
+| 23:05 | Session end: 14 writes across 7 files (CLAUDE.md, readlog.ps1, ToastWidget.h, ToastStack.h, ToastStack.cpp) | 6 reads | ~13433 tok |
+
+## Session: 2026-10-25 23:09
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|

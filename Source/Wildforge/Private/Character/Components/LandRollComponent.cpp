@@ -16,6 +16,11 @@
 #include "Utils/ComponentAuthorityGuard.h"
 #include "Utils/WildforgeLog.h"
 
+namespace {
+/** 「精力不足」提示的停留时长（秒）：反复触发的短反馈，不用 Toast 的 4 秒默认值。 */
+constexpr float InsufficientEnergyToastDuration = 1.5f;
+} // namespace
+
 // 翻滚的生命周期（读懂这段再改）：
 //
 //   客户端点按 → Server_LandRoll（RPC）
@@ -394,6 +399,9 @@ bool ULandRollComponent::LandRoll_Implementation() {
                   *Who);
   }
 
+  const float PreviousLastLandRollTime = LastLandRollTime;
+  const int32 PreviousLandRollCount = LandRollCount;
+
   bIsRolling = true;
   LastLandRollTime = Now;
   ++LandRollCount;
@@ -432,9 +440,15 @@ bool ULandRollComponent::LandRoll_Implementation() {
     // Multicast 分支已经在权威端就地收尾了：复位 bIsRolling、不落锁、不广播任何事件，
     // 所以这里返回 false（本次翻滚没有真正开始），并把原因说清楚——
     // 「按了翻滚没反应、但冷却被吃掉」是最难查的一类问题。
+    // 回滚冷却起点与累计次数：这次翻滚并没有真正发生，不应该让后续翻滚
+    // 被这次的冷却挡住，也不应该把它算进「成功翻滚」的次数里。
+    LastLandRollTime = PreviousLastLandRollTime;
+    LandRollCount = PreviousLandRollCount;
+
     WFLOG_WARNING(
         "[翻滚] 蒙太奇没播起来（在播对象为空）：本次翻滚已就地收尾，"
-        "既不落移动锁也没有动画（检查 LandRollMontage 与动画蓝图）。宿主 %s",
+        "既不落移动锁也没有动画（检查 LandRollMontage 与动画蓝图），"
+        "冷却与累计次数已回滚、精力未扣除。宿主 %s",
         *Who);
     return false;
   }
@@ -764,10 +778,11 @@ void ULandRollComponent::Client_NotifyInsufficientEnergy_Implementation(
     float RequiredEnergy) {
   // 本函数只会在拥有者客户端执行（服务器发 Client RPC 时不会本地执行）。
   if (UWildforgeUIManager *UIManager = UWildforgeUIManager::GetUIManager(this)) {
-    UIManager->ShowToastWarning(
-        FText::FromString(TEXT("精力不足，无法翻滚")));
-    WFLOG_INFO("[翻滚] 已向拥有者客户端弹出精力不足提示（每次消耗 %.2f）。",
-               RequiredEnergy);
+    UIManager->ShowToastWarning(FText::FromString(TEXT("精力不足，无法翻滚")),
+                                InsufficientEnergyToastDuration);
+    WFLOG_INFO("[翻滚] 已向拥有者客户端弹出精力不足提示"
+               "（每次消耗 %.2f，停留 %.2fs）。",
+               RequiredEnergy, InsufficientEnergyToastDuration);
   } else {
     WFLOG_WARNING("[翻滚] 精力不足，但本端取不到 UWildforgeUIManager，"
                   "无法弹提示（专用服务器 / 无本地玩家属于正常情况）。");

@@ -396,8 +396,11 @@ public:
   // 本函数改为新的目标）。
   //
   // 参数：
-  //   HoldThreshold  长按阈值（秒）。纯调用方节奏参数，**不参与速度计算**——调用方
-  //                  需要先自己等满这个时长再调用（或用它做节流），保证「点按」不误触发。
+  //   HoldThreshold  长按阈值（秒）。> 0 时本组件先挂定时器，按住满这个时长才
+  //                  真正开始加速；期间收到 `ResetMaxSpeed()`（松键 / 翻滚 /
+  //                  攻击等移动锁）会取消本次启动。这样「点按 Shift 翻滚」不会
+  //                  被同一个按键顺带触发加速。0 = 立即开始。
+  //                  （若调用方自己已经做过长按延时，请传 0，避免双重延迟。）
   //   TargetMaxSpeed 加速后的最大速度（cm/s），必须 > 基准速度
   //   BoostDuration  从起始速度到达目标速度需要的时间（秒），< 0 时取
   //                  `DefaultBoostDuration`；= 0 也是合法的（瞬时到顶）
@@ -543,6 +546,20 @@ private:
 
   FSprintBoostState BoostState;
 
+  // ===== 长按启动（HoldThreshold）=====
+  //
+  // 蓝图在按下加速键时**立即**发 `Server_StartSpeedBoost`（参数里带 0.5s 阈值），
+  // 组件以前只在日志里记录、立刻加速。于是同一个 Shift 上绑定的「翻滚」会顺带启动
+  // 加速：精力不足时翻滚被拒，但加速仍在跑，把剩余精力一路耗到 0（表现为「翻滚失败
+  // 却扣光了精力」）。这里把阈值落实成延时启动：
+  //   * 到点前收到 `ResetMaxSpeed()`（松键 / 翻滚 / 强制复位）就取消；
+  //   * 到点后重新校验总开关、移动锁与精力，再真正开始。
+  FTimerHandle PendingStartTimerHandle;
+  float PendingTargetMaxSpeed = 0.0f;
+  float PendingBoostDuration = 0.0f;
+  float PendingBoostInterval = 0.0f;
+  bool bPendingStart = false;
+
   // 一次方向判定的结果快照。
   // 单独做一个结构体是因为它有**三个消费者**：方向门控（要不要收掉加速）、
   // 调试字符串（日志里要打出夹角）、蓝图查询（UI 显示冲刺条件）。
@@ -586,6 +603,14 @@ private:
   void TickSprintBoost();
   // 只清定时器与刷新方式标志，不动 bBoostActive（到顶时需要保留「加速中」状态）
   void ClearSprintBoostTimer();
+  // 长按计时到点：重新校验总开关 / 移动锁 / 精力后真正开始加速。
+  void CommitPendingStart();
+  // 取消尚未到点的长按启动（松键 / 翻滚 / 组件销毁）。
+  void CancelPendingStart(const TCHAR *Reason);
+  // 真正开始加速。从 StartSpeedBoost 的主体重构出来，
+  // 立即启动与「长按到点」两条路径共用同一份实现。
+  void ActivateSpeedBoost(float InTargetMaxSpeed, float InBoostDuration,
+                          float InBoostInterval);
   // 把当前 MaxWalkSpeed / MaxWalkSpeedCrouched 记为基准值，并算出蹲伏比例
   // （仅在「未加速」时调用才有意义）
   void CaptureBaseMaxSpeed();

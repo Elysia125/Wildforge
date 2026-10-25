@@ -34,6 +34,9 @@
   不要单独开一节写"我们改过什么"。
 - [2026-10-06] 用户会删除他判断为冗余的文档段落。**发现自己的补充被删掉时不要自动加回**——
   先确认是有意删除，是多此一举就撤回。
+- [2026-10-25] **Toast 重复触发要能叠成多格，不要默认合并相同文本**：用户用连续触发同一条警告
+  来验证「同时显示 5 条」，默认合并会让他以为功能没生效。`bMergeSameText` 只在提示 WBP 类默认值里
+  明确打开时才合并（默认 false）；打开合并时要能在日志里看到原因（见 bug-166）。
 - [2026-10-06] **"信息该写到哪个文件"的分流约定已成文**（用户要求）：完整因果 → `buglog.json`；
   提炼后的禁令（一两行 + `见 bug-NNN`）→ 本文件 `## Do-Not-Repeat`；跨会话机制/约定 →
   `## Key Learnings`；架构取舍 → `## Decision Log`；会话流水 → `memory.md`；
@@ -571,6 +574,41 @@
   `CaptureOnMovement` 只在组件自身 transform 变化时刷新，别人移动不会刷新；多人小地图用 0.1s
   的 `CaptureScene` 定时器。PIE 多世界共享 `RT_Minimap` 资产，需运行时 RT 或分进程测试。
 
+- [2026-10-25] **`U_ToastWidget` 的 CDO 里 `bUseNativeFade=false`**：此时 `ApplyFadeOpacity`
+  完全不写 `RenderOpacity`，透明度只由 `BP_OnToastShown` / `BP_OnToastFadeOutStarted` 播放的
+  WBP 动画控制；上一次淡出残留的 0 不透明度会让下一次提示「逻辑上在显示、画面上看不见」。
+  `StartActiveToast` 在触发蓝图事件前先 `StopAllAnimations()` + `SetRenderOpacity(1.0f)` 兜底。
+  另：管理器路径已改为 `UToastStack` 一格一控件并行显示（见 bug-159），不再有「排到当前提示之后」
+  的串行等待。
+
+- [2026-10-25] **UMG 动画的 `RenderOpacity` 轨迹按控件记录，`UWidget::SetRenderOpacity` 只影响
+  调用它的那个控件**：对 UserWidget 根调用不会清掉动画在子控件（`MessageText` / `Image`）上留下的 0；
+  `StopAllAnimations` 也不会把属性恢复成 1。跨消息复用控件前必须逐个复位相关子控件，最稳妥的是
+  每次新建控件（Toast 已采用）。见 bug-159。
+
+- [2026-10-25] **原生 `UUserWidget` 子类也能当宿主控件**：`UUserWidget::Initialize()` 会给非 WBP 类
+  `NewObject<UWidgetTree>`（`UserWidget.cpp:160-163`），因此可在 `NativeOnInitialized` / `RebuildWidget`
+  里用 `WidgetTree->ConstructWidget` 建树并赋给 `RootWidget`；`CreateWidget` 的校验只要求类可实例化，
+  不要求 BlueprintType。提示 WBP 的根 CanvasPanel 会按 BackgroundBorder 的固定 CanvasPanelSlot
+  报告期望尺寸 800×60（`SConstraintCanvas::ComputeDesiredSize` 用 Offset.Right/Bottom），
+  所以放进 `VerticalBox` 能按行正确占位；`RemoveFromParent` 后 VerticalBox 自动重排、下方各行上移，
+  无需手算行距或 `SetRenderTranslation`。见 bug-159、bug-165。
+
+- [2026-10-25] **翻滚的 `LastLandRollTime` / `LandRollCount` 必须在蒙太奇确认播起来之后才提交**：
+  `Multicast_PlayLandRollMontage` 在服务器本地执行，调用后可用 `ActiveLandRollMontage` 判断是否
+  真的起手；失败分支要回滚这两个值，否则「失败也吃冷却」会被玩家误认为失败还扣精力。精力本来就
+  只在成功起手后扣。见 bug-148。
+
+- [2026-10-25] **本项目的 Shift 同时绑定了翻滚与加速**：`IA_Shift_Dash` 与 `IA_Shift_Sprint`
+  都映射在 LeftShift，蓝图按下时立即发 `Server_StartSpeedBoost`（`HoldThreshold=0.5` 只在日志里
+  出现，组件以前不消费它）。所以短按翻滚会顺带启动加速，翻滚被拒时加速会把剩余精力扣到 0。
+  现在 `StartSpeedBoost` 自己按 HoldThreshold 延时启动，并在 `ResetMaxSpeed` / 移动锁时取消；
+  调输入时保持「点按=翻滚，按住=加速」的语义。见 bug-151。
+
+- [2026-10-25] **`ResetSprintBoostOnMovementLock` 只在「锁落下的那一刻」复位加速**：如果加速
+  请求在翻滚起手之后才到达（蓝图两个输入事件的执行顺序不保证），它拦不住新请求。加速组件自身
+  必须再用 `APlayerCharacter::IsMovementLocked()` 做一次门禁（请求时 + 长按到点时各一次）。见 bug-151。
+
 ## Do-Not-Repeat
 
 <!-- Mistakes made and corrected. Each entry prevents the same mistake recurring. -->
@@ -840,6 +878,27 @@
   `BlockAllDynamic`，会挡住 PlayerStart 的选择与后续玩家 Pawn 的生成（客户端表现为「卡加载 / 没有角色」，
   监听服务器正常），`Attach` 到角色后还会把角色顶到地图边缘。一律设 `NoCollision`，并关掉
   Generate Overlap Events / Can Ever Affect Navigation。见 bug-135。
+
+- [2026-10-25] **不要复用同一个 `UToastWidget` 播放多条提示**：WBP 淡出会把**子控件**（`MessageText`）
+  的 `RenderOpacity` 留在 0，而根控件的 `SetRenderOpacity(1)` 不会复位子控件 —— 排队消息会
+  「闪一下就没」。管理器路径改为一格一控件（`UToastStack`）；重播前至少 `StopAllAnimations()` +
+  `SetRenderOpacity(1.0f)`，但这只能兜底根控件。见 bug-149、bug-159。
+
+- [2026-10-25] **不要用 `SetRenderTranslation` 手动给多条 Toast 排行**：行高 / 行距 / 上移都要自己算，
+  卡片尺寸或内容高度一变就会重叠（见 bug-165）。正确做法是把每条提示作为 `VerticalBox` 的子项
+  （宿主 `UToastStackWidget`），由 UMG 负责纵向排列与移除后的自动上移；行距写进
+  `VerticalBoxSlot::SetPadding`，不要再测量卡片高度。
+
+- [2026-10-25] **不要默认合并相同文本的 Toast**：用户重复触发同一条警告时期望看到多格；
+  `bMergeSameText` 必须默认 false，只有 WBP 类默认值明确打开时才合并。见 bug-166。
+
+- [2026-10-25] **不要在翻滚蒙太奇确认播放成功前提交冷却与计数**：`LastLandRollTime` / `LandRollCount`
+  提前写入会让失败的翻滚也进入冷却。保存旧值，`ActiveLandRollMontage == nullptr` 时回滚；精力扣除
+  本来就在成功检查之后。见 bug-148。
+
+- [2026-10-25] **不要在长按阈值到点前启动加速**：蓝图是按下即发 `Server_StartSpeedBoost`，
+  阈值只作为参数传进来；组件若立即启动，同一 Shift 上的翻滚短按会把剩余精力耗到 0。
+  必须挂延时定时器，并在 `ResetMaxSpeed`（松键 / 翻滚）与移动锁期间取消。见 bug-151。
 
 ## Decision Log
 
@@ -1139,13 +1198,13 @@
   未满堆、再填空槽），容量不足时**部分转移**（装不下的留在源容器），不整单失败；源/目标各只
   广播一次 `OnContainerChanged`。RPC 必须在玩家身上而不是宝箱上（bug-093），服务器用
   `ValidateTransferRequest` 重新校验调用者身份、两端 `HasAccess` 与距离；客户端只传两个容器指针。
-- [2026-10-24] **Toast 采用「单控件 + 内部队列 + C++ 原生淡入淡出 + 蓝图事件接管」**：
-  队列在控件内部（一次显示一条，按到达顺序播），`FToastMessage` 承载文本/颜色/图标/时长；
-  时长、淡入淡出、队列上限都是 WBP 类默认值上的 `UPROPERTY`（纯客户端表现，不走 ini、不复制、
-  不需要权威端）。默认 `bUseNativeFade=true` 由 C++ 在 `NativeTick` 里写 `RenderOpacity`；
-  关掉后 C++ 完全不碰 RenderOpacity，由 `BP_OnToastShown` / `BP_OnToastFadeOutStarted` 播放
-  WBP 动画接管，但队列节奏仍按 `FadeInDuration` / `FadeOutDuration` 推进。理由：Toast 是本地 UI，
-  多条同时到达时顺序播放比堆叠多个控件简单，蓝图只负责皮肤与自定义动画。
+- [2026-10-24] **Toast 的动画由 C++ 状态机 + 蓝图事件共同驱动**（2026-10-25 起管理器路径
+  由 `UToastStack` 一格一控件取代，控件内部队列只保留给「直接使用控件」的场景）：
+  `FToastMessage` 承载文本/颜色/图标/时长；时长、淡入淡出、队列上限都是 WBP 类默认值上的
+  `UPROPERTY`（纯客户端表现，不走 ini、不复制、不需要权威端）。默认 `bUseNativeFade=true`
+  由 C++ 在 `NativeTick` 里写 `RenderOpacity`；关掉后 C++ 完全不碰 RenderOpacity，由
+  `BP_OnToastShown` / `BP_OnToastFadeOutStarted` 播放 WBP 动画接管，但节奏仍按
+  `FadeInDuration` / `FadeOutDuration` 推进。理由：蓝图负责皮肤与自定义动画。
 - [2026-10-24] **界面统一管理选 `ULocalPlayerSubsystem` + 「类引用」键 + 可绑定判定委托**
   （`UWildforgeUIManager`）：每个本地玩家一份；`ShowUI / HideUI / RemoveUI(TSubclassOf<UUserWidget>)`
   统一管理视口界面，每个类最多一个实例；`FWildforgeCanShowUIDelegate`（无参返回 bool）可绑到任意
@@ -1154,12 +1213,15 @@
   判定只影响「展示」请求，不会自动关闭已显示的界面；输入模式仍由背包 / 宝箱窗口各自管理（bug-121）。
   理由：UI 纯客户端且按本地玩家隔离；类引用是蓝图最自然的传参方式；判定挂在角色 / 组件上比
   塞进 WBP 更灵活（同一个界面可随游戏状态换判定）。
-- [2026-10-24] **Toast 便捷接口挂在 `UWildforgeUIManager` 上，控件类走 `UToastSettings`（UDeveloperSettings）**：
-  `ShowToast / ShowToastStyled / ShowToastMessage` 首次调用时按配置的 `TSoftClassPtr<UToastWidget>`
-  `LoadSynchronous` 并懒创建，之后复用同一个实例（并发提示由 `UToastWidget` 内部排队）；
-  `SetToastWidgetClass` 提供运行时覆盖，换类会先移除旧实例。控件类 / ZOrder 属于「绑定信息」放 ini；
-  停留时长 / 淡入淡出 / 队列上限仍是 WBP 类默认值，不重复进 ini。理由：调用方只需要一行代码，
-  不需要自己持有控件引用或忘记 Remove；界面皮肤的更换不该要求改代码。
+- [2026-10-25] **Toast 管理器路径 = `UToastStack` + `UToastStackWidget`（一格一控件、并行计时、UMG 纵向排列）**：
+  `UWildforgeUIManager` 首次弹提示时按 `UToastSettings.ToastWidgetClass` 懒创建堆叠器；
+  堆叠器创建一个**纯 C++ 构建**的 `UToastStackWidget`（根 CanvasPanel + 顶部居中 AutoSize `VerticalBox`）
+  常驻视口，每条提示**新建**一个 `UToastWidget` 作为 VerticalBox 子项（播完即移除，杜绝 WBP 动画
+  在子控件上残留的不透明度跨消息泄漏，见 bug-159），同时最多 `MaxVisibleToasts`（提示 WBP 类默认值，
+  默认 5）条；纵向位置与上移完全交给 UMG（不会重叠、也不必手算行距），每条自己在 `NativeTick` 里
+  计时，重排不碰计时（剩余时间不变），再从队列补进空槽。
+  控件内部队列仅保留给直接使用控件的场景。控件类 / ZOrder 属于「绑定信息」放 ini；
+  停留时长 / 淡入淡出 / 堆叠条数 / 行距 / 顶部边距 / 队列上限仍是 WBP 类默认值，不重复进 ini。
 - [2026-10-24] **不在 `UWildforgeUIManager::ShowUI` 里做「该不该由这个玩家显示」的统一判断**：
   管理器是每本地玩家一份的纯表现机制，`GetOwningPlayerController()` 永远是本机 PC，
   `IsLocalController()` 恒为 true；调用者是谁、UI 属于哪个玩家，管理器从现有签名里拿不到。
@@ -1190,8 +1252,9 @@
   属性组件也不需要反向依赖 `USprintBoostComponent` / `ULandRollComponent`。参数进
   `UCharacterAttributesSettings`（一类一页），`COND_InitialOnly` 下发，客户端 Tick 绝不写 `Energy`。
   理由：回复规则属于属性本身，未来任何新的消耗来源都会自动获得同样的延迟语义。
-- [2026-10-25] **Toast 的警告样式与重复合并都留在纯客户端表现层**：`ShowToastWarning` 固定红字
-  + 深红底（颜色不进 ini，不驱动玩法；要换肤用 `ShowToastStyled`），默认停留 4 秒；
-  `ShowToastMessage` 对相同文本合并——正在显示的只重置停留计时，队列尾部的直接替换（FadeOut
-  阶段不合并，让旧条正常收尾）。理由：服务器每秒节流的「精力不足」若逐条入队会刷屏，队列满时还会
-  挤掉其它提示；合并保持最新意图可见，又不改变队列上限的语义。
+- [2026-10-25] **Toast 的警告样式与重复合并都留在纯客户端表现层；合并改为可配置、默认关闭**：
+  `ShowToastWarning` 固定红字 + 深红底（颜色不进 ini，不驱动玩法；要换肤用 `ShowToastStyled`），
+  默认停留 4 秒。`UToastStack` 默认 `bMergeSameText=false`：同一句话连续触发会各占一格，直到
+  `MaxVisibleToasts` 满再排队——用户用连续触发同一条「精力不足」验证多格显示，默认合并会让他以为
+  功能没生效（见 bug-166）。打开后回到「正在显示的只重置停留计时、队列尾部替换（FadeOut 阶段不合并）」，
+  适合每秒节流的重复警告，避免刷屏。文案 / 时长 / 合并开关都属于纯客户端表现。

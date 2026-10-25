@@ -10,6 +10,7 @@
 #include "WildforgeUIManager.generated.h"
 
 class APlayerController;
+class UToastStack;
 class UToastWidget;
 class UUserWidget;
 
@@ -92,10 +93,22 @@ struct FWildforgeUIEntry {
  *
  * 不用自己创建 `UToastWidget`：`ShowToast` / `ShowToastStyled` / `ShowToastMessage`
  * 会在第一次调用时按 Project Settings > Game > **提示（Toast）** 里配置的控件类
- * 懒创建提示控件，之后复用同一个实例（并发提示由 `UToastWidget` 内部排队）。
+ * 懒创建提示堆叠器（`UToastStack`），由它管理「最多同时显示 N 条、从上到下堆叠、
+ * 播完整体上移并从队列补位」，每条提示的剩余时间互不影响。
+ * 提示控件加进 `UToastStackWidget` 的 `VerticalBox`（顶部居中）：纵向排列由 UMG
+ * 负责，**不会重叠**；N = 提示控件 WBP 子类的类默认值 `MaxVisibleToasts`（默认 5），
+ * 行间距 = `RowGap`，距屏幕顶边 = `TopPadding`。
+ *
+ * 相同文本默认**不合并**：连续触发同一条提示会各占一格，直到 `MaxVisibleToasts`
+ * 满后再排队。想恢复「相同文本只保留一条」，在提示 WBP 类默认值里打开
+ * `bMergeSameText`。
+ *
+ * 每条提示都使用**新建**的 `UToastWidget` 实例，播完即移除，不复用控件
+ * （WBP 淡出动画会把子控件不透明度留在 0，复用会让下一条只剩背景、看不见文本，
+ * 见 bug-149 / bug-159）。
  *
  * 想临时换一个提示皮肤，用 `SetToastWidgetClass` 覆盖（传空恢复配置类）；
- * 查询 / 清空用 `GetToastWidget` / `IsToastActive` / `ClearToasts`。
+ * 查询 / 清空用 `GetToastWidget`（最上面那条）/ `IsToastActive` / `ClearToasts`。
  *
  * ## 蓝图里怎么拿
  *
@@ -218,10 +231,11 @@ public:
   /**
    * 弹出一条纯文本提示（颜色 / 图标 / 时长都用 WBP 类默认值）。
    *
-   * 第一次调用会按 Project Settings 里的配置懒创建提示控件并挂到视口，
-   * 之后复用同一个实例；同时到达的提示由 `UToastWidget` 内部排队。
+   * 第一次调用会按 Project Settings 里的配置懒创建提示堆叠器并挂到视口；
+   * 还有空位就立刻显示，已满则进入待显示队列。
    *
-   * 返回接收这条提示的控件；未配置控件类 / 加载失败 / 展示判定拒绝时返回 nullptr。
+   * 返回**开始显示这条提示**的控件；进了队列（暂时没格子）返回 nullptr。
+   * 未配置控件类 / 加载失败 / 展示判定拒绝时同样返回 nullptr（并记日志）。
    * 文本为空时记 WARNING 并直接返回 nullptr（不会创建控件）。
    */
   UFUNCTION(BlueprintCallable, Category = "UI|Manager|Toast")
@@ -238,11 +252,14 @@ public:
                                 float Duration = 0.0f);
 
   /**
-   * 用「警告」样式弹一条提示：红色文本 + 深红背景，默认停留 4 秒。
+   * 用「警告」样式弹一条提示：红色文本 + 深红背景。
    *
    * 用于「精力不足」这类需要立刻被注意到的反馈。颜色是纯客户端表现
    * （不参与玩法判定），需要换配色时改 `ShowToastWarning` 的实现或用
    * `ShowToastMessage` 逐条指定。
+   *
+   * `Duration` 默认 4 秒；反复触发的短反馈（翻滚 / 加速精力不足）应在调用点
+   * 传更短的值，不要改这个全局默认。
    */
   UFUNCTION(BlueprintCallable, Category = "UI|Manager|Toast")
   UToastWidget *ShowToastWarning(const FText &Message, float Duration = 4.0f);
@@ -254,17 +271,18 @@ public:
   /**
    * 清空提示（含待显示队列）。
    *
-   * @param bClearActive true = 当前正在显示的提示也立即收起；false = 让它自然播完。
-   * @return 提示控件尚未创建过时返回 false。
+   * @param bClearActive true = 正在显示的各条也立即收起；false = 只丢队列，
+   *                     让它们自然播完（播完不再补位）。
+   * @return 提示堆叠器尚未创建过时返回 false。
    */
   UFUNCTION(BlueprintCallable, Category = "UI|Manager|Toast")
   bool ClearToasts(bool bClearActive = true);
 
-  /** 当前是否有提示正在显示（含淡入 / 停留 / 淡出阶段）。 */
+  /** 当前是否有提示正在显示（含淡入 / 停留 / 淡出阶段；队列里只有排队的不算）。 */
   UFUNCTION(BlueprintPure, Category = "UI|Manager|Toast")
   bool IsToastActive();
 
-  /** 取当前的提示控件（**不会**懒创建）；还没创建过时返回 nullptr。 */
+  /** 取最上面（最早开始）的那条提示控件（**不会**懒创建）；没有正在显示时返回 nullptr。 */
   UFUNCTION(BlueprintPure, Category = "UI|Manager|Toast")
   UToastWidget *GetToastWidget();
 
@@ -304,8 +322,21 @@ private:
    */
   TSubclassOf<UToastWidget> ResolveToastWidgetClass();
 
-  /** 取提示控件，必要时懒创建；创建失败（未配置 / 判定拒绝等）返回 nullptr。 */
-  UToastWidget *EnsureToastWidget();
+  /**
+   * 所有 `ShowToast*` 的统一出口：求展示判定 → 懒创建堆叠器 → 投递提示。
+   *
+   * 调用方负责把「默认样式」补全成完整的 `FToastMessage`（见
+   * `UToastWidget::MakeDefaultToastMessage`）。
+   */
+  UToastWidget *ShowToastInternal(const FToastMessage &Message);
+
+  /**
+   * 取提示堆叠器，必要时懒创建；创建失败（没有本地 PC 等）返回 nullptr。
+   *
+   * 已存在但提示控件类变了（`SetToastWidgetClass`）时重建：旧堆叠器的正在显示
+   * 与排队中的提示会一起清掉。
+   */
+  UToastStack *EnsureToastStack(const TSubclassOf<UToastWidget> &ToastClass);
 
   /** 读取提示控件的视口层级（配置值，负值按 0 处理）。 */
   int32 ResolveToastZOrder() const;
@@ -324,4 +355,13 @@ private:
 
   /** 是否已经尝试过从配置解析（失败也置 true，避免每次调用都刷日志）。 */
   bool bTriedResolveToastWidgetClass = false;
+
+  /**
+   * 提示堆叠器（多提示同时显示）。
+   *
+   * 不在 `Entries` 里：一个提示类可能同时存在多个实例，按类唯一的 Entries 管不了，
+   * 由堆叠器自己维护实例列表与队列。
+   */
+  UPROPERTY(Transient)
+  TObjectPtr<UToastStack> ToastStack;
 };
