@@ -622,11 +622,36 @@
 - [2026-10-31] **UE 5.7 Python 材质引脚名与编辑器显示名不一致**：`LandscapeLayerCoords` / `ComponentMask` 都只有一个**无名输出**（`connect_material_expressions(..., "", ...)`；遮罩通道用节点的 `r/g/b/a` 属性选），`Clamp` 的第一个输入内部名是 `"None"`，`Noise` 的输入是 `"World Position"` / `"FilterWidth"` 且 `scale` 是节点属性；`Desaturation` 的颜色输入也是 `"None"`。不要照 UI 上的名字猜，先 `MEL.get_material_expression_input_names(expr)`（只收 1 个参数）探测。见 bug-173。
 - [2026-10-31] **`MaterialExpressionMaterialFunctionCall` 要先 `set_material_function(func)` 才有输入引脚**：`BlendAngleCorrectedNormals` 的输入为 `BaseNormal` / `AdditionalNormal`，单输出函数连接时 from_output 传 `""`。材质函数资产路径：`/Engine/Functions/Engine_MaterialFunctions02/Utility/BlendAngleCorrectedNormals`。
 - [2026-10-31] **commandlet 可以无人值守建/改材质**：`UnrealEditor-Cmd.exe <project> -run=pythonscript -script=<py> -unattended -nosplash -NullRHI`；用 `MaterialEditingLibrary` 建节点/连线/接属性，`unreal.find_object(mat, "MaterialExpressionXxx_0")` 取子对象，`delete_material_expression` 删孤立节点，最后 `recompile_material` + `EditorAssetLibrary.save_loaded_asset(mat, False)`。编辑器必须关闭，否则保存冲突；脚本与输出放 `Intermediate/`。
-- [2026-10-31] **宏观色染色不要写成「细节 Albedo × 宏观色」**：乘法保留细节的色相，绿色草地细节会把白/黄宏观色全乘成绿色；正确做法是 `Lerp(细节 Albedo, MacroColor, 强度)`，让宏观色主导、细节只占小比例。地形「金属感」优先查 Specular（默认 0.5）+ Roughness 是否直接用了低粗糙的 RGM；给 Roughness 加偏置、Specular 降到 0.1 就能去掉大部分湿亮高光。见 bug-175。
+- [2026-10-31] **宏观色染色不要写成「细节 Albedo × 宏观色」**：乘法保留细节的色相，绿色草地细节会把白/黄宏观色全乘成绿色；正确做法是 `Lerp(细节 Albedo, MacroColor, 强度)`，让宏观色主导、细节只占小比例。地形「金属感」优先查 Specular（默认 0.5）+ Roughness 是否直接用了低粗糙的 RGM；给 Roughness 加偏置、Specular 降到 0.1 只能缓解，真正的通道错误见下一条。见 bug-175。
+- [2026-10-31] **ProceduralNaturePack 的 `_rgm` 打包是 R=Specular、G=Roughness**（`master_terrain_blend`：Roughness←ComponentMask G，Specular←ComponentMask R）。粗糙度必须接 G；R 接近黑色，经 sRGB 解码后只有 0.007–0.018，是「果冻/湿滑」高光的直接原因。数据贴图应导入为 sRGB=False + TC_Masks，材质纹理节点的 SamplerType 必须同步改成 Masks（`GetSamplerTypeForTexture`：TC_Masks→SAMPLERTYPE_Masks；类型不匹配是编译错误，不是警告）。**RGBA 输出直连标量引脚时材质编译器取 R 分量（HLSL `(float)float4` = `.x`），只改 sRGB/SamplerType 并不会改变通道——必须在采样与 Roughness 的 Lerp 之间插 `ComponentMask(r=False,g=True)`。** 见 bug-178 / bug-182。
 - [2026-10-31] **`Content/World/Maps/spline_*` 三张 512² 贴图当前没有任何资产引用**：Asset Registry `get_referencers` 的硬/软引用均为 0，二进制字符串搜索也没有其它资产引用；来源是 `C:/Users/xf317/Desktop/temp/textures/*.png`，属于 spline 高度偏移 / 植被排除 / 表面遮罩类掩码。现有 `LandscapeMaterial`、v2、v3 和 MainMap 都没用到，只有以后做道路/河流/植被排除才可能有用。
 - [2026-10-31] **Water Body 的 `Affects Landscape` 默认开启**：`UWaterBodyComponent` 构造函数把 `bAffectsLandscape` 设为 true（`WaterBodyComponent.cpp:106`），头文件说明启用后 landscape will be deformed based on this water body placed on top of it（`WaterBodyComponent.h:628-630`）。Water Body 通过 Water Landscape Brush 修改 Landscape Edit Layer，所以放置 Water Body Ocean 会直接改地形；只想做海面时必须在 Details → Terrain 取消 `Affects Landscape`。见 bug-176。
 - [2026-10-31] **Water Zone / Ocean 的 Extent 是全长，不是半长**：`AWaterZone::ZoneExtent` 注释明确 `ZoneExtent is full extent`（`WaterZoneActor.cpp:91`），`UWaterBodyOceanComponent::OceanExtents` 也是全长并围绕 Water Zone 居中（`WaterBodyOceanComponent.h:72`）。MainMap 的 Landscape 覆盖 0..2016m，中心在 `(100800,100800)`；Water Zone 应放中心、`ZoneExtent`/`OceanExtents` 至少 220000（2.2km 全长）。旧值 `(0,0,0)+110000` 只覆盖 1.1km，盖不住地图。见 bug-177。
 - [2026-10-31] **MainMap 实际 Z 范围 -279.04m ~ +203.95m，海平面约 -179.10m**：Landscape 的 Transform Scale Z=109（不是 100）；用 64 个 LandscapeStreamingProxy 的包围盒验证了高度图映射，terrain-studio 的 `seaLevel=100` 对应 UE Z≈-17910cm。旧公式按 Z Scale=100 得到 -16357cm，偏高约 15.5m。见 bug-177。
+- [2026-10-31] **ProceduralNaturePack 的植被资产情况**：22 个 FoliageType（草 4、蕨/叶 7、小石头 11）默认 `Density` 50–1000 / 1Kuu、`CullDistance` 0、`Height` ±262144；全图 2016m 约 40,642 个 1Kuu，`Density=0.1` 才约 4,064 个实例，直接 Fill 会生成数千万实例。树/巨石只有 StaticMesh（`large_tree_w_roots_a` 约 13m×14m×10.6m，`rock_boulder_*` 约 2.7m），没有现成 FoliageType。PCG 插件 `Engine/Plugins/PCG/PCG.uplugin` 的 `EnabledByDefault=false`，本项目 `.uproject` 未启用。
+- [2026-10-31] **Landscape 草不需要景观图层，草权重可以直接接程序化遮罩**：`MaterialExpressionLandscapeGrassOutput` 的 `GrassTypes` 每项是 `FGrassInput{Name, GrassType, Input}`，引脚名就是 `Name`；Python 用 `unreal.GrassInput()` 设 `name`/`grass_type`，再 `connect_material_expressions(weight, "", grass_out, "Grass")`。Grass Output 是 custom output，不从任何 `MP_*` 属性出线，**从材质属性根遍历找不到它**；判断是否已加过只能看 `get_num_material_expressions` 的增量（v3 加草前 81、加后 85 = 1 OneMinus + 2 Multiply + 1 GrassOutput）。v3 的草权重 = (1−DirtMask) × SlopeSmooth × (1−SnowMask)，其中 SlopeSmooth 等价于 1−RockMask，正好与底色/粗糙度的混合次序一致。
+
+- [2026-10-31] **Landscape 草的实际密度 = LG_Grass 的 GrassDensity × `grass.DensityScale`（由 Scalability 的 FoliageQuality 档位决定）**：`FGrassBuilderBase` 用 `GrassVariety.GetDensity() * GGrassDensityScale` 计算，`BaseScalability.ini` 的 `[FoliageQuality@0]` 把 `grass.DensityScale` 设为 0（@1=0.4、@2=0.8、@3=1.0）；编辑器启动日志里能看到 `Applying CVar settings from Section [FoliageQuality@0] File [Scalability]` → `Set CVar [[grass.DensityScale:0]]`。草密度乘 0 后 `SqrtMaxInstances=0`、`bHaveValidData=false`，一个实例都不生成——调 LG_Grass 密度再大也没用，先查这条 CVar / 全局画质档位。见 bug-180。
+
+- [2026-10-31] **Landscape HLOD 是把景观材质烘焙成贴图，不是引用材质**：`ULandscapeHLODBuilder::Build` → `BakeLandscapeMaterial` 用 `FMaterialUtilities::ExportLandscapeMaterial` 把每个 `ALandscapeProxy` 的 Diffuse/Normal/Metallic/**Roughness**/**Specular** 导出成贴图再生成 flatten MI；MainMap 64 个 LandscapeStreamingProxy → 59 个 WorldPartitionHLOD actor，loading range 512m。所以 HLOD 是构建期资产：改材质、甚至把材质清空都不会改变已烘焙贴图；旧材质里的湿亮粗糙度会一直留在远处地形，必须 Build HLODs 重新导出。**但 HLOD 哈希包含材质内容**：`FHLODHashBuilder` 对材质对象走 `UHLODProxy::GetCRC`（MIC/Material 的 ParameterStateId + StateId），材质保存后增量 Build HLODs 会自动重建受影响的 actor（2026-10-31 日志：21:19 保存材质、21:26-21:27 重建全部 59 个）。所以「重建后仍湿滑」不是 HLOD 陈旧，而是材质本身有错。见 bug-181 / bug-182。
+
+- [2026-10-31] **v3 的草权重当前公式**（92 个表达式）：`GrassW = (1 − Saturate(DirtMask × GrassDirtSuppress)) × SlopeSmooth × (1 − SnowMask) × SmoothStep(GrassWaterMinZ, GrassWaterMaxZ, WorldZ)`。`GrassDirtSuppress` 默认 2.5（DirtMask 受 DirtAmount=0.35 限制，黄土地草量 ≈ 12.5%）；`GrassWaterMinZ/MaxZ` 默认 -17900/-17700（水面 Z=-18000；水线以上 1m 内零草、3m 处到满密度，理由见 Decision Log）。改这几个值直接在 `MI_Landscape_v3` 上覆盖标量参数即可。
+
+- [2026-10-31] **草地图（grass map）的生成哈希包含 `Material->ComputeAllStateCRC()`**（`LandscapeGrassMapsBuilder.cpp`）：改材质/改草权重后，编辑器里的 `LandscapeSubsystem` 通过 `AmortizedUpdateGrassMaps` 逐帧自动重建草地图；`-nullrhi` commandlet 里 `CanRenderGrassMap=false` 不重建。所以 commandlet 改完材质后打开编辑器等几秒即可，不要让旧草地图背锅。见 bug-182。
+
+- [2026-10-31] **MainMap 没有任何手工 Foliage/ISM actor**；65 个 landscape actor 的 256 个组件 `override_material` 全为空、全部使用 `MI_Landscape_v3`（`get_components_by_class(unreal.LandscapeComponent)` 可读，`material_instances` 未暴露给 Python）。所以「水下长草」只能来自草权重/水线遮罩本身，不是有人种了草或某个代理换了材质。见 bug-182。
+
+- [2026-10-31] **WaterBodyOcean 的水面在 5 个采样点均为 Z=-18000**（`GetWaterSurfaceInfoAtLocation`）；波浪资产是 `/Water/Waves/GerstnerWaves_Ocean`，但 `WaterWavesAssetReference` 的私有 `WaterWavesAsset` 属性 Python 读不到（无 AllowPrivateAccess），`unreal.load_object(asset, "WaterWaves")` 也取不到实例化子对象——不要在这上面继续耗时间。岸边草按「水面以上留 1m」处理即可。见 bug-182。
+
+- [2026-10-31] **HLOD 可以不开编辑器用 commandlet 无头重建**：`UnrealEditor.exe <proj> -Unattended -RunningFromUnrealEd -AbsLog=<log> /Game/World/Maps/MainMap -run=WorldPartitionBuilderCommandlet -Builder=WorldPartitionHLODsBuilder -SetupHLODs -BuildHLODs -AllowCommandletRendering`。Git Bash 里必须加 `MSYS_NO_PATHCONV=1`，否则 `/Game/...` 被转成 `D:/git/Git/Game/...`，报 "Missing world(s) as the first argument"。材质真正改变后首次烘焙要重算所有代理的景观贴图（本机 59 个 HLOD 约 32 分钟、峰值内存 ~17GB）；同一材质再建命中 DDC 只需增量（编辑器内那次 59 个仅 88s）。见 bug-182。
+
+- [2026-11-01] **小地图实现链（全在资产里，无 C++）**：`W_MainWidget` 的 `MapImage` 采样 `RT_Minimap`（200×200、R8G8B8A8、sRGB 关）；`BP_WildforgeCharacter` 上的 `SceneCaptureComponent2D`（相对 Z +1000、Pitch −90、Orthographic、OrthoWidth 2000、`SCS_FINAL_COLOR_LDR`、不逐帧捕获）由蓝图定时器每 0.1s 调一次 `CaptureScene`；角色箭头不是 UMG，是 `BP_MinimapIcon` 的 PaperSprite（相对 (120,0,0)、平躺），会被一起捕获。见 bug-184 / bug-185 / bug-186。
+
+- [2026-11-01] **UE 5.7 的 Water 水面不会出现在 SceneCapture 里（包括小地图 RT）**：`FWaterViewExtension::ShouldHaveWaterZoneViewData`（`WaterViewExtension.cpp`）对 `bIsSceneCapture` 等视图直接返回 false，捕获视图拿不到 WaterInfoTexture，水面不渲染，只露出水底地形。对应 Epic 问题 UE-359953，修复 commit 49927162；本机引擎源码仍是修复前版本。工程侧用「只在 SceneCapture 渲染」的蓝色平面补水，别去改水面材质 / ShowFlags。见 bug-184。
+
+- [2026-11-01] **`SCS_FINAL_COLOR_LDR` 输出到非 sRGB 的 8 位 RT 会整体发暗**：`UTextureRenderTarget2D::GetDisplayGamma()` 在 `bForceLinearGamma`（`RTF_RGBA8` 会保持 true）且 `TargetGamma=0` 时返回 1.0；`PostProcessCombineLUTs` 里 `InverseGamma.y = 2.2 / DisplayGamma`，相当于在 sRGB 编码前又压了一次 2.2 gamma，UMG 再按普通贴图显示 → 小地图比主画面暗。把 RT 的 Render Target Format 改成 `RTF_RGBA8_SRGB`（PostEditChangeProperty 会关掉 `bForceLinearGamma`，DisplayGamma=2.2）即可。见 bug-185。
+
+- [2026-11-01] **小地图箭头是贴在角色脚下的世界 PaperSprite，不是 UMG**：俯视正交捕获里，草、石头、坡地、角色身体（游泳时水平）都会在它和相机之间，深度测试会把它挡住；正交投影下抬高 Z 不改变屏幕位置。最小修复：relative Z 抬到 250 + 勾 `Visible In Scene Capture Only`；仍被树冠/悬崖挡住就换 `Translucent + Unlit + Disable Depth Test` 材质，或改成 MapImage 中心的 UMG 箭头（按角色 yaw 旋转）。见 bug-186。
 
 ## Do-Not-Repeat
 
@@ -634,7 +659,12 @@
 <!-- Format: [YYYY-MM-DD] Description of what went wrong and what to do instead. -->
 <!-- ⚠️ `.wolf/hooks/pre-write.js` 按本标题（## Do-Not-Repeat）硬编码切分，不可改名或搬走。 -->
 
+- [2026-11-01] **不要用非 sRGB 的 8 位 RT 显示 `SCS_FINAL_COLOR_LDR` 捕获**（`RTF_RGBA8` + sRGB 关 + TargetGamma=0 会在 sRGB 编码前多压一次 2.2 gamma，小地图整体发暗）；用 `RTF_RGBA8_SRGB`。见 bug-185。
+- [2026-11-01] **不要把贴地的世界 PaperSprite 当小地图箭头**：草/地形/角色/水面会遮住它；至少抬高 2.5m 并勾 `Visible In Scene Capture Only`，或改用 UMG。见 bug-186。
+- [2026-11-01] **不要在 SceneCapture（含小地图 RT）里指望 Water 水面出现**：UE-359953，本机引擎未修复；小地图水面用 scene-capture-only 平面补，不能靠调水面材质 / ShowFlags。见 bug-184。
+
 - [2026-10-31] **不要用 `Lerp(细节, 细节 × 宏观色, α)` 做地形宏观染色**：绿色细节会把白/黄宏观色乘绿，整片只剩绿色；应直接 `Lerp(细节, MacroColor, α)`。同时地形的 Specular 不要留默认 0.5、Roughness 不要直接吃 RGM 的原始低值，否则看起来像湿金属。见 bug-175。
+- [2026-10-31] **不要把 `_rgm` 的 R 通道当 Roughness**：R 是 Specular，G 才是 Roughness；接错会得到 ~0.007 的粗糙度，Lumen 下整片湿亮/果冻。改 G 时一并把贴图设 sRGB=False + TC_Masks、采样节点 SamplerType=Masks，并把 RoughnessBias 降到 ~0.1；否则要么仍是湿的，要么材质编译报 sampler type 不匹配。见 bug-178。
 - [2026-10-31] **用 Python 连材质引脚时不要照抄编辑器显示名**：`ComponentMask` / `LandscapeLayerCoords` 只有一个无名输出（传 `""`），`Clamp` 的第一个输入叫 `"None"`，`Noise` 的输入是 `"World Position"` / `"FilterWidth"`（`scale` 是节点属性），`Desaturation` 的颜色输入是 `"None"`；先 `get_material_expression_input_names(expr)` 探测再连，不要猜 UI 名称。见 bug-173。
 
 - [2026-10-25] **在 `UWidget` / `UUserWidget` 子类里不要把局部变量命名为 `Slot`**：`UWidget` 自带
@@ -935,6 +965,12 @@
 - [2026-10-31] **不要直接放置默认 Water Body Ocean 做海面**：它的 `Affects Landscape` 默认开启，会通过 Water Landscape Brush 把地形按水体形状改掉；先取消 Details → Terrain → Affects Landscape，再放 Water Zone/Ocean。见 bug-176。
 
 - [2026-10-31] **不要把 Water Zone 放在原点、Extent 填 110000 就当覆盖整张地图**：`ZoneExtent` 是全长，MainMap 是 0..2016m；应在 `(100800,100800)` 放 Zone、`ZoneExtent` ≥ 220000。海平面用 `-17910cm`，不要再用 `-16357cm`。见 bug-177。
+
+- [2026-10-31] **看不到草时先查 `grass.DensityScale`，不要继续调 LG_Grass 的 Density**：编辑器全局画质为 Low（FoliageQuality@0）时 Scalability 把它设成 0，密度乘 0 后不生成任何实例；在 Engine Scalability Settings 调到 High/Epic，或控制台 `grass.DensityScale 1`。见 bug-180。
+
+- [2026-10-31] **改完景观材质 / 草权重后不要忘记 Build HLODs**：500m 外的地形由烘焙的 HLOD 贴图渲染，不重建就还是旧材质（湿亮粗糙度会残留），且与近处实时材质混杂；"材质只覆盖部分区域"就是 HLOD 没重建。见 bug-181。（2026-10-31 更正：重建后仍残留湿滑说明材质本身有错，见 bug-182；无头重建方法见 Key Learnings。）
+
+- [2026-10-31] **不要把 `_rgm` 贴图的 RGBA 输出直连 Roughness/标量引脚**：材质编译器对标量输入取 float4 的 R（`(float)float4` = `.x`），而 `_rgm` 的 R=Specular、G=Roughness；必须插 `ComponentMask(r=False,g=True)`。只改 sRGB=False + SAMPLERTYPE_MASKS 不能改变通道。见 bug-182。
 
 ## Decision Log
 
@@ -1296,3 +1332,5 @@
   适合每秒节流的重复警告，避免刷屏。文案 / 时长 / 合并开关都属于纯客户端表现。
 
 - [2026-10-31] **3.3 地形材质另建 `LandscapeMaterial_v3` + `MI_Landscape_v3`，不覆盖用户手搭的 `LandscapeMaterial_v2`**：v2 的 BaseColor 细节层未接入，保留它便于对照/回滚；v3 用 Python 脚本一次生成 81 节点，四层（草/土/岩/雪）+ 高度/坡度/噪声遮罩 + 法线/粗糙度/AO，材质实例负责调参。理由：二进制资产手改风险高，新建资产不破坏已有工作，出问题可直接删掉 v3。
+- [2026-10-31] 草的水线遮罩 `SmoothStep` 从 (-18000,-17800) 改为 (-17900,-17700)：SmoothStep 的 0 端正好落在水面上时，水线附近仍有草叶露头（含 grass map ~1m 纹素双线性外溢）；改为水面以上留 1m 裸岸、再 2m 过渡到满密度。参数是材质标量 `GrassWaterMinZ/MaxZ`，可在 MI 上覆盖，不需要重建 HLOD。
+- [2026-11-01] 小地图水面问题不升级引擎：本机引擎仍是 UE-359953 修复前的版本，升级风险高；改用一块 `Visible In Scene Capture Only` 的 Unlit 蓝色平面（Z=-18000、与 WaterBodyOcean 水面一致，保证小地图水线位置准确；2.2km 见方）在捕获中补水面，主视角完全不受影响。等引擎升级到含 commit 49927162 的版本后再删掉这块平面即可。

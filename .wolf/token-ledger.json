@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-10-05T10:52:46.081Z",
   "lifetime": {
-    "total_tokens_estimated": 784754,
-    "total_reads": 308,
-    "total_writes": 458,
-    "total_sessions": 89,
-    "anatomy_hits": 200,
-    "anatomy_misses": 106,
-    "repeated_reads_blocked": 76,
-    "estimated_savings_vs_bare_cli": 394072
+    "total_tokens_estimated": 825643,
+    "total_reads": 333,
+    "total_writes": 517,
+    "total_sessions": 101,
+    "anatomy_hits": 201,
+    "anatomy_misses": 130,
+    "repeated_reads_blocked": 78,
+    "estimated_savings_vs_bare_cli": 394272
   },
   "sessions": [
     {
@@ -5302,6 +5302,584 @@
         "output_tokens_estimated": 5496,
         "reads_count": 13,
         "writes_count": 7,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-10-31-1107",
+      "started": "2026-10-31T03:07:06.090Z",
+      "ended": "2026-10-31T03:14:54.217Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Wildforge.uproject",
+          "tokens_estimated": 124,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Plugins/PCG/PCG.uplugin",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Plugins/PCG/Source/PCG/Public/Elements/PCGSurfaceSampler.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Plugins/PCG/Source/PCG/Public/Elements/PCGFilterByAttribute.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Plugins/PCG/Source/PCG/Public/Elements/PCGSelfPruning.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Plugins/PCG/Source/PCG/Public/Elements/PCGTypedGetter.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Plugins/PCG/Source/PCG/Public/Elements/PCGNormalToDensity.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Plugins/PCG/Source/PCG/Public/Metadata/PCGAttributePropertySelector.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Plugins/PCG/Source/PCG/Public/Elements/PCGTransformPoints.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Plugins/PCG/Source/PCG/Public/Elements/PCGStaticMeshSpawner.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Plugins/PCG/Source/PCG/Public/Elements/PCGDensityFilter.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Source/Runtime/Landscape/Classes/Materials/MaterialExpressionLandscapeGrassOutput.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_dump_foliage.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_dump_mesh_bounds.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_dump_foliage.py",
+          "tokens_estimated": 353,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_dump_mesh_bounds.py",
+          "tokens_estimated": 398,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 124,
+        "output_tokens_estimated": 751,
+        "reads_count": 14,
+        "writes_count": 2,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 1
+      }
+    },
+    {
+      "id": "session-2026-10-31-1128",
+      "started": "2026-10-31T03:28:01.480Z",
+      "ended": "2026-10-31T03:40:58.212Z",
+      "reads": [
+        {
+          "file": "D:/UE/UE_5.7/Engine/Source/Runtime/Engine/Classes/Engine/TextureDefines.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Source/Runtime/Engine/Private/Materials/MaterialExpressions.cpp",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Source/Runtime/Engine/Private/Materials/Material.cpp",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_playerstart.py",
+          "tokens_estimated": 645,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_heights.py",
+          "tokens_estimated": 768,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_landscape_api.py",
+          "tokens_estimated": 445,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_landscape_api.py",
+          "tokens_estimated": 69,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_tex_settings.py",
+          "tokens_estimated": 440,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_pack_tex.py",
+          "tokens_estimated": 250,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_dump_pack_terrain.py",
+          "tokens_estimated": 630,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_landscape_mat.py",
+          "tokens_estimated": 390,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_heightmap_fn.py",
+          "tokens_estimated": 281,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_dependants.py",
+          "tokens_estimated": 183,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_ar_api.py",
+          "tokens_estimated": 97,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_referencers.py",
+          "tokens_estimated": 203,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_ar_opts.py",
+          "tokens_estimated": 141,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_fix_roughness_channel.py",
+          "tokens_estimated": 1847,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_referencers2.py",
+          "tokens_estimated": 313,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_dump_v2.py",
+          "tokens_estimated": 546,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_fix_roughness_channel.py",
+          "tokens_estimated": 2225,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_log_bug178.py",
+          "tokens_estimated": 494,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 9967,
+        "reads_count": 3,
+        "writes_count": 18,
+        "repeated_reads_blocked": 1,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-10-31-1128",
+      "started": "2026-10-31T03:28:01.480Z",
+      "ended": "2026-10-31T03:44:02.173Z",
+      "reads": [
+        {
+          "file": "D:/UE/UE_5.7/Engine/Source/Runtime/Engine/Classes/Engine/TextureDefines.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Source/Runtime/Engine/Private/Materials/MaterialExpressions.cpp",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Source/Runtime/Engine/Private/Materials/Material.cpp",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_playerstart.py",
+          "tokens_estimated": 645,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_heights.py",
+          "tokens_estimated": 768,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_landscape_api.py",
+          "tokens_estimated": 445,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_landscape_api.py",
+          "tokens_estimated": 69,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_tex_settings.py",
+          "tokens_estimated": 440,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_pack_tex.py",
+          "tokens_estimated": 250,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_dump_pack_terrain.py",
+          "tokens_estimated": 630,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_landscape_mat.py",
+          "tokens_estimated": 390,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_heightmap_fn.py",
+          "tokens_estimated": 281,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_dependants.py",
+          "tokens_estimated": 183,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_ar_api.py",
+          "tokens_estimated": 97,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_referencers.py",
+          "tokens_estimated": 203,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_ar_opts.py",
+          "tokens_estimated": 141,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_fix_roughness_channel.py",
+          "tokens_estimated": 1847,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_referencers2.py",
+          "tokens_estimated": 313,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_dump_v2.py",
+          "tokens_estimated": 546,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_fix_roughness_channel.py",
+          "tokens_estimated": 2225,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_log_bug178.py",
+          "tokens_estimated": 494,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_verify_roughness_fix.py",
+          "tokens_estimated": 1044,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_update_bug178.py",
+          "tokens_estimated": 281,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 11292,
+        "reads_count": 3,
+        "writes_count": 20,
+        "repeated_reads_blocked": 1,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-10-31-1148",
+      "started": "2026-10-31T03:48:09.815Z",
+      "ended": "2026-10-31T03:52:33.422Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_grass.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_v3_graph.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_v3_masks.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_add_grass_to_v3.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_v3_graph.py",
+          "tokens_estimated": 817,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_v3_masks.py",
+          "tokens_estimated": 675,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_add_grass_to_v3.py",
+          "tokens_estimated": 1102,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_validate_grass_input.py",
+          "tokens_estimated": 322,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_add_grass_to_v3.py",
+          "tokens_estimated": 1244,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 4160,
+        "reads_count": 4,
+        "writes_count": 5,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-10-31-2008",
+      "started": "2026-10-31T12:08:56.459Z",
+      "ended": "2026-10-31T12:11:03.842Z",
+      "reads": [],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_verify_grass_v3.py",
+          "tokens_estimated": 657,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 657,
+        "reads_count": 0,
+        "writes_count": 1,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-10-31-2008",
+      "started": "2026-10-31T12:08:56.459Z",
+      "ended": "2026-10-31T12:25:13.114Z",
+      "reads": [],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_verify_grass_v3.py",
+          "tokens_estimated": 657,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_grass_deps.py",
+          "tokens_estimated": 729,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_grass_chain.py",
+          "tokens_estimated": 665,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_move_grass_to_git.py",
+          "tokens_estimated": 1695,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_move_grass_to_git.py",
+          "tokens_estimated": 1957,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_struct_arrays.py",
+          "tokens_estimated": 1053,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_struct_fix2.py",
+          "tokens_estimated": 823,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_move_grass_to_git.py",
+          "tokens_estimated": 678,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_verify_grass_git.py",
+          "tokens_estimated": 920,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 9177,
+        "reads_count": 0,
+        "writes_count": 9,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-10-31-2049",
+      "started": "2026-10-31T12:49:32.399Z",
+      "ended": "2026-10-31T13:20:24.645Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_add_grass_to_v3.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_world_hlod.py",
+          "tokens_estimated": 899,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_world_hlod.py",
+          "tokens_estimated": 1036,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_edit_grass_weight.py",
+          "tokens_estimated": 1835,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 3770,
+        "reads_count": 1,
+        "writes_count": 3,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-10-31-0039",
+      "started": "2026-10-31T16:39:25.012Z",
+      "ended": "2026-10-31T16:46:59.187Z",
+      "reads": [],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_buglog_append_minimap.py",
+          "tokens_estimated": 991,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 991,
+        "reads_count": 0,
+        "writes_count": 1,
         "repeated_reads_blocked": 0,
         "anatomy_lookups": 0
       }

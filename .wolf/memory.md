@@ -1461,3 +1461,160 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+
+## Session: 2026-10-31 11:07
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:11 | Created Intermediate/wf_dump_foliage.py | — | ~353 |
+| 11:12 | Created Intermediate/wf_dump_mesh_bounds.py | — | ~398 |
+| 03:15 | 检查 ProceduralNaturePack 的 22 个 FoliageType 与关键 mesh 尺寸，确认 PCG 插件默认未启用 | Content/ProceduralNaturePack, Intermediate/wf_dump_foliage.txt | 得到密度/高度/剔除默认值，供植被生成方案使用 | ~3000 |
+| 11:14 | Session end: 2 writes across 2 files (wf_dump_foliage.py, wf_dump_mesh_bounds.py) | 14 reads | ~875 tok |
+
+## Session: 2026-10-31 11:18
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:21 | Created Intermediate/wf_probe_alive.py | — | ~58 |
+| 11:22 | Created Intermediate/wf_probe_texapi.py | — | ~355 |
+| 11:22 | Created Intermediate/wf_probe_export_doc.py | — | ~126 |
+| 11:22 | Created Intermediate/wf_export_textures.py | — | ~325 |
+| 11:23 | Created Intermediate/wf_dump_current.py | — | ~1240 |
+| 11:23 | Created Intermediate/wf_export_terrain_tex.py | — | ~202 |
+| 11:26 | Created Intermediate/wf_probe_water_ppv.py | — | ~1110 |
+| 11:26 | Created Intermediate/wf_probe_ocean.py | — | ~786 |
+
+## Session: 2026-10-31 11:28
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:28 | Created Intermediate/wf_probe_playerstart.py | — | ~645 |
+| 11:29 | Created Intermediate/wf_probe_heights.py | — | ~768 |
+| 11:29 | Created Intermediate/wf_probe_landscape_api.py | — | ~445 |
+| 11:29 | Edited Intermediate/wf_probe_landscape_api.py | modified get_all_level_actors() | ~69 |
+| 11:30 | Created Intermediate/wf_probe_tex_settings.py | — | ~440 |
+| 11:30 | Created Intermediate/wf_probe_pack_tex.py | — | ~250 |
+| 11:31 | Created Intermediate/wf_dump_pack_terrain.py | — | ~630 |
+| 11:33 | Created Intermediate/wf_probe_landscape_mat.py | — | ~390 |
+| 11:34 | Created Intermediate/wf_probe_heightmap_fn.py | — | ~281 |
+| 11:35 | Created Intermediate/wf_probe_dependants.py | — | ~183 |
+| 11:35 | Created Intermediate/wf_probe_ar_api.py | — | ~97 |
+| 11:36 | Created Intermediate/wf_probe_referencers.py | — | ~203 |
+| 11:36 | Created Intermediate/wf_probe_ar_opts.py | — | ~141 |
+| 11:36 | Created Intermediate/wf_fix_roughness_channel.py | — | ~1847 |
+| 11:38 | Created Intermediate/wf_probe_referencers2.py | — | ~313 |
+| 11:38 | Created Intermediate/wf_dump_v2.py | — | ~546 |
+| 11:39 | Created Intermediate/wf_fix_roughness_channel.py | — | ~2225 |
+| 11:40 | Created Intermediate/wf_log_bug178.py | — | ~494 |
+| 11:40 | 诊断地形“果冻/湿滑”材质：_rgm 的 R 是 Specular、G 才是 Roughness；v3 三处粗糙度都接了 R，sRGB 解码后 ~0.007，加 bias 仍 ~0.26；已写修复脚本但编辑器锁文件（MoveFile 错误 32），待关闭编辑器执行 | Content/World/Terrain/Materials/LandscapeMaterial_v3.uasset, Intermediate/wf_fix_roughness_channel.py | 已定位，未落盘；bug-178 已记录 | ~25k |
+| 11:40 | Session end: 18 writes across 16 files (wf_probe_playerstart.py, wf_probe_heights.py, wf_probe_landscape_api.py, wf_probe_tex_settings.py, wf_probe_pack_tex.py) | 3 reads | ~9967 tok |
+| 11:43 | Created Intermediate/wf_verify_roughness_fix.py | — | ~1044 |
+| 11:43 | Created Intermediate/wf_update_bug178.py | — | ~281 |
+| 11:52 | 关闭编辑器后执行 wf_fix_roughness_channel.py：三处 Roughness 改接 G、_rgm 改 sRGB=False+TC_Masks、v3/v2 SamplerType 改 Masks、MI RoughnessBias=0.1；重新加载验证全部保存成功 | Content/World/Terrain/Materials/LandscapeMaterial_v2|v3|MI_Landscape_v3.uasset, Content/World/Terrain/Textures/{rock_ground_mud-1,rubble_ground,moss}_rgm.uasset | 已落盘并验证，待编辑器内目视确认 | ~20k |
+| 11:44 | Session end: 20 writes across 18 files (wf_probe_playerstart.py, wf_probe_heights.py, wf_probe_landscape_api.py, wf_probe_tex_settings.py, wf_probe_pack_tex.py) | 3 reads | ~11292 tok |
+| 11:47 | Created Intermediate/wf_probe_grass.py | — | ~973 |
+
+## Session: 2026-10-31 11:48
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:48 | Created Intermediate/wf_probe_v3_graph.py | — | ~817 |
+| 11:49 | Created Intermediate/wf_probe_v3_masks.py | — | ~675 |
+| 11:51 | Created Intermediate/wf_add_grass_to_v3.py | — | ~1102 |
+| 11:51 | Created Intermediate/wf_validate_grass_input.py | — | ~322 |
+| 11:52 | Created Intermediate/wf_add_grass_to_v3.py | — | ~1244 |
+| 11:52 | Session end: 5 writes across 4 files (wf_probe_v3_graph.py, wf_probe_v3_masks.py, wf_add_grass_to_v3.py, wf_validate_grass_input.py) | 4 reads | ~4160 tok |
+
+## Session: 2026-10-31 20:08
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-31 20:08
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:10 | Created Intermediate/wf_verify_grass_v3.py | — | ~657 |
+| 20:09 | 用户关闭编辑器后执行 wf_add_grass_to_v3.py：v3 加 WF_NotDirt/WF_GrassW1/WF_GrassW 与 WF_GrassOutput（LG_Grass），81→85 节点，SAVE_MAT True | Content/World/Terrain/Materials/LandscapeMaterial_v3.uasset | 成功 |
+| 20:12 | 重新加载验证草节点已落盘：GrassTypes[0]=Grass/LG_Grass，权重接 WF_GrassW，recompile 无报错 | — | 通过 |
+| 20:11 | Session end: 1 writes across 1 files (wf_verify_grass_v3.py) | 0 reads | ~657 tok |
+| 20:18 | Created Intermediate/wf_probe_grass_deps.py | — | ~729 |
+| 20:18 | Created Intermediate/wf_probe_grass_chain.py | — | ~665 |
+| 20:20 | Created Intermediate/wf_move_grass_to_git.py | — | ~1695 |
+| 20:20 | Created Intermediate/wf_move_grass_to_git.py | — | ~1957 |
+| 20:23 | Created Intermediate/wf_probe_struct_arrays.py | — | ~1053 |
+| 20:23 | Created Intermediate/wf_probe_struct_fix2.py | — | ~823 |
+| 20:24 | Edited Intermediate/wf_move_grass_to_git.py | modified copy_variety() | ~678 |
+| 20:25 | Created Intermediate/wf_verify_grass_git.py | — | ~920 |
+| 20:25 | Session end: 9 writes across 7 files (wf_verify_grass_v3.py, wf_probe_grass_deps.py, wf_probe_grass_chain.py, wf_move_grass_to_git.py, wf_probe_struct_arrays.py) | 0 reads | ~9177 tok |
+
+## Session: 2026-10-31 20:30
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-31 20:49
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:50 | 诊断「密度调到400看不到草」：编辑器启动按 FoliageQuality@0 应用 Scalability，grass.DensityScale=0，草密度被乘 0（日志实证） | Saved/Logs/Wildforge-backup-2026.10.31-12.26.50.log、D:/UE/UE_5.7/Engine/Config/BaseScalability.ini、LandscapeGrass.cpp | 根因定位：非 LG_Grass 密度问题；修复=调高画质或 grass.DensityScale 1 | ~6k |
+| 20:51 | 编辑器关闭状态下重跑 wf_move_grass_to_git.py，两个草网格材质槽、MIC、LG_Grass 全部保存成功 | Intermediate/wf_move_grass_to_git.py | SAVE 全 True，LG 保留密度 400/404 | ~2k |
+| 20:53 | 运行 wf_verify_grass_git.py 核对磁盘状态 | Intermediate/wf_verify_grass_git.py | 网格已指向 Grass/ 新 MIC；PACK_DEPS_LEFT=[]，完全脱离 ProceduralNaturePack | ~2k |
+| 20:54 | 记录 bug-180（草密度 x grass.DensityScale）与 cerebrum 学习点/禁令 | .wolf/buglog.json、.wolf/cerebrum.md | 已更新 | ~1k |
+| 21:17 | Created Intermediate/wf_probe_world_hlod.py | — | ~899 |
+| 21:18 | Created Intermediate/wf_probe_world_hlod.py | — | ~1036 |
+| 21:18 | Created Intermediate/wf_edit_grass_weight.py | — | ~1835 |
+| 21:20 | 探针 MainMap：Landscape 使用 MI_Landscape_v3，64 个 streaming proxy 均无 HLOD 覆盖材质，59 个 WorldPartitionHLOD、Ocean Z=-18000 | Intermediate/wf_probe_world_hlod.py/.txt | 确认湿亮区域=旧 HLOD 烘焙的 Roughness/Specular | ~3k |
+| 21:20 | 修改 LandscapeMaterial_v3：草权重加入 GrassDirtSuppress(2.5) 土地抑制 + GrassWaterMinZ/MaxZ(-18000/-17800) 水下不长草 | Intermediate/wf_edit_grass_weight.py | 85→92 表达式，保存 True，链路回读正确 | ~4k |
+| 21:20 | 复核材质草权重链路与新标量参数默认值 | Intermediate/wf_probe_grass_weight.py/.txt | GrassW2=GrassW×WaterSmooth；GrassNotDirt=1−Saturate(DirtMask×2.5) | ~2k |
+| 21:20 | 记录 bug-181（HLOD 烘焙贴图过期导致湿亮残留）与草权重公式学习点 | .wolf/buglog.json、.wolf/cerebrum.md | 已更新 | ~1k |
+| 21:20 | Session end: 3 writes across 2 files (wf_probe_world_hlod.py, wf_edit_grass_weight.py) | 1 reads | ~3770 tok |
+| 21:35 | Created Intermediate/wf_probe_water_grass.py | — | ~1193 |
+
+## Session: 2026-10-31 21:38
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:38 | Created Intermediate/wf_probe_foliage_comp.py | — | ~1546 |
+| 21:38 | Edited Intermediate/wf_probe_foliage_comp.py | modified prop_val() | ~124 |
+| 21:53 | Created Intermediate/wf_probe_rough_channels.py | — | ~1013 |
+| 22:01 | Created Intermediate/wf_verify_rough_gmask.py | — | ~650 |
+
+| 22:06 | 修复 LandscapeMaterial_v3 粗糙度通道：三处 _rgm 采样插入 ComponentMask(G)，并把水线草遮罩抬到 -17900/-17700 | Content/World/Terrain/Materials/LandscapeMaterial_v3.uasset（脚本 Intermediate/wf_fix_rough_gmask.py、复核 wf_verify_rough_gmask.py） | 92→95 表达式，recompile+save 成功（0 error），重载复核三个 mask rgba=0100 接线正确；MI 的 RoughnessBias/SpecularLevel 仍 0.1 | ~6k |
+| 22:06 | 更正 bug-181（HLOD 哈希包含材质 StateId，21:26 已重建全部 59 个）、补记 bug-178、新增 bug-182；cerebrum 补通道/草地图/水面事实与决定 | .wolf/buglog.json、.wolf/cerebrum.md | 已更新 | ~3k |
+
+| 22:42 | 无头重建 World Partition HLOD：修复材质后的首次烘焙（DDC 冷）；Git Bash 需 MSYS_NO_PATHCONV=1 | Content/__ExternalActors__/World/Maps/MainMap（59 个 HLOD actor 包） | run1 8 + run2 51 = 59，日志 Built 59 HLOD actors，Success 0 error，耗时 31m59s | ~10k |
+
+## Session: 2026-10-31 22:45
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-31 23:23
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:00 | Created Intermediate/wf_probe_minimap.py | — | ~2604 |
+| 00:00 | Edited Intermediate/wf_probe_minimap.py | modified isinstance() | ~46 |
+| 00:00 | Edited Intermediate/wf_probe_minimap.py | modified isinstance() | ~24 |
+| 00:00 | Edited Intermediate/wf_probe_minimap.py | get_name() → str() | ~38 |
+| 00:00 | Edited Intermediate/wf_probe_minimap.py | get_name() → str() | ~25 |
+| 00:00 | Edited Intermediate/wf_probe_minimap.py | inline fix | ~9 |
+| 00:00 | Edited Intermediate/wf_probe_minimap.py | modified in() | ~217 |
+| 00:25 | Created Intermediate/wf_probe_minimap2.py | — | ~1542 |
+| 00:29 | Created Intermediate/wf_probe_api.py | — | ~321 |
+| 00:32 | Created Intermediate/wf_remote_client.py | — | ~364 |
+| 00:32 | Created Intermediate/wf_probe_editor_minimap.py | — | ~835 |
+
+## Session: 2026-10-31 00:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-01 00:47
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:47 | 定位小地图三个问题：水面缺失 = 引擎 UE-359953（SceneCapture 不更新 WaterInfo）、整体发暗 = RT_Minimap 非 sRGB 的 8bit RT、箭头被遮挡 = BP_MinimapIcon 的世界 PaperSprite 被草/地形/角色挡住；给出修复步骤 | .wolf/buglog.json（bug-184/185/186）、.wolf/cerebrum.md；分析用 Intermediate/wf_probe_minimap*.py | 编辑器仍开着（PIE 可能运行中），未修改/保存任何资产；修复步骤待用户执行 | ~4k |
+| 00:44 | Created Intermediate/wf_buglog_append_minimap.py | — | ~991 |
+| 00:46 | Session end: 1 writes across 1 files (wf_buglog_append_minimap.py) | 0 reads | ~991 tok |

@@ -69,8 +69,9 @@
 
 - `LandscapeMaterial.uasset` — 原始地形材质：单张宏观色 + 法线，无粗糙度/AO (~12 tok)
 - `LandscapeMaterial_v2.uasset` — 3.2 最小版：宏观色 + 细节法线/粗糙度；BaseColor 细节层未接 (~24 tok)
-- `LandscapeMaterial_v3.uasset` — 3.3 完整版：草/土/岩/雪四层 + 高度/坡度/噪声遮罩 + 法线/粗糙度/AO；宏观色主导、低 Specular，81 节点 (~90 tok)
+- `LandscapeMaterial_v3.uasset` — 3.3 完整版：草/土/岩/雪四层 + 高度/坡度/噪声遮罩 + 法线/粗糙度/AO；宏观色主导、低 Specular，85 节点（含 LandscapeGrassOutput→LG_Grass） (~90 tok)
 - `MI_Landscape_v3.uasset` — v3 的材质实例，调参数用；赋给 Landscape 的推荐入口 (~4 tok)
+- `LG_Grass.uasset` — LandscapeGrassType：grass_small_01/02 两种草，密度 1/10m²，剔除 30–60m (~12 tok)
 
 ## Content/World/Terrain/Textures/
 

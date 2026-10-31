@@ -3277,6 +3277,187 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-10-31T02:10:00.000Z"
+    },
+    {
+      "id": "bug-178",
+      "timestamp": "2026-10-31T03:45:00.000Z",
+      "error_message": "用户反馈：地图有些地方的地面材质像果冻，被水浸湿、很滑",
+      "file": "Content/World/Terrain/Materials/LandscapeMaterial_v3.uasset",
+      "root_cause": "ProceduralNaturePack 的 _rgm 贴图打包是 R=Specular、G=Roughness（master_terrain_blend: Roughness<-ComponentMask G, Specular<-ComponentMask R）。v3 的三处粗糙度采样（WF_GrassRough/WF_DirtRough/WF_RockRough）都接了 R；_rgm 又是 sRGB=True，采样后 R 被 sRGB 解码到 ~0.007-0.018，再加 RoughnessBias=0.25，最终粗糙度只有 ~0.26。Lumen 对 <=0.4 粗糙度追踪反射，非雪地面因此呈湿亮/果冻感；雪层是常量 0.6+0.25=0.85，所以雪山正常，形成“有些地方”湿。",
+      "fix": "已落盘并验证（2026-10-31）：三处粗糙度改接 G（Grass->WF_RoughGD.A、Dirt->WF_RoughGD.B、Rock->WF_RoughR.B）；rock_ground_mud-1_rgm / rubble_ground_rgm / moss_rgm 改为 sRGB=False + TC_Masks；v3 三个采样节点与 v2 的 DetailRoughness 均改为 SAMPLERTYPE_MASKS；MI_Landscape_v3 的 RoughnessBias 0.25->0.1。验证：重新加载后贴图 srgb=False/TC_MASKS、采样 sampler_type=MASKS、WF_RoughGD/WF_RoughR 输入仍指向三个纹理采样、MI 值 0.1，recompile 无报错。编辑器在保存前必须关闭（否则 MoveFile Error Code 32）。（2026-10-31 补记：本次只把贴图改成 sRGB=False/TC_Masks、采样器改成 SAMPLERTYPE_MASKS，并未插入 ComponentMask，采样输出仍是 RGBA 直连标量引脚，编译器依旧取 R 通道（=Specular）；真正的通道修复见 bug-182。）",
+      "tags": [
+        "material",
+        "landscape",
+        "roughness",
+        "rgm",
+        "srgb",
+        "specular",
+        "lumen",
+        "landscape-material-v3"
+      ],
+      "related_bugs": [
+        "bug-175",
+        "bug-177"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-31T14:05:00.000Z"
+    },
+    {
+      "id": "bug-179",
+      "timestamp": "2026-10-31T12:24:13.207Z",
+      "error_message": "Significant refactor of ",
+      "file": "Intermediate/wf_move_grass_to_git.py",
+      "root_cause": "9 lines replaced/restructured",
+      "fix": "Rewrote 22→52 lines (9 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-31T12:24:13.207Z"
+    },
+    {
+      "id": "bug-180",
+      "timestamp": "2026-10-31T12:58:00.000Z",
+      "error_message": "密度调到400了都没有看到草",
+      "file": "Content/World/Maps/LG_Grass.uasset（非资产本身问题，是编辑器 Scalability 全局画质）",
+      "root_cause": "编辑器启动时按 FoliageQuality@0（Low）应用 Scalability（Saved/Logs 日志：Applying CVar settings from Section [FoliageQuality@0] File [Scalability] → Set CVar [[grass.DensityScale:0]]）。LandscapeGrass.cpp 的 FGrassBuilderBase 里 GrassDensity = GrassVariety.GetDensity() * grass.DensityScale，密度 400 × 0 = 0，SqrtMaxInstances=0、bHaveValidData=false，一个草实例都不生成。与 LG_Grass 密度、材质草权重、网格引用、剔除距离无关（均已在 wf_probe_grass_weight 中验证正常）。",
+      "fix": "编辑器 Settings → Engine Scalability Settings 把 Foliage Quality（或整体画质）调到 High/Epic；或控制台执行 grass.DensityScale 1（CVar 变更会触发 RegenerateGrass，草立即出现）。BaseScalability.ini 中 @1=0.4、@2=0.8、@3=1.0。",
+      "tags": [
+        "landscape",
+        "grass",
+        "scalability",
+        "density",
+        "foliage",
+        "grass.DensityScale",
+        "FoliageQuality"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-31T12:58:00.000Z"
+    },
+    {
+      "id": "bug-181",
+      "timestamp": "2026-10-31T13:32:00.000Z",
+      "error_message": "地形部分区域仍有很滑/湿亮的感觉，与正常区域混杂；把材质下掉依然存在，只有重建 HLOD 后才消失；材质改回后只有部分区域有材质，重建 HLOD 后才覆盖全图",
+      "file": "Content/World/Maps/MainMap.umap（HLOD 烘焙资产）+ LandscapeMaterial_v3.uasset",
+      "root_cause": "【2026-10-31 复核已推翻原判断】HLOD 烘焙并不是陈旧数据：FHLODHashBuilder 会把材质对象经 UHLODProxy::GetCRC 计入哈希（MIC/Material 的 ParameterStateId + StateId），材质一保存哈希必变；WorldPartitionHLODsBuilder 日志显示 21:19 保存 LandscapeMaterial_v3 后，21:26-21:27 重编了该材质 shader 并把全部 59 个 HLOD actor 重建保存。重建后仍\"湿滑\"的真正原因是材质本身把 _rgm 的 R(Specular) 通道当粗糙度用（见 bug-182），HLOD 只是如实烘焙了同一个错误输出，所以怎么重建都不会消失。",
+      "fix": "已由 bug-182 修复材质粗糙度通道（插入 ComponentMask G）。修复后仍需在编辑器 Build > Build HLODs 一次，让远景 HLOD 的烘焙贴图跟随新材质。",
+      "tags": [
+        "landscape",
+        "hlod",
+        "world-partition",
+        "roughness",
+        "bake",
+        "mainmap",
+        "stale"
+      ],
+      "related_bugs": [
+        "bug-168",
+        "bug-178"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-31T14:05:00.000Z"
+    },
+    {
+      "id": "bug-182",
+      "timestamp": "2026-10-31T14:05:00.000Z",
+      "error_message": "重新 Build HLODs 之后地图仍有成片的\"被水浸湿/很滑\"区域，固定出现在地图某些地方（与视角/距离无关）；水下仍有部分地方长草",
+      "file": "Content/World/Terrain/Materials/LandscapeMaterial_v3.uasset",
+      "root_cause": "（1）湿滑：ProceduralNaturePack 的 _rgm 贴图约定 R=Specular、G=Roughness（master_terrain_blend：MP_ROUGHNESS<-ComponentMask_5 r=False g=True，MP_SPECULAR<-ComponentMask_2 r=True g=False，其 L1/L2/L3_Roughness 参数正是 rock_ground_mud-1_rgm / ground_mud_rgm_8192 / rubble_ground_rgm）。v3 把 WF_GrassRough / WF_DirtRough / WF_RockRough 的 RGBA 输出直接接到 WF_RoughGD.A、WF_RoughGD.B、WF_RoughR.B 三个标量引脚；材质编译器对标量输入取 float4 的 R 分量（HLSL (float)float4 即 .x），等于把 Specular 当 Roughness：低 Specular 的纹理区域粗糙度极低 -> Lumen 镜面反射 -> 与贴图同形状的\"湿滑\"斑块。HLOD 烘焙的 roughness 贴图来自同一条链，所以重建 HLOD 不可能修好。（2）水下草：地图里没有任何手工 Foliage/ISM actor，256 个 landscape 组件 override_material 全为空、全部使用 MI_Landscape_v3，水面恒为 Z=-18000；残留的草是水线上方 0~2m 过渡带内（含 grass map ~1m 纹素双线性外溢）贴着水面的草。",
+      "fix": "在 LandscapeMaterial_v3 的粗糙度链插入三个 ComponentMask(r=False,g=True,b=False,a=False)：WF_GrassRough->WF_GrassRoughMask->WF_RoughGD.A、WF_DirtRough->WF_DirtRoughMask->WF_RoughGD.B、WF_RockRough->WF_RockRoughMask->WF_RoughR.B（表达式 92->95）；同时 GrassWaterMinZ -18000->-17900、GrassWaterMaxZ -17800->-17700（水线以上 1m 内零草，3m 处到满密度）。命令 run=pythonscript（编辑器关闭）修改后 recompile+save 成功（0 error, 1 warning）；重新加载复核：三个 mask 节点 rgba=0100 且接线正确，MI_Landscape_v3 的 RoughnessBias/SpecularLevel 仍为 0.1。材质 StateId 变化会让 HLOD 哈希与 grass map 哈希同时失效：编辑器打开后 grass map 自动重建（AmortizedUpdateGrassMaps），HLOD 需 Build > Build HLODs 再刷一次。 2026-10-31 22:10-22:42 已用 commandlet 无头重建全部 59 个 HLOD（run1 保存 8 个 + run2 保存 51 个 = 59；日志 `#### Built 59 HLOD actors ####`、Success 0 error）；因材质真正变化、DDC 冷，首次烘焙耗时 31m59s。",
+      "tags": [
+        "landscape",
+        "material",
+        "roughness",
+        "rgm",
+        "specular",
+        "channel-mask",
+        "wet",
+        "hlod",
+        "grass",
+        "water",
+        "landscape-material-v3"
+      ],
+      "related_bugs": [
+        "bug-178",
+        "bug-181"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-31T14:42:28.000Z"
+    },
+    {
+      "id": "bug-183",
+      "timestamp": "2026-10-31T16:00:47.202Z",
+      "error_message": "Significant refactor of ",
+      "file": "Intermediate/wf_probe_minimap.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 5→23 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-31T16:00:47.202Z"
+    },
+    {
+      "id": "bug-184",
+      "timestamp": "2026-10-31T16:45:00.000Z",
+      "error_message": "主界面小地图里进入水中仍显示黄土地：水面（Water Body Ocean）在小地图的 SceneCapture 中完全不渲染",
+      "file": "Content/UI/Textures/RT_Minimap.uasset（SceneCapture 链）；引擎 D:/UE/UE_5.7/Engine/Plugins/Experimental/Water/Source/Runtime/Private/WaterViewExtension.cpp",
+      "root_cause": "UE 5.7 Water 插件的 FWaterViewExtension::ShouldHaveWaterZoneViewData 对 bIsSceneCapture / bIsReflectionCapture / bIsVirtualTexture 等视图直接返回 false（本机源码仍是修复前版本），捕获视图拿不到 WaterInfoTexture，水面不渲染，只看到水底地形。对应 Epic 已知问题 UE-359953（WP: Water surfaces are missing from the Minimap textures），修复 commit 49927162；本机引擎未包含该修复。",
+      "fix": "工程侧临时方案：在海洋水面高度（Z=-18000，与 WaterBodyOcean 水面一致，保证小地图水线位置准确）放一块 2.2km 见方的 Unlit 蓝色平面，勾选 Visible In Scene Capture Only，主视角完全不受影响；地形高于该平面的地方自然把它挡住，只有海洋/低洼处显示蓝色。根治需升级到包含 commit 49927162 的引擎。",
+      "tags": [
+        "minimap",
+        "scene-capture",
+        "water",
+        "ue-359953",
+        "rendering",
+        "rt"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-31T16:45:00.000Z"
+    },
+    {
+      "id": "bug-185",
+      "timestamp": "2026-10-31T16:45:00.000Z",
+      "error_message": "小地图整体偏暗（黄土地看起来发暗、发灰）",
+      "file": "Content/UI/Textures/RT_Minimap.uasset",
+      "root_cause": "RT_Minimap 为 RTF_RGBA8（非 sRGB）+ TargetGamma=0；UTextureRenderTarget2D::GetDisplayGamma() 因 bForceLinearGamma（选 RTF_RGBA8 时 PostEditChangeProperty 会置 true）返回 1.0。SceneCapture 的 SCS_FINAL_COLOR_LDR 走 PostProcessCombineLUTs 时 InvDisplayGammaValue.Y = 2.2 / 1.0，等于在 LinearToSrgb 输出前又压了一次 2.2 gamma；UMG 再按普通贴图显示，整体发暗。",
+      "fix": "把 RT_Minimap 的 Render Target Format 从 R8G8B8A8 改为 R8G8B8A8 (sRGB)（RTF_RGBA8_SRGB；PostEditChangeProperty 会把 bForceLinearGamma 置 false，DisplayGamma=2.2），下一次捕获即恢复正常亮度。若仍随场景忽明忽暗，再在 SceneCapture 的 PostProcessSettings 里固定曝光（Metering Mode=Manual，或覆盖 AutoExposure Min/Max Brightness 为同一值）。",
+      "tags": [
+        "minimap",
+        "render-target",
+        "srgb",
+        "gamma",
+        "scene-capture"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-31T16:45:00.000Z"
+    },
+    {
+      "id": "bug-186",
+      "timestamp": "2026-10-31T16:45:00.000Z",
+      "error_message": "小地图上的角色箭头有时被遮挡/看不见",
+      "file": "Content/World/Components/Sprite/BP_MinimapIcon.uasset（PaperSprite 组件）；Content/Core/BP_WildforgeCharacter.uasset（挂载逻辑）",
+      "root_cause": "箭头不是 UMG，是 BP_MinimapIcon 的世界 PaperSprite（相对位置 (120,0,0)、贴地平躺、RenderInMainPass/RenderInDepthPass 均开）。小地图是角色正上方 10m 的正交 SceneCapture，草、石头、坡地、角色身体（游泳时水平铺开）以及其它高处的物体都会出现在箭头与相机之间，深度测试把箭头挡住，所以只在部分地形/草地/水中出现。",
+      "fix": "把 PaperSprite 的 Relative Location Z 从 0 抬到 250（正交捕获下屏幕位置不变，但高于草/角色/地形起伏），并勾选 Visible In Scene Capture Only（主视角不再显示该精灵）；保存 BP。若仍被树冠/悬崖等高处物体遮挡，给箭头换一个 Translucent + Unlit + Translucency 里勾 Disable Depth Test 的材质，或改成 MapImage 中心的 UMG 箭头（按角色 yaw 旋转）。",
+      "tags": [
+        "minimap",
+        "paper-sprite",
+        "occlusion",
+        "scene-capture",
+        "arrow"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-31T16:45:00.000Z"
     }
   ]
 }

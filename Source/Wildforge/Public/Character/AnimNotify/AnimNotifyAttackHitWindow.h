@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "AnimNotifies/AnimNotify_PlayMontageNotify.h"
 #include "AnimNotifyAttackHitWindow.generated.h"
-
+	
 /**
  * 
  */
