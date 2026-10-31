@@ -609,11 +609,33 @@
   请求在翻滚起手之后才到达（蓝图两个输入事件的执行顺序不保证），它拦不住新请求。加速组件自身
   必须再用 `APlayerCharacter::IsMovementLocked()` 做一次门禁（请求时 + 长按到点时各一次）。见 bug-151。
 
+- [2026-10-31] **Landscape 的 UV / `LandscapeLayerCoords` 单位是「景观本地单位」，scale=100 的景观里 1 单位 = 1m**：`LayerTexCoord.xy = LocalPosition.xy`（`LandscapeVertexFactory.ush:369`），`MappingScale` 只是除数（`MaterialExpressionLandscapeLayerCoords.cpp:74`）。所以 MainMap 的 `MappingScale=2017` 在 2016m 的景观上正好铺满一次；想让细节贴图每 2m 重复一次，`MappingScale` 就设 2。
+
+- [2026-10-31] **Landscape HLOD 的材质由 `ALandscapeProxy::HLODMaterialOverride` 决定**（`LandscapeHLODBuilder.cpp:373-381`）：覆盖非空就直接使用、**不再烘焙**任何贴图；为空才按 `HLODTextureSizePolicy` 把景观材质烘焙成纹理。OpenWorld 模板地图默认把它设成 `M_ProcGrid`（调试网格/棋盘格），远处地形因此像网格世界；主 Landscape 的共享属性改动会同步到代理（`Landscape.cpp:4932-4961`），改完要重建 HLOD。见 bug-168。
+
+- [2026-10-31] **8 位高度图会在数百米落差的景观上留下量化台阶**：MainMap 的 `terrain_heightmap.png` 只有 0..224 共 223 个高度值，映射到 449.75m 的 Z 范围后每级约 2.0m；1m 顶点间距下就是 2m 一级的台阶。要高精度地形必须用 16 位高度图（或从 GLB 的浮点顶点重建），8 位图本身无法恢复细节。见 bug-169。
+
+- [2026-10-31] **MainMap 的 `LandscapeMaterial` 是「一张 2048² 宏观色图 + 一张 2048² 法线」铺满 2016m（约 1px/m）**：没有 Roughness / Metallic / AO 输入、没有平铺细节层与高度/坡度混合；`terrain_color` 还用 BC1（4×4 块 ≈ 4m）。近景的色块感和「塑料感」来自材质结构与分辨率，不是贴图导入设置错误。见 bug-170。
+
+- [2026-10-31] **UE 5.7 Python 材质/World Partition 的可用 API**：`MaterialEditingLibrary` 没有 `get_material_expression`，要从 `get_material_property_input_node(mat, MP_*)` 开始、用 `get_inputs_for_material_expression(mat, node)`（2 个参数）遍历；`WorldPartitionBlueprintLibrary` 用 `get_actor_descs()`（不是 `get_actor_descriptors`）；加载外部 actor 用 `actor_package + "." + actor_path.split(":")[-1]`。Landscape 的 `component_size_quads` / `heightmap_texture` 等内部属性没有暴露给 Python 是正常的，改用源高度图或代理包围盒推算。
+- [2026-10-31] **地形细节贴图已从 `Content/ProceduralNaturePack/` 复制到 `Content/World/Terrain/Textures/`**（该目录不被 `.gitignore` 忽略，会进 git）：`moss_*` 为 256²，`rubble_ground_*` / `rock_ground_mud-1_*` 为 2048²；所有 `*_nrm` 的 `Flip Green Channel=True`，直接按原样用。主草地 Albedo 不要用 256² 的 `moss_bsm`，用 2048² 的 `rock_ground_mud-1_bsm` 再由宏观色染色；`moss_*` 只适合做 1m 级的叠加细节。
+- [2026-10-31] **UE 5.7 Python 材质引脚名与编辑器显示名不一致**：`LandscapeLayerCoords` / `ComponentMask` 都只有一个**无名输出**（`connect_material_expressions(..., "", ...)`；遮罩通道用节点的 `r/g/b/a` 属性选），`Clamp` 的第一个输入内部名是 `"None"`，`Noise` 的输入是 `"World Position"` / `"FilterWidth"` 且 `scale` 是节点属性；`Desaturation` 的颜色输入也是 `"None"`。不要照 UI 上的名字猜，先 `MEL.get_material_expression_input_names(expr)`（只收 1 个参数）探测。见 bug-173。
+- [2026-10-31] **`MaterialExpressionMaterialFunctionCall` 要先 `set_material_function(func)` 才有输入引脚**：`BlendAngleCorrectedNormals` 的输入为 `BaseNormal` / `AdditionalNormal`，单输出函数连接时 from_output 传 `""`。材质函数资产路径：`/Engine/Functions/Engine_MaterialFunctions02/Utility/BlendAngleCorrectedNormals`。
+- [2026-10-31] **commandlet 可以无人值守建/改材质**：`UnrealEditor-Cmd.exe <project> -run=pythonscript -script=<py> -unattended -nosplash -NullRHI`；用 `MaterialEditingLibrary` 建节点/连线/接属性，`unreal.find_object(mat, "MaterialExpressionXxx_0")` 取子对象，`delete_material_expression` 删孤立节点，最后 `recompile_material` + `EditorAssetLibrary.save_loaded_asset(mat, False)`。编辑器必须关闭，否则保存冲突；脚本与输出放 `Intermediate/`。
+- [2026-10-31] **宏观色染色不要写成「细节 Albedo × 宏观色」**：乘法保留细节的色相，绿色草地细节会把白/黄宏观色全乘成绿色；正确做法是 `Lerp(细节 Albedo, MacroColor, 强度)`，让宏观色主导、细节只占小比例。地形「金属感」优先查 Specular（默认 0.5）+ Roughness 是否直接用了低粗糙的 RGM；给 Roughness 加偏置、Specular 降到 0.1 就能去掉大部分湿亮高光。见 bug-175。
+- [2026-10-31] **`Content/World/Maps/spline_*` 三张 512² 贴图当前没有任何资产引用**：Asset Registry `get_referencers` 的硬/软引用均为 0，二进制字符串搜索也没有其它资产引用；来源是 `C:/Users/xf317/Desktop/temp/textures/*.png`，属于 spline 高度偏移 / 植被排除 / 表面遮罩类掩码。现有 `LandscapeMaterial`、v2、v3 和 MainMap 都没用到，只有以后做道路/河流/植被排除才可能有用。
+- [2026-10-31] **Water Body 的 `Affects Landscape` 默认开启**：`UWaterBodyComponent` 构造函数把 `bAffectsLandscape` 设为 true（`WaterBodyComponent.cpp:106`），头文件说明启用后 landscape will be deformed based on this water body placed on top of it（`WaterBodyComponent.h:628-630`）。Water Body 通过 Water Landscape Brush 修改 Landscape Edit Layer，所以放置 Water Body Ocean 会直接改地形；只想做海面时必须在 Details → Terrain 取消 `Affects Landscape`。见 bug-176。
+- [2026-10-31] **Water Zone / Ocean 的 Extent 是全长，不是半长**：`AWaterZone::ZoneExtent` 注释明确 `ZoneExtent is full extent`（`WaterZoneActor.cpp:91`），`UWaterBodyOceanComponent::OceanExtents` 也是全长并围绕 Water Zone 居中（`WaterBodyOceanComponent.h:72`）。MainMap 的 Landscape 覆盖 0..2016m，中心在 `(100800,100800)`；Water Zone 应放中心、`ZoneExtent`/`OceanExtents` 至少 220000（2.2km 全长）。旧值 `(0,0,0)+110000` 只覆盖 1.1km，盖不住地图。见 bug-177。
+- [2026-10-31] **MainMap 实际 Z 范围 -279.04m ~ +203.95m，海平面约 -179.10m**：Landscape 的 Transform Scale Z=109（不是 100）；用 64 个 LandscapeStreamingProxy 的包围盒验证了高度图映射，terrain-studio 的 `seaLevel=100` 对应 UE Z≈-17910cm。旧公式按 Z Scale=100 得到 -16357cm，偏高约 15.5m。见 bug-177。
+
 ## Do-Not-Repeat
 
 <!-- Mistakes made and corrected. Each entry prevents the same mistake recurring. -->
 <!-- Format: [YYYY-MM-DD] Description of what went wrong and what to do instead. -->
 <!-- ⚠️ `.wolf/hooks/pre-write.js` 按本标题（## Do-Not-Repeat）硬编码切分，不可改名或搬走。 -->
+
+- [2026-10-31] **不要用 `Lerp(细节, 细节 × 宏观色, α)` 做地形宏观染色**：绿色细节会把白/黄宏观色乘绿，整片只剩绿色；应直接 `Lerp(细节, MacroColor, α)`。同时地形的 Specular 不要留默认 0.5、Roughness 不要直接吃 RGM 的原始低值，否则看起来像湿金属。见 bug-175。
+- [2026-10-31] **用 Python 连材质引脚时不要照抄编辑器显示名**：`ComponentMask` / `LandscapeLayerCoords` 只有一个无名输出（传 `""`），`Clamp` 的第一个输入叫 `"None"`，`Noise` 的输入是 `"World Position"` / `"FilterWidth"`（`scale` 是节点属性），`Desaturation` 的颜色输入是 `"None"`；先 `get_material_expression_input_names(expr)` 探测再连，不要猜 UI 名称。见 bug-173。
 
 - [2026-10-25] **在 `UWidget` / `UUserWidget` 子类里不要把局部变量命名为 `Slot`**：`UWidget` 自带
   `Slot` 成员，同名局部变量会遮蔽它并触发 C4458（本项目按错误处理）；局部槽位变量用 `CanvasSlot`
@@ -899,6 +921,20 @@
 - [2026-10-25] **不要在长按阈值到点前启动加速**：蓝图是按下即发 `Server_StartSpeedBoost`，
   阈值只作为参数传进来；组件若立即启动，同一 Shift 上的翻滚短按会把剩余精力耗到 0。
   必须挂延时定时器，并在 `ResetMaxSpeed`（松键 / 翻滚）与移动锁期间取消。见 bug-151。
+
+- [2026-10-31] **不要保留 OpenWorld 模板带来的 `HLODMaterialOverride = M_ProcGrid`**：它是模板的调试网格/棋盘格材质，远处地形 HLOD 会直接变成网格世界；清空主 Landscape 的覆盖（并确认代理同步），让 HLOD 烘焙真实景观材质后重建。见 bug-168。
+
+- [2026-10-31] **不要把 8 位高度图用于数百米落差的景观**：0..255 级映射到 449.75m 时每级约 2m，必然出现阶梯状地形；至少用 16 位高度图（或从 GLB 浮点高度重建）。见 bug-169。
+
+- [2026-10-31] **不要用「一张 1px/m 宏观色图 + 默认 Roughness 0.5」充当真实地形材质**：近景必须有平铺细节层（albedo/normal/roughness）与高度/坡度混合，并把宏观色图降为远景层；否则地面就是 1m 色块。见 bug-170。
+
+- [2026-10-31] **放置 PlayerStart 后必须 Snap to Ground 并检查海平面**：MainMap 的 PlayerStart 当前在 `(100800,100800,-18778)`，低于修正后的海平面 `-17910cm`；之前给的 `X=-1130,Y=-27320` 不在 0..2016m 地形范围内，不要再使用。见 bug-171 / bug-177。
+
+- [2026-10-31] **有 SkyAtmosphere + VolumetricCloud 时不要再放静态天空球**（`SM_SkySphere` + `M_SimpleSkyDome` 只是模板的轻量替代）：它会遮挡真实大气；至少关闭 Cast Shadow，并让方向光与地形预设的太阳方位一致。见 bug-172。
+
+- [2026-10-31] **不要直接放置默认 Water Body Ocean 做海面**：它的 `Affects Landscape` 默认开启，会通过 Water Landscape Brush 把地形按水体形状改掉；先取消 Details → Terrain → Affects Landscape，再放 Water Zone/Ocean。见 bug-176。
+
+- [2026-10-31] **不要把 Water Zone 放在原点、Extent 填 110000 就当覆盖整张地图**：`ZoneExtent` 是全长，MainMap 是 0..2016m；应在 `(100800,100800)` 放 Zone、`ZoneExtent` ≥ 220000。海平面用 `-17910cm`，不要再用 `-16357cm`。见 bug-177。
 
 ## Decision Log
 
@@ -1258,3 +1294,5 @@
   `MaxVisibleToasts` 满再排队——用户用连续触发同一条「精力不足」验证多格显示，默认合并会让他以为
   功能没生效（见 bug-166）。打开后回到「正在显示的只重置停留计时、队列尾部替换（FadeOut 阶段不合并）」，
   适合每秒节流的重复警告，避免刷屏。文案 / 时长 / 合并开关都属于纯客户端表现。
+
+- [2026-10-31] **3.3 地形材质另建 `LandscapeMaterial_v3` + `MI_Landscape_v3`，不覆盖用户手搭的 `LandscapeMaterial_v2`**：v2 的 BaseColor 细节层未接入，保留它便于对照/回滚；v3 用 Python 脚本一次生成 81 节点，四层（草/土/岩/雪）+ 高度/坡度/噪声遮罩 + 法线/粗糙度/AO，材质实例负责调参。理由：二进制资产手改风险高，新建资产不破坏已有工作，出问题可直接删掉 v3。

@@ -3075,6 +3075,208 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-25T14:58:02.393Z"
+    },
+    {
+      "id": "bug-168",
+      "timestamp": "2026-10-31T00:20:00.000Z",
+      "error_message": "MainMap 远处地形呈网格/棋盘格（类似 Minecraft），不是真实地形",
+      "file": "Content/World/Maps/MainMap.umap",
+      "root_cause": "地图来自 OpenWorld 模板：主 Landscape 与全部 64 个 LandscapeStreamingProxy 的 HLODMaterialOverride 都是 /Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid（模板调试网格/棋盘格材质，参数含 Checker Colour 1/2、Line Colour、Tile Scale、Sea Level Base）；HLOD loading range 512m，超出后地形由该材质渲染。",
+      "fix": "在 Landscape 主 Actor 的 Details > HLOD 把 HLOD Material Override 清空（让 LandscapeHLODBuilder.cpp:373-381 走烘焙分支；主 Landscape 的共享属性会同步到代理，见 Landscape.cpp:4932-4961），保留/设置 HLOD Texture Size Policy，然后 Build > Build HLODs 重建。改完抽查 LandscapeStreamingProxy 的同一属性，确认没有残留 M_ProcGrid。",
+      "tags": [
+        "landscape",
+        "hlod",
+        "grid",
+        "debug-material",
+        "openworld-template",
+        "mainmap"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-31T00:20:00.000Z"
+    },
+    {
+      "id": "bug-169",
+      "timestamp": "2026-10-31T00:20:00.000Z",
+      "error_message": "MainMap 地形呈现约 2m 一级的台阶，像方块世界",
+      "file": "Content/World/Maps/MainMap.umap",
+      "root_cause": "创建景观用的 terrain_heightmap.png 是 8 位 RGBA（R 通道 0..224，只有 223 个不同高度值），映射到 MainMap 的 -255m..+194.75m（449.75m）高度范围后每级约 2.0m；Landscape 顶点间距 1m，形成 2m 一级的台阶。",
+      "fix": "从 terrain-studio 重新导出 16 位高度图（或从 terrain.glb 的浮点顶点重建高度图），替换/重建 Landscape 后重建 HLOD；仅平滑或降低 Z scale 只能减弱台阶，不能恢复细节。",
+      "tags": [
+        "landscape",
+        "heightmap",
+        "8-bit",
+        "terracing",
+        "terrain-studio",
+        "mainmap"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-31T00:20:00.000Z"
+    },
+    {
+      "id": "bug-170",
+      "timestamp": "2026-10-31T00:20:00.000Z",
+      "error_message": "地图材质只有草地绿/地面黄/雪山白等颜色，没有真实材质的质感",
+      "file": "Content/World/Maps/LandscapeMaterial.uasset",
+      "root_cause": "LandscapeMaterial 只有 LandscapeLayerCoords（MappingScale=2017，铺满 2016m）+ 2048² 的 terrain_color/terrain_normal（约 1px/m）；没有 Roughness/Metallic/AO 输入、没有平铺细节层、没有按高度/坡度的草/土/岩/雪混合。terrain_color 使用 BC1（4×4 压缩块约 4m），近景就是 1m 色块。",
+      "fix": "新建分层景观材质：terrain_color 作为远景 macro 层；新增每 2-4m 平铺的草/土/岩/雪 albedo+normal+roughness（LandscapeLayerCoords 的 MappingScale 单位是景观本地单位/m，细节层设 2-4）；用 AbsoluteWorldPosition.Z 与 PixelNormalWS 做高度/坡度混合；接 Roughness/AO，雪/岩/草给不同粗糙度；用噪声打散平铺；细节贴图按 sRGB/TC_NORMALMAP/TC_MASKS 正确导入。",
+      "tags": [
+        "material",
+        "landscape",
+        "roughness",
+        "detail-texture",
+        "pbr",
+        "mainmap"
+      ],
+      "related_bugs": [
+        "bug-168"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-31T00:20:00.000Z"
+    },
+    {
+      "id": "bug-171",
+      "timestamp": "2026-10-31T00:20:00.000Z",
+      "error_message": "MainMap 的 PlayerStart 悬空约 183m，且出生区域可能在水面以下",
+      "file": "Content/World/Maps/MainMap.umap",
+      "root_cause": "PlayerStart 位于 (-200, 0, 92cm)；按 terrain_heightmap.png 的映射 z = 1 + (R/255 - 0.5) * 512（R=36）反推，该处地面约 -182.7m，出生点悬空约 183.6m。terrain-studio 预设 seaLevel=100（约 -175..-164m），该点地面还低于海平面。",
+      "fix": "选中 PlayerStart 按 End / Snap to Ground；把出生点移到高于海平面的平坦区域；若按预设加水面，先确认出生点与常用路线不在水下。",
+      "tags": [
+        "playerstart",
+        "spawn",
+        "landscape",
+        "heightmap",
+        "sea-level",
+        "mainmap"
+      ],
+      "related_bugs": [
+        "bug-169"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-31T00:20:00.000Z"
+    },
+    {
+      "id": "bug-172",
+      "timestamp": "2026-10-31T00:20:00.000Z",
+      "error_message": "MainMap 的天空/光照/雾与地形预设不一致，整体画面像模板且偏平",
+      "file": "Content/World/Maps/MainMap.umap",
+      "root_cause": "DirectionalLight 旋转 pitch -16.29°/yaw 43.73°/roll 112.36°、强度 6 lux、动态阴影距离 200m，与 terrain-studio 预设 sunAzimuth=135°/sunElevation=42°、sunColor=(1,0.94,0.82) 不符；场景同时有 SM_SkySphere（M_SimpleSkyDome，scale 400）与 SkyAtmosphere+VolumetricCloud，天空球是模板的轻量替代并会遮挡真实大气；ExponentialHeightFog 在 Z=-68.5m、密度 0.0436、falloff 0.2，和多数地形（约 -190..-100m）的高度关系不匹配。",
+      "fix": "删除 SM_SkySphere（或至少关闭 Cast Shadow 并保留真实大气）；把 DirectionalLight 改为 pitch=-42°/yaw=135°/roll=0，色温/颜色与预设一致、强度按曝光调到约 10 lux，动态阴影距离按性能调大（如 500-1000m）；按海平面/山谷重设雾高度、密度与蓝色 inscattering；改动后重新 Captured Scene 刷新 SkyLight。",
+      "tags": [
+        "lighting",
+        "sky",
+        "directional-light",
+        "fog",
+        "mainmap"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-31T00:20:00.000Z"
+    },
+    {
+      "id": "bug-173",
+      "timestamp": "2026-10-31T01:15:00.000Z",
+      "error_message": "Python 建材质时按编辑器显示名连接引脚失败：ComponentMask 输出 \"B\"、LandscapeLayerCoords 输出 \"UV\"、Clamp 输入 \"Value\"、Noise 输入 \"Position\"/\"Scale\"、Desaturation 输入 \"Color\" 均返回 False",
+      "file": "Intermediate/wf_build_v3.py",
+      "root_cause": "UE 5.7 MaterialEditingLibrary 使用节点内部引脚名：ComponentMask / LandscapeLayerCoords 只有一个无名输出（传空字符串），遮罩通道是节点的 r/g/b/a 属性；Clamp 第一个输入内部名为 \"None\"；Noise 输入为 \"World Position\" / \"FilterWidth\"，scale 是属性不是引脚；Desaturation 的颜色输入为 \"None\"。脚本照抄了编辑器 UI 的显示名，连接全部落空（CORE_FAIL 1）。",
+      "fix": "先用 MEL.get_material_expression_input_names(expr)（1 个参数）探测真实输入名；单输出节点 from_output 传空字符串；把 ComponentMask 的 \"B\" 改为 \"\" 后 CORE_FAIL 0 并保存。",
+      "tags": [
+        "unreal",
+        "python",
+        "material",
+        "material-editing-library",
+        "pin-name"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-31T01:15:00.000Z"
+    },
+    {
+      "id": "bug-174",
+      "timestamp": "2026-10-31T01:16:00.000Z",
+      "error_message": "用户完成的 3.2 材质 LandscapeMaterial_v2 近景仍只有宏观色，BaseColor 没有细节层",
+      "file": "Content/World/Maps/LandscapeMaterial_v2.uasset",
+      "root_cause": "dump 显示 BaseColor 根 MaterialExpressionMultiply_1 的 B 输入为 None，TextureSample_0（terrain_color）只接了 A；细节 Albedo（DetailAlbedo / grass / dirt / rock）链没有连到 BaseColor，所以 3.2 只完成了法线/粗糙度的细节，颜色仍是单张宏观色。",
+      "fix": "不修改用户已完成的 v2；另建 LandscapeMaterial_v3（81 节点），BaseColor 走 Grass/Dirt/Rock/Snow 四层 + 宏观色染色 + 噪声变化，并创建 MI_Landscape_v3 供调参。",
+      "tags": [
+        "material",
+        "landscape",
+        "basecolor",
+        "landscape-material-v2",
+        "landscape-material-v3"
+      ],
+      "related_bugs": [
+        "bug-170"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-31T01:16:00.000Z"
+    },
+    {
+      "id": "bug-175",
+      "timestamp": "2026-10-31T01:25:00.000Z",
+      "error_message": "3.3 地形材质实机几乎全是绿色，且有金属感/塑料感，不如手搭的 3.2",
+      "file": "Content/World/Maps/LandscapeMaterial_v3.uasset",
+      "root_cause": "BaseColor 的宏观染色分支是 AlbedoBright * MacroColor 再以 0.5 lerp 回绿色细节 Albedo：乘法保留了绿色细节的色相，白/黄宏观色也会被乘成绿色，所以整片始终偏绿；Roughness 直接使用 RGM 的 R 通道且 RoughnessBias=0，同时未设置 Specular（默认 0.5），低粗糙区域在阳光下呈湿/金属高光；Rock_Albedo/Rock_Normal/Rock_Roughness 又复用了与 Grass 相同的绿色苔藓贴图，岩石层也是绿的。",
+      "fix": "把宏观染色的 B 输入从 AlbedoBright * MacroColor 改为 MacroColor 本身，MacroTintStrength 默认 0.85；RoughnessBias 默认 0.25、新增 SpecularLevel 0.1 并接到 MP_SPECULAR；MossStrength 降到 0.05；Rock_Albedo/Normal/Roughness 改用 rubble_ground 贴图；在 MI_Landscape_v3 上同步写入这些标量/贴图覆盖。",
+      "tags": [
+        "material",
+        "landscape",
+        "basecolor",
+        "roughness",
+        "specular",
+        "macro-color",
+        "landscape-material-v3"
+      ],
+      "related_bugs": [
+        "bug-174"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-31T01:25:00.000Z"
+    },
+    {
+      "id": "bug-176",
+      "timestamp": "2026-10-31T02:10:00.000Z",
+      "error_message": "放入 Water Body Ocean 后地形会变掉，地形被水体形状改变",
+      "file": "D:/UE/UE_5.7/Engine/Plugins/Experimental/Water/Source/Runtime/Private/WaterBodyComponent.cpp",
+      "root_cause": "UWaterBodyComponent 构造函数默认 bAffectsLandscape=true（WaterBodyComponent.cpp:106）；头文件说明启用后 landscape will be deformed based on this water body placed on top of it（WaterBodyComponent.h:628-630）。Water Body 通过 Water Landscape Brush 修改 Landscape Edit Layer，放置 Ocean 即改地形。",
+      "fix": "只想做海面时，在 Water Body Ocean 的 Details → Terrain 取消勾选 Affects Landscape；若地形已被改，先 Ctrl+Z，或到 Landscape → Manage → Edit Layers 删除 Water 刷层/从 git 备份恢复。",
+      "tags": [
+        "water",
+        "water-body-ocean",
+        "affects-landscape",
+        "landscape",
+        "terrain-deformation"
+      ],
+      "related_bugs": [
+        "bug-168",
+        "bug-171"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-31T02:10:00.000Z"
+    },
+    {
+      "id": "bug-177",
+      "timestamp": "2026-10-31T02:10:00.000Z",
+      "error_message": "Water 数值不正确：海平面 -16357cm 偏高、Water Zone/Ocean 的放置与 Extent 覆盖不足",
+      "file": "Content/World/Maps/MainMap.umap",
+      "root_cause": "旧计算按 Landscape Z Scale=100（512m 高差）算海平面，实际 Scale Z=109（约 558m 高差），海平面应为 -17910cm；Water Zone 放在 (0,0,0) 且 ZoneExtent=110000，但 ZoneExtent 是全长（WaterZoneActor.cpp:91），地形覆盖 0..2016m、中心 (100800,100800)，110000 只覆盖 1.1km；旧 PlayerStart 负坐标也在地形范围外。",
+      "fix": "Water Zone 放 (100800,100800,0)，ZoneExtent=(220000,220000)；Water Body Ocean 放 (100800,100800,-17910)，OceanExtents=(220000,220000) 或 Fill Water Zone With Ocean；Fog Z 同步改 -17910；PlayerStart 移到 Z>-17910 的高地并 Snap to Ground。",
+      "tags": [
+        "water",
+        "water-zone",
+        "ocean",
+        "sea-level",
+        "landscape-z-scale",
+        "landscape",
+        "miscalculation"
+      ],
+      "related_bugs": [
+        "bug-171",
+        "bug-176"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-31T02:10:00.000Z"
     }
   ]
 }

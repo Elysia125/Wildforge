@@ -2,12 +2,12 @@
   "version": 1,
   "created_at": "2026-10-05T10:52:46.081Z",
   "lifetime": {
-    "total_tokens_estimated": 767107,
-    "total_reads": 279,
-    "total_writes": 435,
-    "total_sessions": 79,
+    "total_tokens_estimated": 784754,
+    "total_reads": 308,
+    "total_writes": 458,
+    "total_sessions": 89,
     "anatomy_hits": 200,
-    "anatomy_misses": 77,
+    "anatomy_misses": 106,
     "repeated_reads_blocked": 76,
     "estimated_savings_vs_bare_cli": 394072
   },
@@ -4915,6 +4915,395 @@
         "writes_count": 14,
         "repeated_reads_blocked": 5,
         "anatomy_lookups": 3
+      }
+    },
+    {
+      "id": "session-2026-10-30-0014",
+      "started": "2026-10-30T16:14:55.779Z",
+      "ended": "2026-10-30T16:22:55.922Z",
+      "reads": [
+        {
+          "file": "D:/UE/UE_5.7/Engine/Source/Runtime/Landscape/Private/LandscapeHLODBuilder.cpp",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Source/Runtime/Landscape/Private/Materials/MaterialExpressionLandscapeLayerCoords.cpp",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Shaders/Private/Landscape/LandscapeVertexFactory.ush",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Shaders/Private/LandscapeVertexFactory.ush",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_dump_map13.py",
+          "tokens_estimated": 73,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_dump_map13.py",
+          "tokens_estimated": 8,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_dump_map14.py",
+          "tokens_estimated": 1235,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_dump_map15.py",
+          "tokens_estimated": 1030,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_dump_map16.py",
+          "tokens_estimated": 347,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 2693,
+        "reads_count": 4,
+        "writes_count": 5,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-10-30-0026",
+      "started": "2026-10-30T16:26:58.388Z",
+      "ended": "2026-10-30T16:34:20.761Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_dump_nature.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_dump_matgraph.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 0,
+        "reads_count": 2,
+        "writes_count": 0,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-10-30-0026",
+      "started": "2026-10-30T16:26:58.388Z",
+      "ended": "2026-10-30T16:49:43.692Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_dump_nature.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_dump_matgraph.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 0,
+        "reads_count": 2,
+        "writes_count": 0,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-10-31-0915",
+      "started": "2026-10-31T01:15:52.293Z",
+      "ended": "2026-10-31T01:22:24.648Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_dump_pack.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_dump_v3.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_build_v3.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_fix_v3.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_dump_pack.py",
+          "tokens_estimated": 893,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_fix_v3.py",
+          "tokens_estimated": 2087,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_check_v3.py",
+          "tokens_estimated": 811,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_check_v3.py",
+          "tokens_estimated": 139,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 3930,
+        "reads_count": 4,
+        "writes_count": 4,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-10-31-0915",
+      "started": "2026-10-31T01:15:52.293Z",
+      "ended": "2026-10-31T01:33:02.656Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_dump_pack.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_dump_v3.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_build_v3.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_fix_v3.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_dump_pack.py",
+          "tokens_estimated": 893,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_fix_v3.py",
+          "tokens_estimated": 2087,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_check_v3.py",
+          "tokens_estimated": 811,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_check_v3.py",
+          "tokens_estimated": 139,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_spline.py",
+          "tokens_estimated": 808,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_registry.py",
+          "tokens_estimated": 487,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_spline2.py",
+          "tokens_estimated": 303,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 5528,
+        "reads_count": 4,
+        "writes_count": 7,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-10-31-0944",
+      "started": "2026-10-31T01:44:36.036Z",
+      "ended": "2026-10-31T02:10:51.625Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_dump_map16.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_dump_map15.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/xf317/Desktop/temp/terrain_preset.json",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_dump_map2.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_dump_map3.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_water_diag.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_water_probe.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_map_probe2.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_proxy_probe.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Plugins/Experimental/Water/Source/Runtime/Public/WaterBodyOceanActor.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_land_api.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_bounds_probe.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_bounds_all.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_water_diag.py",
+          "tokens_estimated": 2089,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_water_probe.py",
+          "tokens_estimated": 794,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_map_probe2.py",
+          "tokens_estimated": 824,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_proxy_probe.py",
+          "tokens_estimated": 631,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_land_api.py",
+          "tokens_estimated": 480,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_bounds_probe.py",
+          "tokens_estimated": 261,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_bounds_all.py",
+          "tokens_estimated": 417,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 5496,
+        "reads_count": 13,
+        "writes_count": 7,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
       }
     }
   ],

@@ -65,6 +65,26 @@
 - `DefaultGame.ini` (~333 tok)
 - `DefaultInput.ini` (~3677 tok)
 
+## Content/World/Maps/
+
+- `LandscapeMaterial.uasset` — 原始地形材质：单张宏观色 + 法线，无粗糙度/AO (~12 tok)
+- `LandscapeMaterial_v2.uasset` — 3.2 最小版：宏观色 + 细节法线/粗糙度；BaseColor 细节层未接 (~24 tok)
+- `LandscapeMaterial_v3.uasset` — 3.3 完整版：草/土/岩/雪四层 + 高度/坡度/噪声遮罩 + 法线/粗糙度/AO；宏观色主导、低 Specular，81 节点 (~90 tok)
+- `MI_Landscape_v3.uasset` — v3 的材质实例，调参数用；赋给 Landscape 的推荐入口 (~4 tok)
+
+## Content/World/Terrain/Textures/
+
+- `moss_bsm.uasset` — 256² 苔藓/草地细节 Albedo，sRGB (~1 tok)
+- `moss_nrm.uasset` — 256² 苔藓/草地细节 Normal，TC_NORMALMAP，Flip Green (~1 tok)
+- `moss_rgm.uasset` — 256² 苔藓/草地细节 RGM，sRGB (~1 tok)
+- `rubble_ground_bsm.uasset` — 2048² 碎石/泥土 Albedo，sRGB (~1 tok)
+- `rubble_ground_nrm.uasset` — 2048² 碎石/泥土 Normal，Flip Green (~1 tok)
+- `rubble_ground_rgm.uasset` — 2048² 碎石/泥土 RGM，sRGB (~1 tok)
+- `rock_ground_mud-1_bsm.uasset` — 2048² 苔藓岩石/地面 Albedo，sRGB (~1 tok)
+- `rock_ground_mud-1_nrm.uasset` — 2048² 苔藓岩石/地面 Normal，Flip Green (~1 tok)
+- `rock_ground_mud-1_rgm.uasset` — 2048² 苔藓岩石/地面 RGM，sRGB (~1 tok)
+- `rock_ground_mud-1_AO.uasset` — 2048² 岩石/地面 AO，sRGB (~1 tok)
+
 ## Plugins/Plugins/UmgDesignSystem/
 
 - `UmgDesignSystem.uplugin` (~315 tok)

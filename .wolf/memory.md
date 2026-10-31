@@ -1332,3 +1332,132 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+
+## Session: 2026-10-29 22:03
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-30 23:56
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:04 | Created Intermediate/wf_dump_map3.py | — | ~1749 |
+| 00:05 | Created Intermediate/wf_dump_map4.py | — | ~1604 |
+| 00:05 | Created Intermediate/wf_dump_map5.py | — | ~1000 |
+| 00:06 | Created Intermediate/wf_dump_map6.py | — | ~675 |
+| 00:07 | Created Intermediate/wf_dump_map8.py | — | ~963 |
+| 00:08 | Edited Intermediate/wf_dump_map8.py | 3→3 lines | ~40 |
+| 00:08 | Edited Intermediate/wf_dump_map8.py | expanded (+10 lines) | ~117 |
+| 00:08 | Edited Intermediate/wf_dump_map8.py | removed 11 lines | ~14 |
+| 00:08 | Edited Intermediate/wf_dump_map8.py | 3→3 lines | ~37 |
+| 00:09 | Created Intermediate/wf_dump_map9.py | — | ~789 |
+| 00:10 | Created Intermediate/wf_dump_map10.py | — | ~590 |
+| 00:11 | Created Intermediate/wf_dump_map11.py | — | ~503 |
+| 00:14 | Created Intermediate/wf_dump_map13.py | — | ~834 |
+
+## Session: 2026-10-30 00:14
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:15 | Edited Intermediate/wf_dump_map13.py | modified log() | ~73 |
+| 00:15 | Edited Intermediate/wf_dump_map13.py | 1→2 lines | ~8 |
+| 00:16 | Created Intermediate/wf_dump_map14.py | — | ~1235 |
+| 00:19 | Created Intermediate/wf_dump_map15.py | — | ~1030 |
+| 00:20 | Created Intermediate/wf_dump_map16.py | — | ~347 |
+
+
+## Session: 2026-10-31 00:21
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:21 | 分析 MainMap 地形观感：8 位高度图约 2m 台阶、OpenWorld 模板 HLOD 覆盖 M_ProcGrid、1px/m 宏观材质、PlayerStart 悬空约 183m | Content/World/Maps/MainMap.umap、LandscapeMaterial.uasset、terrain_heightmap.png | 三个问题的根因已确认；未修改任何项目资产 | ~4500 |
+| 00:22 | 把结论写入 OpenWolf：bug-168..172、Key Learnings、Do-Not-Repeat | .wolf/buglog.json、.wolf/cerebrum.md | 已更新 | ~900 |
+| 00:22 | Session end: 5 writes across 4 files (wf_dump_map13.py, wf_dump_map14.py, wf_dump_map15.py, wf_dump_map16.py) | 4 reads | ~2693 tok |
+
+## Session: 2026-10-30 00:26
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-31 00:47
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:47 | 复制地形细节贴图到 git 跟踪目录（10 个 .uasset，约 57MB） | Content/World/Terrain/Textures/* | moss 为 256²，rock/rubble 为 2048²，normal 均 Flip Green=True | ~300 |
+
+## Session: 2026-10-30 00:55
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 01:08 | Created Intermediate/wf_dump_v2.py | — | ~1892 |
+| 01:09 | Created Intermediate/wf_api_probe.py | — | ~1857 |
+| 01:10 | Created Intermediate/wf_api_probe2.py | — | ~1272 |
+| 01:12 | Created Intermediate/wf_build_v3.py | — | ~5272 |
+| 01:12 | Edited Intermediate/wf_build_v3.py | inline fix | ~13 |
+| 01:13 | Created Intermediate/wf_dump_v3.py | — | ~1119 |
+| 01:14 | Created Intermediate/wf_cleanup_v3.py | — | ~887 |
+
+## Session: 2026-10-30 01:16
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-31 01:17 — 3.3 完整地形材质
+
+| 时间 | 动作 | 文件 | 结果 | ~tokens |
+|---|---|---|---|---|
+| 01:17 | 用 Python 脚本构建 3.3 完整地形材质（草/土/岩/雪 + 高度/坡度/噪声遮罩 + 法线/粗糙度/AO） | Content/World/Maps/LandscapeMaterial_v3.uasset | 81 节点，CORE_FAIL 0 / OPT_FAIL 0，已保存 | ~3000 |
+| 01:17 | 删除孤立节点 WF_c_zero 并重编译 | Content/World/Maps/LandscapeMaterial_v3.uasset | 82→81，保存成功 | ~100 |
+| 01:17 | 创建材质实例并设父为 v3 | Content/World/Maps/MI_Landscape_v3.uasset | 已保存，可用于调参 | ~100 |
+| 01:17 | dump 校验 v3 材质图 | Intermediate/wf_dump_v3.txt | SEEN_COUNT 81，BaseColor/Normal/Roughness/AO 根节点正确 | ~500 |
+
+## Session: 2026-10-31 09:07
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-31 09:15
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:17 | Created Intermediate/wf_dump_pack.py | — | ~893 |
+| 09:20 | Created Intermediate/wf_fix_v3.py | — | ~2087 |
+| 09:21 | Created Intermediate/wf_check_v3.py | — | ~811 |
+| 09:21 | Edited Intermediate/wf_check_v3.py | modified _has() | ~139 |
+
+## Session: 2026-10-31 09:22 — 3.3 颜色/质感修正
+
+| 时间 | 动作 | 文件 | 结果 | ~tokens |
+|---|---|---|---|---|
+| 09:22 | 修正 v3 宏观染色（B 改为 MacroColor，0.85）、RoughnessBias 0.25、MossStrength 0.05 | Content/World/Maps/LandscapeMaterial_v3.uasset | 材质已重编译保存 | ~800 |
+| 09:22 | 新增 SpecularLevel 0.1 并接到 MP_SPECULAR；Rock 贴图改为 rubble | Content/World/Maps/LandscapeMaterial_v3.uasset | ROOT SPEC 生效，Rock 不再复用绿色苔藓 | ~300 |
+| 09:22 | 同步 MI 覆盖并校验 | Content/World/Maps/MI_Landscape_v3.uasset | 4 个标量 + 3 个贴图覆盖已保存 | ~200 |
+| 09:22 | Session end: 4 writes across 3 files (wf_dump_pack.py, wf_fix_v3.py, wf_check_v3.py) | 4 reads | ~3930 tok |
+| 09:31 | Created Intermediate/wf_probe_spline.py | — | ~808 |
+| 09:32 | Created Intermediate/wf_probe_registry.py | — | ~487 |
+| 09:32 | Created Intermediate/wf_probe_spline2.py | — | ~303 |
+| 09:32 | 核查 spline_* 三张纹理的引用 | Content/World/Maps/spline_* | Asset Registry 硬/软引用均 0，当前未使用 | ~100 |
+| 09:33 | Session end: 7 writes across 6 files (wf_dump_pack.py, wf_fix_v3.py, wf_check_v3.py, wf_probe_spline.py, wf_probe_registry.py) | 4 reads | ~5528 tok |
+
+## Session: 2026-10-31 09:44
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:02 | Created Intermediate/wf_water_diag.py | — | ~2089 |
+| 10:02 | Created Intermediate/wf_water_probe.py | — | ~794 |
+| 10:04 | Created Intermediate/wf_map_probe2.py | — | ~824 |
+| 10:06 | Created Intermediate/wf_proxy_probe.py | — | ~631 |
+| 10:07 | Created Intermediate/wf_land_api.py | — | ~480 |
+| 10:09 | Created Intermediate/wf_bounds_probe.py | — | ~261 |
+| 10:09 | Created Intermediate/wf_bounds_all.py | — | ~417 |
+| 10:10 | 诊断 Water Body Ocean 放置后地形变化 | WaterBodyComponent.cpp | 根因 bAffectsLandscape 默认 true，Water Landscape Brush 改地形；关闭该选项即可 | ~900 |
+| 10:10 | 校验海平面与地形 Z 范围 | MainMap, terrain_heightmap_16.png | Landscape Z Scale=109，实际 Z -279.04..+203.95m，海平面 -17910cm；旧 -16357cm 偏高 15.5m | ~700 |
+| 10:10 | 校验 Water Zone/Ocean Extent 语义与地图范围 | WaterZoneActor.cpp, WaterBodyOceanComponent.h | ZoneExtent/OceanExtents 为全长；地形 0..2016m 中心 100800，旧 110000 只覆盖 1.1km | ~500 |
+| 10:10 | 检查当前 MainMap 保存状态 | MainMap.umap | 64 个 proxy 已用 MI_Landscape_v3、HLOD 覆盖为 None；无 Water Actor；PlayerStart 在中心 (100800,100800,-18778) | ~600 |
+| 10:10 | Session end: 7 writes across 7 files (wf_water_diag.py, wf_water_probe.py, wf_map_probe2.py, wf_proxy_probe.py, wf_land_api.py) | 13 reads | ~5496 tok |
+
+## Session: 2026-10-31 10:30
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
