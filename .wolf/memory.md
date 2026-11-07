@@ -1618,3 +1618,252 @@
 | 00:47 | 定位小地图三个问题：水面缺失 = 引擎 UE-359953（SceneCapture 不更新 WaterInfo）、整体发暗 = RT_Minimap 非 sRGB 的 8bit RT、箭头被遮挡 = BP_MinimapIcon 的世界 PaperSprite 被草/地形/角色挡住；给出修复步骤 | .wolf/buglog.json（bug-184/185/186）、.wolf/cerebrum.md；分析用 Intermediate/wf_probe_minimap*.py | 编辑器仍开着（PIE 可能运行中），未修改/保存任何资产；修复步骤待用户执行 | ~4k |
 | 00:44 | Created Intermediate/wf_buglog_append_minimap.py | — | ~991 |
 | 00:46 | Session end: 1 writes across 1 files (wf_buglog_append_minimap.py) | 0 reads | ~991 tok |
+| 10:31 | Created Intermediate/wf_probe_plane_timer.py | — | ~2101 |
+
+## Session: 2026-11-01 10:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:38 | Created Intermediate/wf_probe_water_timer.py | — | ~2504 |
+| 10:38 | Edited Intermediate/wf_probe_water_timer.py | 2→2 lines | ~43 |
+| 10:40 | Created Intermediate/wf_probe_bp_spawn.py | — | ~1499 |
+| 10:42 | Created Intermediate/wf_probe_map_water.py | — | ~1717 |
+| 10:43 | Created Intermediate/wf_probe_wp_descs.py | — | ~1482 |
+
+## Session: 2026-11-01 10:47
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:45 | 小地图水体三问题定案：平面 Is Spatially Loaded=True 被流送卸载、Scale 220000(220km) 应为 2200(2.2km)、蓝图 SetTimer 传了带参函数 SwitchToSwimMode 导致定时器未设置 | BP_WildforgeCharacter.uasset, 9DOU0C3VYHJTPQ4TV2SSGD.uasset, .wolf/buglog.json | 已给出用户操作步骤，bug-188/189 入库 | ~9000 |
+| 11:30 | 定案小地图两个症状同源：正交捕捉近裁剪上限=角色+Z+828，H=1000仅18m；陆地上高地形被裁→透出平面变蓝，角色在海床(-21000)时水面平面(-18000)高于上限→不渲染显示黄土地。抬 Z 到 5000~10000。另确认 SetTimer 的 ParmsSize 含返回值，无输入但有返回仍被拒 | BP_WildforgeCharacter.uasset | 已给用户步骤；bug-188 补充、bug-190 入库 | ~7000 |
+| 11:50 | 查明 SwitchToSwimMode 水深恒 0 是 UE 5.7 浮力组件查询 flags 缺 ComputeDepth（OutWaterDepth 恒 0）；改用 WaterBodyComponent.GetWaterSurfaceInfoAtLocation 并勾 Include Depth。BP 资产确认引用的是 GetLastWaterSurfaceInfo | BP_WildforgeCharacter.uasset, Water 插件源码 | bug-191 入库；已验证海中心 depth=3000 | ~4000 |
+| 12:00 | 澄清 BP 输出引脚：WaterBodyComponent 节点叫 Water Surface Location，Buoyancy 节点叫 Water Surface Position，取 Z 即水面高度 | .wolf/cerebrum.md | 已答复 | ~500 |
+
+## Session: 2026-11-01 13:03
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:05 | 答复胶囊半高取法：Get Capsule Component → Get Scaled Capsule Half Height（本项目 88）；修正脚底深度公式为 水面Z − 角色Z + HalfHeight | .wolf/cerebrum.md | 已答复 | ~400 |
+| 13:16 | 用 commandlet 探针定位 GetCharacterHeight 返回 10152.5 的原因：函数=Get Actor Bounds.BoxExtent.Z×2，包围盒把 Relative Z=10000 的小地图 PaperSprite 和半径150的 InteractSphere 算进去；正确取法是胶囊半高×2=176 | BP_WildforgeCharacter.uasset、Intermediate/wf_probe_height*.py/.txt | bug-192 入库 | ~6000 |
+| 13:46 | 定位游泳下沉：MOVE_Swimming 依赖 PhysicsVolume.bWaterVolume，WaterBody/WaterZone 不提供；无体积时 ImmersionDepth=0 且 PhysSwimming 每帧打回 Falling，落海床走 Walking。MainMap 无 PhysicsVolume | MainMap.umap、CharacterMovementComponent.cpp、Water 插件 | bug-193 入库；给出加 Physics Volume 的数值步骤 | ~5000 |
+| 14:05 | 修正 PhysicsVolume 数值：顶面就是游泳水面，必须对齐 -18000；原顶面 -16500 让 -16500~-18000 的干地也变游泳。改为 Location Z -24000、Scale Z 60（Z -30000~-18000） | MainMap.umap、.wolf/buglog.json | bug-193 occurrences=2 | ~900 |
+
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:12 | Created Intermediate/wf_probe_height.py | — | ~1007 |
+| 13:12 | Created Intermediate/wf_probe_height2.py | — | ~758 |
+| 13:14 | Session end: 2 writes across 2 files (wf_probe_height.py, wf_probe_height2.py) | 0 reads | ~1765 tok |
+| 13:44 | Session end: 2 writes across 2 files (wf_probe_height.py, wf_probe_height2.py) | 0 reads | ~1765 tok |
+| 22:51 | Session end: 2 writes across 2 files (wf_probe_height.py, wf_probe_height2.py) | 0 reads | ~1765 tok |
+
+## Session: 2026-11-07 21:34
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-07 21:49
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:54 | 调研 PCG 植被方案：确认 PCG 插件未启用、盘点 ProceduralNaturePack 的树/石/草/蕨 mesh 与 FoliageType；给出 Volume+Surface Sampler+Static Mesh Spawner 的项目化流程与 WP/性能/未入库注意事项 | .wolf/cerebrum.md、Wildforge.uproject、Content/ProceduralNaturePack、Engine/Plugins/PCG | 完成方案说明，未改项目文件 | ~8k |
+| 21:52 | Created C:/Users/xf317/AppData/Local/Temp/wf-anim/remote_run.py | — | ~256 |
+| 21:52 | Created C:/Users/xf317/AppData/Local/Temp/wf-anim/probe_idle.py | — | ~567 |
+| 21:54 | Session end: 2 writes across 2 files (remote_run.py, probe_idle.py) | 2 reads | ~947 tok |
+| 21:55 | Session end: 2 writes across 2 files (remote_run.py, probe_idle.py) | 2 reads | ~947 tok |
+| 21:56 | Created C:/Users/xf317/AppData/Local/Temp/wf-anim/probe_idle.py | — | ~578 |
+| 21:56 | Edited C:/Users/xf317/AppData/Local/Temp/wf-anim/probe_idle.py | 1→4 lines | ~58 |
+| 21:57 | Created C:/Users/xf317/AppData/Local/Temp/wf-anim/probe_api.py | — | ~784 |
+| 21:58 | Created C:/Users/xf317/AppData/Local/Temp/wf-anim/probe_track.py | — | ~483 |
+
+## Session: 2026-11-07 22:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:06 | Created C:/Users/xf317/AppData/Local/Temp/wf-anim/probe_pose.py | — | ~807 |
+| 22:07 | Created C:/Users/xf317/AppData/Local/Temp/wf-anim/probe_write.py | — | ~859 |
+| 22:08 | Created C:/Users/xf317/AppData/Local/Temp/wf-anim/probe_basis.py | — | ~1535 |
+| 22:10 | Created C:/Users/xf317/AppData/Local/Temp/wf-anim/generate_idle_details.py | — | ~2883 |
+
+## Session: 2026-11-07 22:10
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:11 | Created C:/Users/xf317/AppData/Local/Temp/wf-anim/probe_dup.py | — | ~284 |
+| 22:11 | Created C:/Users/xf317/AppData/Local/Temp/wf-anim/end_pie.py | — | ~189 |
+| 22:11 | Created Intermediate/wf_pcg_inventory.py | — | ~1199 |
+| 22:12 | Edited C:/Users/xf317/AppData/Local/Temp/wf-anim/generate_idle_details.py | modified in() | ~79 |
+| 22:13 | 排查 duplicate_asset 返回 None：编辑器处于 PIE，结束后重试成功 | — | ~300 |
+| 22:14 | 生成 New_Moon_Idle_Breath / New_Moon_Idle_LookAround（各 251 键） | Content/Characters/NewMoon/Animations/Anims/Idle/New_Moon_Idle_Breath.uasset, New_Moon_Idle_LookAround.uasset | 保存成功 | ~4500 |
+| 22:15 | 校验首尾帧闭合 0°、呼吸脊柱世界旋转峰值 ~3.2°、环顾峰值 38° | 同上 | 通过 | ~700 |
+| 22:15 | 生成器与远程驱动脚本留档到 Saved/WFAnimTools | Saved/WFAnimTools/generate_idle_details.py, remote_run.py | 完成 | ~300 |
+| 22:16 | 更新 cerebrum / buglog（bug-194） | .wolf/cerebrum.md, .wolf/buglog.json | 完成 | ~900 |
+| 22:16 | Created Intermediate/wf_pcg_api_probe.py | — | ~1084 |
+| 22:16 | Session end: 5 writes across 5 files (probe_dup.py, end_pie.py, wf_pcg_inventory.py, generate_idle_details.py, wf_pcg_api_probe.py) | 5 reads | ~2835 tok |
+| 22:17 | Created Intermediate/wf_pcg_copy_assets.py | — | ~2692 |
+| 22:19 | Created Intermediate/wf_pcg_verify_assets.py | — | ~746 |
+| 22:20 | Created Intermediate/wf_pcg_diag_mat.py | — | ~923 |
+| 22:20 | Created .claude/skills/wildforge-animation/SKILL.md | — | ~1908 |
+| 22:20 | Created .claude/skills/wildforge-animation/scripts/remote_run.py | — | ~669 |
+| 22:21 | Created .claude/skills/wildforge-animation/scripts/generate_animation_template.py | — | ~2661 |
+| 22:21 | Created Intermediate/wf_pcg_fix_mat_refs.py | — | ~1702 |
+| 22:23 | Created Intermediate/wf_pcg_create_graph.py | — | ~3117 |
+
+## Session: 2026-11-07 22:24
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:24 | Edited .claude/skills/wildforge-animation/scripts/generate_animation_template.py | 2→7 lines | ~122 |
+| 22:24 | Edited .claude/skills/wildforge-animation/scripts/generate_animation_template.py | 4→4 lines | ~79 |
+| 22:25 | Edited .claude/skills/wildforge-animation/scripts/generate_animation_template.py | 3→3 lines | ~63 |
+| 22:25 | Edited .claude/skills/wildforge-animation/SKILL.md | expanded (+6 lines) | ~128 |
+| 22:25 | Edited .claude/skills/wildforge-animation/SKILL.md | 2→4 lines | ~60 |
+| 22:25 | Created Intermediate/wf_pcg_create_graph.py | — | ~2960 |
+| 22:26 | Created Intermediate/wf_pcg_enum_probe.py | — | ~460 |
+| 22:26 | Edited Intermediate/wf_pcg_create_graph.py | modified does_asset_exist() | ~104 |
+| 22:26 | Edited Intermediate/wf_pcg_create_graph.py | inline fix | ~26 |
+| 22:26 | Created Intermediate/wf_pcg_verify_graph.py | — | ~980 |
+
+## Session: 2026-11-07 22:27
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:23 | py_compile 校验 skill 的两个脚本 | .claude/skills/wildforge-animation/scripts/ | 通过 | ~120 |
+| 22:23 | 模板首次端到端测试失败：ExecuteFile 把脚本正文里的带扩展名文件名当成文件路径 | scripts/generate_animation_template.py | SUCCESS=False，定位为 bug-195 | ~400 |
+| 22:24 | 模板移除全部 `.py` 字样后重测：WF_SkillTest 写键 / 保存 / 环闭合校验全部通过 | scripts/generate_animation_template.py, SKILL.md | 通过 | ~500 |
+| 22:25 | 删除临时测试资产 WF_SkillTest | Content/Characters/NewMoon/Animations/Anims/Idle/WF_SkillTest.uasset | 已删除 | ~80 |
+| 22:25 | 记录 bug-194 / bug-195，更新 cerebrum（PIE、ExecuteFile、动画 API 结论） | .wolf/buglog.json, .wolf/cerebrum.md | 完成 | ~900 |
+| 22:27 | skill 交付总结：SKILL.md + remote driver + 生成模板 | .claude/skills/wildforge-animation/ | 完成 | ~300 |
+| 22:27 | Created Intermediate/wf_pcg_live_test_a.py | — | ~485 |
+| 22:27 | Session end: 1 writes across 1 files (wf_pcg_live_test_a.py) | 0 reads | ~485 tok |
+| 22:27 | Created Intermediate/wf_pcg_live_test_b.py | — | ~534 |
+| 22:28 | Edited Intermediate/wf_pcg_live_test_b.py | modified in() | ~135 |
+| 22:29 | Created Intermediate/wf_pcg_volume_probe.py | — | ~440 |
+| 22:30 | Created Intermediate/wf_pcg_debug_a.py | — | ~572 |
+| 22:30 | Created Intermediate/wf_pcg_debug_b.py | — | ~620 |
+| 22:32 | Created Saved/WFAnimTools/probe_attacks.py | — | ~1529 |
+| 22:32 | Created Intermediate/wf_pcg_state_probe.py | — | ~734 |
+| 22:32 | Created Intermediate/wf_pcg_state_probe_b.py | — | ~461 |
+| 22:32 | Created Saved/WFAnimTools/probe_attacks_existing.py | — | ~1682 |
+| 22:32 | Created Intermediate/wf_pcg_landscape_node_probe.py | — | ~419 |
+| 22:33 | Created Saved/WFAnimTools/probe_arm_rig.py | — | ~1351 |
+| 22:33 | Created Intermediate/wf_pcg_isolate_a.py | — | ~681 |
+| 22:33 | Created Intermediate/wf_pcg_isolate_b.py | — | ~572 |
+
+## Session: 2026-11-07 22:34
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:35 | Created Saved/WFAnimTools/test_punch_core.py | — | ~2215 |
+| 22:35 | Edited Saved/WFAnimTools/test_punch_core.py | removed 19 lines | ~14 |
+| 22:35 | Created Intermediate/wf_pcg_real_at_terrain.py | — | ~285 |
+| 22:35 | Created Intermediate/wf_pcg_real_at_terrain_b.py | — | ~378 |
+| 22:35 | Created Saved/WFAnimTools/probe_fingers.py | — | ~1274 |
+| 22:35 | Edited Saved/WFAnimTools/probe_fingers.py | 7→4 lines | ~67 |
+| 22:36 | Created Intermediate/wf_pcg_cleanup.py | — | ~320 |
+| 22:36 | Created Saved/WFAnimTools/create_punch_combo.py | — | ~4430 |
+| 22:37 | Edited Saved/WFAnimTools/create_punch_combo.py | modified in() | ~305 |
+| 22:37 | Edited Saved/WFAnimTools/create_punch_combo.py | removed 25 lines | ~13 |
+| 22:37 | Edited Saved/WFAnimTools/create_punch_combo.py | modified write_one() | ~17 |
+| 22:37 | Created Saved/WFAnimTools/verify_punch_combo.py | — | ~1118 |
+
+## Session: 2026-11-07 22:37
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:38 | Created Saved/WFAnimTools/verify_punch_extra.py | — | ~622 |
+| 22:38 | Created Saved/WFAnimTools/probe_thumb.py | — | ~862 |
+| 22:38 | Edited Saved/WFAnimTools/create_punch_combo.py | modified in() | ~112 |
+| 22:38 | Edited Saved/WFAnimTools/create_punch_combo.py | modified startswith() | ~132 |
+| 22:39 | Copied 53 nature assets to Content/Environment/Nature | Content/Environment/Nature/ | 257MB; dependency closure 0 external refs | ~1800 |
+| 22:39 | Created PCG vegetation graph (22 nodes, 6 branches) | Content/World/PCG/PCG_Vegetation.uasset | Params verified; no ProceduralNaturePack refs | ~3500 |
+| 22:39 | End-to-end PCG generation test on MainMap terrain proxy | Intermediate/wf_pcg_real_at_terrain*.py | 39 instances / 7 ISMs; temp actors & graphs cleaned | ~1200 |
+| 22:39 | Updated OpenWolf records | .wolf/anatomy.md, cerebrum.md, buglog.json, memory.md | Nature/PCG sections; bug-199..201 | ~1500 |
+| 22:39 | Session end: 4 writes across 3 files (verify_punch_extra.py, probe_thumb.py, create_punch_combo.py) | 0 reads | ~1728 tok |
+
+## Session: 2026-11-07 22:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:40 | Created Saved/WFAnimTools/check_fist_geometry.py | — | ~763 |
+| 22:40 | Created Saved/WFAnimTools/cleanup_probe.py | — | ~331 |
+| 22:41 | Created Saved/WFAnimTools/append_buglog.py | — | ~536 |
+| 22:45 | Re-ran punch combo generator with thumb tuck | Saved/WFAnimTools/create_punch_combo.py | 3 assets saved: 24/28/34 frames; all writes ok | ~2600 |
+| 22:46 | Verified fist geometry at peak frames | Saved/WFAnimTools/check_fist_geometry.py | middle_01 leads all punches; thumb ~0.5 behind knuckles | ~900 |
+| 22:47 | Deleted temporary probe asset WF_Probe_Punch | — | deleted; exists_after=false | ~300 |
+| 22:48 | Updated OpenWolf records | .wolf/cerebrum.md, .wolf/buglog.json | Key Learnings + Decision Log; bug-202/203 | ~1800 |
+| 22:41 | Session end: 3 writes across 3 files (check_fist_geometry.py, cleanup_probe.py, append_buglog.py) | 0 reads | ~1630 tok |
+| 22:46 | Session end: 3 writes across 3 files (check_fist_geometry.py, cleanup_probe.py, append_buglog.py) | 0 reads | ~1630 tok |
+| 22:48 | Created Saved/WFAnimTools/probe_orientation.py | — | ~835 |
+| 22:50 | Edited Saved/WFAnimTools/create_punch_combo.py | inline fix | ~26 |
+| 22:50 | Edited Saved/WFAnimTools/create_punch_combo.py | 24→27 lines | ~236 |
+| 22:50 | Edited Saved/WFAnimTools/create_punch_combo.py | 2→4 lines | ~93 |
+| 22:50 | Edited Saved/WFAnimTools/create_punch_combo.py | 2→2 lines | ~49 |
+| 22:50 | Edited Saved/WFAnimTools/create_punch_combo.py | 2→2 lines | ~49 |
+| 22:50 | Edited Saved/WFAnimTools/create_punch_combo.py | 1→3 lines | ~45 |
+| 22:50 | Edited Saved/WFAnimTools/check_fist_geometry.py | min() → max() | ~100 |
+| 22:51 | Edited Saved/WFAnimTools/create_punch_combo.py | 4→5 lines | ~51 |
+| 22:51 | Edited .claude/skills/wildforge-animation/SKILL.md | 8→11 lines | ~162 |
+| 22:52 | Created Saved/WFAnimTools/append_buglog2.py | — | ~347 |
+| 22:52 | Edited Saved/WFAnimTools/append_buglog2.py | 204 → 206 | ~6 |
+| 22:52 | Edited .claude/skills/wildforge-animation/SKILL.md | 204 → 207 | ~16 |
+| 23:05 | Fixed reversed punches: character faces +Y, not -Y | Saved/WFAnimTools/create_punch_combo.py | flipped Y dirs/twist/lean/clav sign; chamber 9-12 from chest | ~2200 |
+| 23:06 | Regenerated 3 combos and verified | — | peak hands Y=+43~46; knuckle leads; arm 0.9913; start/end <0.7 | ~1200 |
+| 23:07 | Corrected orientation notes in skill and cerebrum; logged bug-207 | SKILL.md, cerebrum.md, buglog.json | face +Y; ball/toegem/necklace evidence | ~900 |
+| 22:52 | Session end: 16 writes across 7 files (check_fist_geometry.py, cleanup_probe.py, append_buglog.py, probe_orientation.py, create_punch_combo.py) | 2 reads | ~5543 tok |
+
+## Session: 2026-11-07 22:54
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:59 | Created Intermediate/wf_pcg_fix_probe.py | — | ~1110 |
+| 23:01 | Created Intermediate/wf_pcg_selector_probe.py | — | ~787 |
+| 23:02 | Created Intermediate/wf_pcg_selector_probe3.py | — | ~475 |
+| 23:03 | Created Intermediate/wf_pcg_scan_selectors.py | — | ~553 |
+| 23:03 | Edited Intermediate/wf_pcg_scan_selectors.py | isinstance() → type() | ~29 |
+| 23:03 | Edited Intermediate/wf_pcg_scan_selectors.py | inline fix | ~15 |
+| 23:04 | Created Intermediate/wf_pcg_diag_a.py | — | ~269 |
+| 23:04 | Created Intermediate/wf_pcg_diag_b.py | — | ~729 |
+| 23:05 | Edited Intermediate/wf_pcg_diag_b.py | 2→6 lines | ~65 |
+| 23:06 | Created Intermediate/wf_pcg_diag_b.py | — | ~488 |
+| 23:07 | Created Intermediate/wf_pcg_fix_dryrun.py | — | ~934 |
+
+## Session: 2026-11-07 23:08
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:11 | Created Intermediate/wf_pcg_fix_apply.py | — | ~2688 |
+| 23:11 | Created Intermediate/wf_rot_probe.py | — | ~234 |
+| 23:12 | Edited Intermediate/wf_pcg_fix_apply.py | expanded (+12 lines) | ~480 |
+| 23:13 | Created Intermediate/wf_pcg_big_test.py | — | ~817 |
+| 23:13 | Created Intermediate/wf_lp_probe.py | — | ~291 |
+| 23:13 | Created Intermediate/wf_pcg_big_gen.py | — | ~293 |
+| 23:14 | Created Intermediate/wf_pcg_big_read.py | — | ~764 |
+| 23:15 | Created Intermediate/wf_hf_probe.py | — | ~576 |
+| 23:16 | Created Intermediate/wf_topology_probe.py | — | ~628 |
+| 23:17 | Created Intermediate/wf_edge_probe.py | — | ~348 |
+| 23:17 | Created Intermediate/wf_edge_probe2.py | — | ~443 |
+
+## Session: 2026-11-07 23:20
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:22 | Created Intermediate/wf_hf_swap_apply.py | — | ~1386 |
+| 23:22 | Created Intermediate/wf_pcg_big_gen2.py | — | ~304 |
+| 23:22 | Created Intermediate/wf_pcg_big_read2.py | — | ~730 |
+| 23:23 | Edited Intermediate/wf_pcg_big_gen2.py | 7→9 lines | ~135 |
+| 23:24 | Created Intermediate/wf_buglog_append.py | — | ~968 |
+| 23:25 | 定位水线过滤失效根因：Filter Data By Attribute 是整份数据级过滤，非逐点 | Content/World/PCG/PCG_Vegetation.uasset | 四个植被分支换成 Point Filter（UPCGAttributeFilteringSettings，$Position.z>= -17800），SAVED True | ~9000 |
+| 23:26 | 400m 中心盒端到端验证（scale 200） | Intermediate/wf_pcg_big_gen2.py, wf_pcg_big_read2.py | 植被 below_water=0（四类），岩石 19/15/8 允许水下，大树 pitch/roll=0，TOTAL 388，临时 Actor 已销毁 | ~6000 |
+| 23:27 | 更新 anatomy/cerebrum/buglog（bug-210/211/212） | .wolf/anatomy.md, .wolf/cerebrum.md, .wolf/buglog.json | 完成 | ~2500 |
+| 23:25 | Session end: 5 writes across 4 files (wf_hf_swap_apply.py, wf_pcg_big_gen2.py, wf_pcg_big_read2.py, wf_buglog_append.py) | 2 reads | ~3523 tok |
+| 23:33 | Created Intermediate/wf_sampler_probe.py | — | ~449 |
+| 23:34 | Created Intermediate/wf_density_apply.py | — | ~329 |
+| 23:35 | 六个 SurfaceSampler 的 PointsPerSquaredMeter 整体 ×2 并保存 | Content/World/PCG/PCG_Vegetation.uasset | 树 0.001/蕨 0.008/阔叶 0.003/草 0.2/巨石 0.0008/小石 0.003，SAVED True | ~1500 |
+| 23:36 | 400m 中心盒复测密度提升效果 | Intermediate/wf_pcg_big_gen2.py, wf_pcg_big_read2.py | TOTAL 388→801（约 2.06×），植被 below_water=0、大树 pitch/roll=0、倾角仍在上限内，临时 Actor 已销毁 | ~4000 |
+| 23:34 | Session end: 7 writes across 6 files (wf_hf_swap_apply.py, wf_pcg_big_gen2.py, wf_pcg_big_read2.py, wf_buglog_append.py, wf_sampler_probe.py) | 2 reads | ~4301 tok |
+| 23:39 | Created Intermediate/wf_world_pcg_probe.py | — | ~482 |
+| 23:39 | Created Intermediate/wf_world_pcg_probe2.py | — | ~646 |
+| 23:39 | Created Intermediate/wf_world_pcg_probe3.py | — | ~524 |
+| 23:41 | 扫描 MainMap 永久 PCG 结果：72 个 PCGPartitionActor、9074 个实例 | Intermediate/wf_world_pcg_probe3.py | 所有植被网格 below_water=0；水下 578 个实例全部是岩石 | ~7000 |
+| 23:40 | Session end: 10 writes across 9 files (wf_hf_swap_apply.py, wf_pcg_big_gen2.py, wf_pcg_big_read2.py, wf_buglog_append.py, wf_sampler_probe.py) | 2 reads | ~5953 tok |

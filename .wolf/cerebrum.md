@@ -13,7 +13,28 @@
   它们会被 harness 每轮自动注入。完整的分流约定见 `CLAUDE.md` 的「上下文文件分工」。
 - ⚠️ 下面的 `- **本机构建报 "UbaSessionServer ... Low on memory(x/y). Kill threshold is z" 不是 UBA 故障**：x/y 是「系统提交量(commit charge) / 提交上限(物理内存+页面文件)」，不是物理内存占用；阈值 95% 来自 `UbaScheduler.h` 的 `memStartKillPercent`（z = 0.95×y）。排查先看各进程的 commit（PowerShell `PrivateMemorySize64`），本机常是 clangd 占用过高。
 
+- **蓝图 Set Timer by Function Name 只能指向「无参数且无返回值」的 UFunction**：K2_SetTimer 检查 `Func->ParmsSize > 0`，而 UFunction::InitializeDerivedMembers 把 CPF_ReturnParm 也算进 ParmsSize——所以只有返回值、没有输入参数同样会打 `Warning: SetTimer passed a function (X) that expects parameters.` 并拒绝设置定时器（不报编译错，极易误判为“事件没触发”）。改成无返回无参函数，或 Set Timer by Event + Custom Event。见 bug-188。
+- **世界里的 actor 默认 Is Spatially Loaded 可能为 true**：放在 World Partition 地图里的普通 actor（含 BasicShapes Plane）会被流送卸载。UE 5.7 默认 `LoadingRange = 25600 uu`（256 m，`RuntimePartition.cpp`）。要常驻的遮罩/触发器类 actor 必须取消 Is Spatially Loaded；WaterBodyOcean / WaterZone 本身就是 False。见 bug-189。
+- **小地图水体遮罩的实测坐标**（MainMap）：水面 Z = -18000，海洋 `OceanExtents = ZoneExtent = 220000 uu = 2.2 km`，中心 (100800,100800)。BasicShapes Plane 基础尺寸 100 uu，2.2 km 对应 Scale 2200；写成 220000 就是 220 km，会把海区外低洼干地也涂蓝。见 bug-189。
+
+- **正交小地图 SceneCapture 的垂直可见上限**：UE 5.7 正交自动裁剪 + 近裁剪面校正后，上限 ≈ 角色 Z + 组件相对 Z + 828 uu（相对 Z=1000 时仅角色上方 18 m）。高于它的地形会被裁掉，下面的水体平面透出（陆地显示成蓝色）；角色在海床（Z≈-21000，水面 -18000、海深 3000）时水面平面高于上限→根本不渲染（水里显示黄土地）。抬 Relative Z 到 5000~10000 可同时解决。见 bug-190。
+
+- **UE 5.7 浮力组件的 WaterDepth 恒为 0**：`UBuoyancyComponent::GetWaterHeight` 的查询 flags 不含 `EWaterBodyQueryFlags::ComputeDepth`，`OutWaterDepth` 先置 0 且仅在含 ComputeDepth 时赋值（`BuoyancyComponent.cpp:613/646`，`BuoyancyComponentSimulation.h:195/225` 同）；所以 BP 的 `Get Last Water Surface Info` 的 WaterDepth 永远是 0。取水深要用 `UWaterBodyComponent::GetWaterSurfaceInfoAtLocation(..., bIncludeDepth=true)`（BP 节点 `Get Water Surface Info At Location` 勾 Include Depth；默认 false 时输出也是 0）。见 bug-191。
+
+- **BP 水面信息节点的输出名不同**：`WaterBodyComponent → Get Water Surface Info At Location` 的浮点输出叫 `Water Surface Location`；`Buoyancy → Get Last Water Surface Info` 的叫 `Water Surface Position`。两者都是水面世界坐标（取 Z 即水面高度）。见 bug-191。
+
+- **BP 取胶囊半高与脚底深度**：`Get Capsule Component` → `Get Scaled Capsule Half Height`（世界空间，含缩放；缩放恒为 1 时与 `Get Unscaled Capsule Half Height` 相同）；本项目胶囊组件 `CollisionCylinder` 半高 88、半径 34。脚底世界 Z = 角色 Z − HalfHeight；脚底没入水面的深度 = 水面 Z − 角色 Z + HalfHeight（正数表示脚在水下），与 `Get Water Surface Info At Location` 返回的水柱总深（海中心 3000）不是一回事。**不要用 `Get Actor Bounds` 取角色身高**：它并入所有 PrimitiveComponent——小地图 `PaperSprite` 悬浮在 Relative Z=10000，`InteractSphereCollision` 半径 150，`GetCharacterHeight`（BoxExtent.Z×2）因此返回 10152.5。见 bug-192。
+
+- **UE 的 MOVE_Swimming 只认 PhysicsVolume（Water Volume = true）**：`ImmersionDepth()` 在 `GetPhysicsVolume()->bWaterVolume == false` 时返回 0，`NetBuoyancy = Buoyancy × Depth = 0`，重力全额生效；`PhysSwimming` 结尾 `if (!GetPhysicsVolume()->bWaterVolume && IsSwimming()) SetMovementMode(MOVE_Falling)` 每帧打回 Falling，落到海底就变 Walking。Water 插件的 WaterBody/WaterZone 不创建这种体积（插件源码无 bWaterVolume），MainMap 实测只有 PostProcessVolume。移动组件 `Buoyancy` 默认 1.0、`MaxSwimSpeed` 300。**PhysicsVolume 的顶面就是游泳水面**：必须与 WaterBody 水面 Z=-18000 对齐，底面往下延伸即可；顶面高于水面（如 -16500）会把 -16500~-18000 之间的干地也判成水。见 bug-193。
+
 ## Do-Not-Repeat` 标题被 `.wolf/hooks/pre-write.js` 硬编码用于提取告警模式，
+- **不要用 Buoyancy 的 `Get Last Water Surface Info` 取 WaterDepth**——UE 5.7 该值恒为 0；用 WaterBodyComponent 的 `Get Water Surface Info At Location` 并勾 Include Depth（或自己算 WaterSurfaceZ - 角色Z）。见 bug-191。
+- **不要用带返回值（或带参数）的 UFUNCTION 做 `Set Timer by Function Name` 的回调**——ParmsSize 包含 ReturnParm，照样被拒；用无返回无参函数或 Set Timer by Event。见 bug-188。
+- **正交俯视小地图捕捉的 Relative Z 不要只给 1000**（可见上限仅角色上方 1828 uu）；按“角色到水面/本地最高地形的高差”设置，至少 5000。见 bug-190。
+- **不要用 `Get Actor Bounds` 取角色身高/脚底**——会把悬浮的小地图 PaperSprite（Relative Z=10000）和 InteractSphereCollision（半径 150）算进去；用胶囊半高（本项目 `CollisionCylinder` 88）。见 bug-192。
+- **不要把 `Set Movement Mode = Swimming` 当成“进入 WaterBody 就能游泳”**——UE 只认 PhysicsVolume 的 Water Volume 勾选；没有它角色会持续下沉并在海底走路。体积顶面必须等于水面高度，不能高于水面，否则岸上干地也变游泳。见 bug-193。
+- **不要用带参数的函数给 `Set Timer by Function Name` 当回调**（会被静默拒绝，警告只在 Output Log/日志里）；用无参函数 + 成员变量，或 Set Timer by Event。见 bug-188。
+- **不要给需要常驻的 actor 留 `Is Spatially Loaded = true`**；小地图遮罩平面必须与 WaterZone 一致为 False，且 Scale 用 2200（2.2 km），不是 220000。见 bug-189。
   **不可改名、不可搬家**；格式相关的改动前先看 hook 实现。
 ## User Preferences
 
@@ -66,6 +87,11 @@
 - [2026-10-24] **按钮的点击动画交给蓝图**：C++ 只提供 `BP_OnCloseButtonClicked` /
   `BP_OnTransferAllButtonClicked` 这类 `BlueprintImplementableEvent`，在发 Server RPC **之前**调用；
   不要在 C++ 里硬编码缩放/位移等表现，具体动画由 WBP 的动画轨道或蓝图事件实现。
+- [2026-11-07] **骨骼动画走「引擎内程序化生成」**：用户明确选择这条路线（不走 Mixamo/外部导入），
+  首期目标是待机/细节动作。用编辑器内 Python + 引擎 API 可复现地生成，幅度/频率/时长集中成参数，
+  预览后可调后重跑；不要靠手动在 Persona 里 K 帧或批量处理现有资产。
+- [2026-11-07] **走通的复杂流程要固化成项目 skill**：用户会要求把刚验证过的流程（如骨骼动画创作）写成
+  `.claude/skills/<name>/SKILL.md`，并把踩过的坑与可复用脚本一起交付；同类需求先查/调用现有 skill。
 
 ## Key Learnings
 
@@ -653,12 +679,108 @@
 
 - [2026-11-01] **小地图箭头是贴在角色脚下的世界 PaperSprite，不是 UMG**：俯视正交捕获里，草、石头、坡地、角色身体（游泳时水平）都会在它和相机之间，深度测试会把它挡住；正交投影下抬高 Z 不改变屏幕位置。最小修复：relative Z 抬到 250 + 勾 `Visible In Scene Capture Only`；仍被树冠/悬崖挡住就换 `Translucent + Unlit + Disable Depth Test` 材质，或改成 MapImage 中心的 UMG 箭头（按角色 yaw 旋转）。见 bug-186。
 
+- [2026-11-07] **NewMoon 的动画资产是 Control Rig/Sequencer 数据模型（`UAnimationSequencerDataModel`），不是经典 bone track**：
+  `GetBoneAnimationTracks()` / `GetBoneTrackByName()` 恒返回空数组（`AnimSequencerDataModel.cpp:336-344`），
+  不要用它们读关键帧。读姿态用 `unreal.AnimSequence` 上的 ScriptMethod：`anim.get_anim_pose_at_frame(frame, unreal.AnimPoseEvaluationOptions())`
+  返回 `FAnimPose`，再 `pose.get_bone_pose(bone, unreal.AnimPoseSpaces.LOCAL/WORLD)`；Python 构造的
+  `AnimPoseEvaluationOptions()` 已带 C++ 默认值（Raw / should_retarget=True / extract_root_motion=False）。
+- [2026-11-07] **给 Sequencer 数据模型写骨骼关键帧**：`anim.get_editor_property("controller")`（`AnimSequencerController`）的
+  `set_bone_track_keys(bone, positions, rotations, scales, bShouldTransact)` 按**数组下标 = 帧号 0..N-1** 写入；
+  250 帧动画要传 251 个键，位置/旋转/缩放三数组必须等长且非空，骨骼与 FK Control 必须已存在。写入后
+  `save_asset()` 保存，直接对同一资产 `get_anim_pose_at_frame` 即可读到新姿态，无需重启编辑器；Euler 转换与
+  线性插值由内部 `SetBoneCurveKeys` 完成。
+- [2026-11-07] **NewMoon 骨架的组件空间朝向（2026-11-07 实测修正）**：角色面朝 **+Y**、角色左侧 = **+X**、上 = +Z。
+  判据：`ball_l/r` 与 `toegem_l/r` 相对 `foot_l/r` 都向 +Y 延伸（脚趾朝前），`necklace_01→03` 从颈向 +Y 延伸
+  （项链在胸前），`clavicle_L` 在 +X 与「左=+X」一致。因此绕 +Z 正角 = 向右转头（+Y→-X），
+  绕 +X 正角 = 后仰，前倾用 -X；绕前向轴 (0,+1,0) 正角 = 向左歪头；左锁骨 -θ、右锁骨 +θ 为抬肩。
+  **旧结论「面朝 -Y、左=+X」自相矛盾**，据此做的攻击动画全部打向背后（见 bug-207）。
+- [2026-11-07] **编辑器在 PIE 运行期间无法创建/保存资产**：`EditorAssetLibrary.duplicate_asset` 静默返回 None
+  （日志只有 `LogUtils: Error: The Editor is currently in a play mode.`），但读取与姿态采样仍可用。
+  生成前用 `unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).is_in_play_in_editor()` 检查，
+  必要时 `editor_request_end_play()` 等 PIE 完全退出。见 bug-194。
+- [2026-11-07] **UE Python 远程执行**：本机已在 `Config/DefaultEngine.ini` 的
+  `[/Script/PythonScriptPlugin.PythonScriptPluginSettings]` 打开 `bRemoteExecution=True`；客户端用引擎自带
+  `Engine/Plugins/Experimental/PythonScriptPlugin/Content/Python/remote_execution.py`，节点发现走组播
+  239.0.0.1:6766、命令走 TCP。远程 `ExecuteFile` 不回传 stdout，脚本要把结果写 JSON 文件再从本机读。
+- [2026-11-07] **远程 `ExecuteFile` 会在脚本文本里找第一个 `.py`**：`ExecPythonCommandEx` 用
+  `UE::String::FindFirst(Command, TEXT(".py"))` 判断"命令是不是文件路径"（`PythonScriptPlugin.cpp:786-871`）；
+  一旦命中，就把 `.py` 之前的整段文本当文件名去加载，报 `Could not load Python file '<脚本文本>'`。
+  所以远程脚本的正文（含注释、文档字符串、字符串）**不能出现 `.py` 字样**——提到驱动脚本时写
+  "remote driver" / "驱动脚本"，不要写带扩展名的文件名。见 bug-195。
+- [2026-11-07] **PCG Python 图 API**：`graph.add_node_of_type(cls)` 返回 `(UPCGNode, UPCGSettings)` 元组；
+  `graph.add_edge(from_node, "Out", to_node, "Surface"/"In")` 返回 To 节点（真值即可判断成功）；
+  `node.set_node_position(x, y)`、`node.set_editor_property("node_title", ...)`。引脚名：GetLandscapeData 输出 `Out`，
+  SurfaceSampler 输入 `Surface` 输出 `Out`，TransformPoints / SelfPruning / Spawner 输入 `In` 输出 `Out`。
+  禁用节点：`node.get_settings().set_editor_property("enabled", False)`。
+- [2026-11-07] **UE Python 绑定命名规则**：UENUM 去掉 `E` 前缀（`EPCGSelfPruningType` →
+  `unreal.PCGSelfPruningType.LARGE_TO_SMALL`）；UPROPERTY bool 去掉 `b` 前缀并转 snake_case
+  （`bEnabled`→`enabled`、`bIsComponentPartitioned`→`is_component_partitioned`、`bGenerated`→`generated`）；
+  C++-only 方法在 Python 不存在（如 `UPCGComponent::GetGraph`），改读 `graph_instance.graph`。
+- [2026-11-07] **StaticMeshSpawner 的 Python 配置**：`settings.set_mesh_selector_type(unreal.PCGMeshSelectorWeighted)`；
+  `mesh_selector_parameters.mesh_entries` 放 `unreal.PCGMeshSelectorWeightedEntry`，其 `descriptor`
+  （`FPCGSoftISMComponentDescriptor`）上设 `static_mesh`、`instance_start_cull_distance`、
+  `instance_end_cull_distance`、`cast_shadow`、`body_instance.collision_enabled`。
+- [2026-11-07] **PCG 生成是异步的**：`generate_local(True)` 只排程；完成前 `bGenerated` 为 false，完成后才 true
+  （大图可能几十秒）。`bDirtyGenerated` 不能当完成标志。检查结果用
+  `actor.get_components_by_class(unreal.InstancedStaticMeshComponent)` + `get_instance_count()`；
+  `get_generated_graph_output().tagged_data` 即使成功生成也可能返回 0，不可靠。
+- [2026-11-07] **MainMap 是 World Partition**：主 `ALandscape` actor 的 bounds 为零，真正地形在大量
+  `LandscapeStreamingProxy` 里（示例：中心 `(12600,12600,0)`，extent 约 `(12627,12625,21165)`）。
+  `UPCGLandscapeData::ProjectPoint` 只用 XY 查 LandscapeInfo/heightfield 缓存，放在没有已加载代理的 XY
+  （如世界原点）采样结果为 0；测试 PCG 地表采样要用已加载代理上方，如 `(12600,12600,0)`。
+- [2026-11-07] **`UPCGGetLandscapeSettings` 的 Python 节点默认值**：构造时
+  （`PCGHelpers::IsNewObjectAndNotDefault`）自动设为 AllWorldActors + `bMustOverlapSelf=true` +
+  ByClass `ALandscapeProxy`，Python 创建的节点同样生效，无需手工配置。
+- [2026-11-07] **删除仍被引用的 PCG 图会报 `ForceDeleteObject failed ... potentially corrupt`**：临时
+  PCGVolume 刚销毁时其 `PCGGraphInstance.Graph` 仍可能引用该图；把 `delete_asset` 放到后续一条远程命令里
+  （等 GC）再删即可。
+- [2026-11-07] **伸臂/出拳类动作按「关节世界方向 → 目标方向」写旋转**：采样基础姿态取上臂/前臂关节的世界方向，
+  与目标世界方向求 `q_from_to`，`new_world = q_delta * base_world`，再 `new_local = parent_world.inversed() * new_world`
+  写回。比猜欧拉角稳；直臂程度用上臂/前臂方向点积验证（0.9913 ≈ 伸直）。
+- [2026-11-07] **躯干扭转/前倾必须沿脊柱链累积**：spine_01 取 0.4×、spine_02 取 1.0×、neck_01 取 0.75×、
+  head 取 0.5×（前倾同理），否则胸口只转部分角度；锁骨世界旋转写成 `new_spine_02_world * 原 clavicle local`
+  再附加世界 Z 前伸，不能拿基础姿态重新覆盖（会把脊柱扭转抵消）。见 bug-203。
+- [2026-11-07] **NewMoon 手指与拇指的弯曲轴都是 bone-local X，正角向掌心**：四指各关节 60/70/35°、
+  拇指 35/30/20° 即可握拳；验证握拳看「最靠前的骨骼」，应为拳峰 `middle_01`，不要以食指尖或拇指尖为基准。
+  见 bug-202。
+- [2026-11-07] **短攻击动画不必沿用 Idle 的 250 帧长度**：`controller.resize_in_frames(FrameNumber(N),
+  FrameNumber(N), FrameNumber(250), False)` 把复制来的 Idle 精确裁成 N 帧（`GetNumberOfFrames()==N`，
+  播放 0..N，共 N+1 个键），再逐帧写键。
+- [2026-11-07] **PCG 逐点过滤必须用 Point Filter（`UPCGAttributeFilteringSettings`）**：它把点数据分成
+  InsideFilter/OutsideFilter 两份（内部用 TBitArray 逐点判定）；`Filter Data By Attribute`
+  （`UPCGFilterByAttributeSettings`）对整个 TaggedData 只返回一个 bool（`AnyOf` 下任意一点满足即整份进
+  InsideFilter），只能做数据级过滤。见 bug-210。
+- [2026-11-07] **PCG 坡度过滤用 NormalToDensity（Normal=(0,0,1)、Offset=0、Strength=1、DensityMode=SET）
+  + DensityFilter**：此时 density = cos(坡度角)，DensityFilter 的 lower_bound 即坡度余弦下限
+  （0.87≈29.5°、0.80≈36.9°、0.75≈41.4°、0.72≈43.9°、0.70≈45.6°）。
+- [2026-11-07] **Python 的 `unreal.Rotator(a,b,c)` 位置参数顺序是 (roll,pitch,yaw)**，不是 (pitch,yaw,roll)；
+  写 `Rotator(0,360,0)` 会得到 pitch=360 的整圈随机俯仰。必须用关键字参数
+  `Rotator(pitch=…, yaw=…, roll=…)` 或逐字段 `set_editor_property`。见 bug-211。
+- [2026-11-07] **`generate_local(True)` 是异步的**：调用后立刻读 `generated` 仍为 False、ISM 数量为 0；
+  生成与读取要拆成两次远程 Python 调用，中间留几秒等待。
+- [2026-11-07] **`$Position.z` 选择器无法在 Python 里直接构造**：从
+  `/PCG/GraphTemplates/TPL_Sampler_CollisionData` 的 `PCGAttributeRemapSettings.input_source` 复制
+  （selection=PROPERTY、property=Position、extra=['z']）。
+- [2026-11-07] **PCGVolume 的 `is_component_partitioned` 在 `UPCGComponent` 上**，不在 Actor 上；
+  对 Actor `set_editor_property` 会报 `Failed to find property`。见 bug-212。
+- [2026-11-07] **MainMap 的 PCGVolume 是组件分区生成**（`is_component_partitioned=True`）：实例在
+  72 个 `PCGPartitionActor` 的 ISM 组件上，PCGVolume Actor 自身的 ISM 数为 0。统计全图结果要遍历
+  `get_all_level_actors()` 找 `PCGPartitionActor` 再 `get_components_by_class(InstancedStaticMeshComponent)`。
+  组件的 `regenerate_in_editor=True`，保存图后地图会自动重建（当前全图 9074 个实例）。
+- [2026-11-07] **`UPCGComponent.graph` 在 Python 里是 protected，读不了**；用
+  `pcg.get_editor_property("graph_instance")` 再读 `graph` 获取图资产。
+
 ## Do-Not-Repeat
 
 <!-- Mistakes made and corrected. Each entry prevents the same mistake recurring. -->
 <!-- Format: [YYYY-MM-DD] Description of what went wrong and what to do instead. -->
 <!-- ⚠️ `.wolf/hooks/pre-write.js` 按本标题（## Do-Not-Repeat）硬编码切分，不可改名或搬走。 -->
 
+- [2026-11-07] **不要在 PIE 运行中复制/创建/保存资产**：`duplicate_asset` 会静默返回 None，只有日志里一行
+  `The Editor is currently in a play mode.`；先结束 PIE 再跑生成脚本。见 bug-194。
+- [2026-11-07] **不要在远程执行的 Python 脚本正文里写 `.py`**（注释、文档字符串、字符串都算）：
+  `ExecuteFile` 会把第一个 `.py` 之前的整段文本当文件路径，报 `Could not load Python file`；
+  提到驱动脚本时写 "remote driver"。见 bug-195。
 - [2026-11-01] **不要用非 sRGB 的 8 位 RT 显示 `SCS_FINAL_COLOR_LDR` 捕获**（`RTF_RGBA8` + sRGB 关 + TargetGamma=0 会在 sRGB 编码前多压一次 2.2 gamma，小地图整体发暗）；用 `RTF_RGBA8_SRGB`。见 bug-185。
 - [2026-11-01] **不要把贴地的世界 PaperSprite 当小地图箭头**：草/地形/角色/水面会遮住它；至少抬高 2.5m 并勾 `Visible In Scene Capture Only`，或改用 UMG。见 bug-186。
 - [2026-11-01] **不要在 SceneCapture（含小地图 RT）里指望 Water 水面出现**：UE-359953，本机引擎未修复；小地图水面用 scene-capture-only 平面补，不能靠调水面材质 / ShowFlags。见 bug-184。
@@ -971,6 +1093,17 @@
 - [2026-10-31] **改完景观材质 / 草权重后不要忘记 Build HLODs**：500m 外的地形由烘焙的 HLOD 贴图渲染，不重建就还是旧材质（湿亮粗糙度会残留），且与近处实时材质混杂；"材质只覆盖部分区域"就是 HLOD 没重建。见 bug-181。（2026-10-31 更正：重建后仍残留湿滑说明材质本身有错，见 bug-182；无头重建方法见 Key Learnings。）
 
 - [2026-10-31] **不要把 `_rgm` 贴图的 RGBA 输出直连 Roughness/标量引脚**：材质编译器对标量输入取 float4 的 R（`(float)float4` = `.x`），而 `_rgm` 的 R=Specular、G=Roughness；必须插 `ComponentMask(r=False,g=True)`。只改 sRGB=False + SAMPLERTYPE_MASKS 不能改变通道。见 bug-182。
+- [2026-11-07] **不要写 `unreal.EPCGSelfPruningType`**：Python 绑定去掉了 UENUM 的 `E` 前缀，应写
+  `unreal.PCGSelfPruningType.LARGE_TO_SMALL`。见 bug-199。
+- [2026-11-07] **不要在销毁临时 PCGVolume 的同一条命令里删除它引用的临时图**：`ForceDeleteObject failed`
+  会把包标记为 potentially corrupt；等后续命令（GC 之后）再 `delete_asset`。见 bug-200。
+- [2026-11-07] **不要在 MainMap 世界原点测 PCG 地表采样**：主 `ALandscape` 的 bounds 为零，原点处没有已加载的
+  地形代理/heightfield，采样恒为 0；改用 `(12600,12600,0)` 这类已加载 `LandscapeStreamingProxy` 上方。见 bug-201。
+- [2026-11-07] **不要用「Filter Data By Attribute」做逐点过滤**：`UPCGFilterByAttributeSettings` 对整个
+  数据只判一次（AnyOf 下任意一点满足就整份放行），水下点会随陆地点一起通过；逐点过滤用 Point Filter
+  （`UPCGAttributeFilteringSettings`）。见 bug-210。
+- [2026-11-07] **不要用 `unreal.Rotator(0,360,0)` 表达「只随机 yaw」**：位置参数是 (roll,pitch,yaw)，
+  会变成随机 pitch；改用关键字参数。见 bug-211。
 
 ## Decision Log
 
@@ -1334,3 +1467,29 @@
 - [2026-10-31] **3.3 地形材质另建 `LandscapeMaterial_v3` + `MI_Landscape_v3`，不覆盖用户手搭的 `LandscapeMaterial_v2`**：v2 的 BaseColor 细节层未接入，保留它便于对照/回滚；v3 用 Python 脚本一次生成 81 节点，四层（草/土/岩/雪）+ 高度/坡度/噪声遮罩 + 法线/粗糙度/AO，材质实例负责调参。理由：二进制资产手改风险高，新建资产不破坏已有工作，出问题可直接删掉 v3。
 - [2026-10-31] 草的水线遮罩 `SmoothStep` 从 (-18000,-17800) 改为 (-17900,-17700)：SmoothStep 的 0 端正好落在水面上时，水线附近仍有草叶露头（含 grass map ~1m 纹素双线性外溢）；改为水面以上留 1m 裸岸、再 2m 过渡到满密度。参数是材质标量 `GrassWaterMinZ/MaxZ`，可在 MI 上覆盖，不需要重建 HLOD。
 - [2026-11-01] 小地图水面问题不升级引擎：本机引擎仍是 UE-359953 修复前的版本，升级风险高；改用一块 `Visible In Scene Capture Only` 的 Unlit 蓝色平面（Z=-18000、与 WaterBodyOcean 水面一致，保证小地图水线位置准确；2.2km 见方）在捕获中补水面，主视角完全不受影响。等引擎升级到含 commit 49927162 的版本后再删掉这块平面即可。
+- [2026-11-07] **待机细节动画采用「复制 `New_Moon_Idle` + 按帧叠加世界轴旋转」**：保留原待机动作，只改
+  spine_01/spine_02/neck_01/head/clavicle/eye 的旋转；呼吸用 2 个正弦周期（整数周期保证首尾帧相等），
+  环顾用 smoothstep 包络（左看 38°、保持、返回、右看同幅、回正），每帧采样原姿态后合成世界轴增量，
+  再用 `set_bone_track_keys` 写回 251 个键。工具脚本留在 `Saved/WFAnimTools/generate_idle_details.py`（不入 git），
+  幅度/频率/包络都集中在脚本顶部，预览后可调参重跑。
+- [2026-11-07] **动画创作流程固化为项目 skill `.claude/skills/wildforge-animation/`**：`SKILL.md` 写流程与坑，
+  `scripts/remote_run.py` 负责远程执行，`scripts/generate_animation_template.py` 是可直接改参数的生成模板；
+  后续动画需求先调用该 skill，不要从零重推 API。模板已端到端验证（生成临时资产后删除）。
+- [2026-11-07] **植被资产复制到 `/Game/Environment/Nature` 入库，而不是直接引用 `Content/ProceduralNaturePack`**：
+  原包 1.8GB 且被 gitignore；复制需要的 53 个资产（8 网格 + 13 材质 + 22 纹理，约 257MB）并重映射内部引用，
+  保证 PCG 图在干净克隆上可加载；依赖闭包验证 `PACK_DEPS_LEFT []`。
+- [2026-11-07] **PCG_Vegetation 的密度按资产体量分档（2026-11-07 因用户反馈偏稀整体 ×2）**：树 0.001/m²、
+  蕨类 0.008、阔叶 0.003、草 0.2、巨石 0.0008、小石 0.003；草分支默认禁用，因为 LG_Grass 已在 1/10m²、
+  30–60m 剔除下铺草，PCG 草只作为需要近景细节时的可选覆盖。密度在每支的 `SurfaceSampler_*` 的
+  `PointsPerSquaredMeter` 上，`PointExtents` 不改。
+- [2026-11-07] **三段连击做成三个独立短资产，而不是一个多 Section 蒙太奇**：
+  `New_Moon_Combo01_RightJab`（24 帧 / 0.8s，右刺拳）、`Combo02_LeftCross`（28 帧 / 0.933s，左直拳）、
+  `Combo03_RightHeavy`（34 帧 / 1.133s，右重拳），每段只做「起手-出拳-收拳」，首尾回到待机姿势。
+  旧 `New_Moon_Attack0/1/2`（全身大位移动作）与 `New_Moon_AttackMontage` 未改动；接入蒙太奇是后续独立任务。
+- [2026-11-07] **出拳程序化参数集中在脚本顶部**：目标方向 `PUNCH_UP/PUNCH_LOW/WIND_UP/WIND_LOW/GUARD_*`
+  + 每段的 windup/punch/guard/fist/twist/lean 曲线，预览后可改参数重跑；验证看数值（直臂 0.9913、
+  拳峰 `middle_01` 领先、拳头闭合度 ≈2.2、护手在护肩前方 ≈13、首末手部回位 <1），不靠肉眼。
+- [2026-11-07] **PCG 植被的坡度与水线过滤分工**：坡度用 NormalToDensity+DensityFilter（逐点密度，
+  树 0.87 / 蕨与阔叶 0.80 / 草 0.75 / 巨石 0.72 / 小石 0.70）；水线用 Point Filter 的
+  `$Position.z >= -17800`，只加在植被四支，岩石不加，从而允许水下有石头；验证以 400m 盒生成后
+  「植被 below_water=0、岩石 below_water>0、树木 pitch/roll=0」为准。

@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-10-05T10:52:46.081Z",
   "lifetime": {
-    "total_tokens_estimated": 825643,
-    "total_reads": 333,
-    "total_writes": 517,
-    "total_sessions": 101,
-    "anatomy_hits": 201,
-    "anatomy_misses": 130,
-    "repeated_reads_blocked": 78,
-    "estimated_savings_vs_bare_cli": 394272
+    "total_tokens_estimated": 860460,
+    "total_reads": 350,
+    "total_writes": 581,
+    "total_sessions": 116,
+    "anatomy_hits": 204,
+    "anatomy_misses": 144,
+    "repeated_reads_blocked": 79,
+    "estimated_savings_vs_bare_cli": 394872
   },
   "sessions": [
     {
@@ -5880,6 +5880,659 @@
         "output_tokens_estimated": 991,
         "reads_count": 0,
         "writes_count": 1,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-11-01-1303",
+      "started": "2026-11-01T05:03:28.025Z",
+      "ended": "2026-11-01T05:14:57.393Z",
+      "reads": [],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_height.py",
+          "tokens_estimated": 1007,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_height2.py",
+          "tokens_estimated": 758,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 1765,
+        "reads_count": 0,
+        "writes_count": 2,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-11-01-1303",
+      "started": "2026-11-01T05:03:28.025Z",
+      "ended": "2026-11-01T05:44:15.522Z",
+      "reads": [],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_height.py",
+          "tokens_estimated": 1007,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_height2.py",
+          "tokens_estimated": 758,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 1765,
+        "reads_count": 0,
+        "writes_count": 2,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-11-01-1303",
+      "started": "2026-11-01T05:03:28.025Z",
+      "ended": "2026-11-01T14:51:11.097Z",
+      "reads": [],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_height.py",
+          "tokens_estimated": 1007,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_height2.py",
+          "tokens_estimated": 758,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 1765,
+        "reads_count": 0,
+        "writes_count": 2,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-11-07-2149",
+      "started": "2026-11-07T13:49:02.657Z",
+      "ended": "2026-11-07T13:54:49.408Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Wildforge.uproject",
+          "tokens_estimated": 124,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Source/Runtime/Engine/Classes/Animation/AnimSequenceBase.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/xf317/AppData/Local/Temp/wf-anim/remote_run.py",
+          "tokens_estimated": 256,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/xf317/AppData/Local/Temp/wf-anim/probe_idle.py",
+          "tokens_estimated": 567,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 124,
+        "output_tokens_estimated": 823,
+        "reads_count": 2,
+        "writes_count": 2,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 1
+      }
+    },
+    {
+      "id": "session-2026-11-07-2149",
+      "started": "2026-11-07T13:49:02.657Z",
+      "ended": "2026-11-07T13:55:02.155Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Wildforge.uproject",
+          "tokens_estimated": 124,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/UE/UE_5.7/Engine/Source/Runtime/Engine/Classes/Animation/AnimSequenceBase.h",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/xf317/AppData/Local/Temp/wf-anim/remote_run.py",
+          "tokens_estimated": 256,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/xf317/AppData/Local/Temp/wf-anim/probe_idle.py",
+          "tokens_estimated": 567,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 124,
+        "output_tokens_estimated": 823,
+        "reads_count": 2,
+        "writes_count": 2,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 1
+      }
+    },
+    {
+      "id": "session-2026-11-07-2210",
+      "started": "2026-11-07T14:10:51.371Z",
+      "ended": "2026-11-07T14:16:41.412Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_remote_client.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_move_grass_to_git.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_ar_opts.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_probe_ar_api.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_verify_grass_git.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "C:/Users/xf317/AppData/Local/Temp/wf-anim/probe_dup.py",
+          "tokens_estimated": 284,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/xf317/AppData/Local/Temp/wf-anim/end_pie.py",
+          "tokens_estimated": 189,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_pcg_inventory.py",
+          "tokens_estimated": 1199,
+          "action": "create"
+        },
+        {
+          "file": "C:/Users/xf317/AppData/Local/Temp/wf-anim/generate_idle_details.py",
+          "tokens_estimated": 79,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_pcg_api_probe.py",
+          "tokens_estimated": 1084,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 2835,
+        "reads_count": 5,
+        "writes_count": 5,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-11-07-2227",
+      "started": "2026-11-07T14:27:29.063Z",
+      "ended": "2026-11-07T14:27:55.575Z",
+      "reads": [],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_pcg_live_test_a.py",
+          "tokens_estimated": 485,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 485,
+        "reads_count": 0,
+        "writes_count": 1,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-11-07-2237",
+      "started": "2026-11-07T14:37:58.151Z",
+      "ended": "2026-11-07T14:39:43.475Z",
+      "reads": [],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/WFAnimTools/verify_punch_extra.py",
+          "tokens_estimated": 622,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/WFAnimTools/probe_thumb.py",
+          "tokens_estimated": 862,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/WFAnimTools/create_punch_combo.py",
+          "tokens_estimated": 112,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/WFAnimTools/create_punch_combo.py",
+          "tokens_estimated": 132,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 1728,
+        "reads_count": 0,
+        "writes_count": 4,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-11-07-2239",
+      "started": "2026-11-07T14:39:45.819Z",
+      "ended": "2026-11-07T14:41:52.143Z",
+      "reads": [],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/WFAnimTools/check_fist_geometry.py",
+          "tokens_estimated": 763,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/WFAnimTools/cleanup_probe.py",
+          "tokens_estimated": 331,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/WFAnimTools/append_buglog.py",
+          "tokens_estimated": 536,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 1630,
+        "reads_count": 0,
+        "writes_count": 3,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-11-07-2239",
+      "started": "2026-11-07T14:39:45.819Z",
+      "ended": "2026-11-07T14:46:53.760Z",
+      "reads": [],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/WFAnimTools/check_fist_geometry.py",
+          "tokens_estimated": 763,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/WFAnimTools/cleanup_probe.py",
+          "tokens_estimated": 331,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/WFAnimTools/append_buglog.py",
+          "tokens_estimated": 536,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 1630,
+        "reads_count": 0,
+        "writes_count": 3,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-11-07-2239",
+      "started": "2026-11-07T14:39:45.819Z",
+      "ended": "2026-11-07T14:52:54.038Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/WFAnimTools/create_punch_combo.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/.claude/skills/wildforge-animation/SKILL.md",
+          "tokens_estimated": 1886,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/WFAnimTools/check_fist_geometry.py",
+          "tokens_estimated": 763,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/WFAnimTools/cleanup_probe.py",
+          "tokens_estimated": 331,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/WFAnimTools/append_buglog.py",
+          "tokens_estimated": 536,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/WFAnimTools/probe_orientation.py",
+          "tokens_estimated": 835,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/WFAnimTools/create_punch_combo.py",
+          "tokens_estimated": 26,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/WFAnimTools/create_punch_combo.py",
+          "tokens_estimated": 236,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/WFAnimTools/create_punch_combo.py",
+          "tokens_estimated": 93,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/WFAnimTools/create_punch_combo.py",
+          "tokens_estimated": 49,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/WFAnimTools/create_punch_combo.py",
+          "tokens_estimated": 49,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/WFAnimTools/create_punch_combo.py",
+          "tokens_estimated": 45,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/WFAnimTools/check_fist_geometry.py",
+          "tokens_estimated": 100,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/WFAnimTools/create_punch_combo.py",
+          "tokens_estimated": 51,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/.claude/skills/wildforge-animation/SKILL.md",
+          "tokens_estimated": 173,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/WFAnimTools/append_buglog2.py",
+          "tokens_estimated": 347,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Saved/WFAnimTools/append_buglog2.py",
+          "tokens_estimated": 6,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/.claude/skills/wildforge-animation/SKILL.md",
+          "tokens_estimated": 17,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 1886,
+        "output_tokens_estimated": 3657,
+        "reads_count": 2,
+        "writes_count": 16,
+        "repeated_reads_blocked": 1,
+        "anatomy_lookups": 1
+      }
+    },
+    {
+      "id": "session-2026-11-07-2320",
+      "started": "2026-11-07T15:20:52.321Z",
+      "ended": "2026-11-07T15:25:02.577Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_pcg_fix_apply.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_remote_client.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_hf_swap_apply.py",
+          "tokens_estimated": 1386,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_pcg_big_gen2.py",
+          "tokens_estimated": 304,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_pcg_big_read2.py",
+          "tokens_estimated": 730,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_pcg_big_gen2.py",
+          "tokens_estimated": 135,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_buglog_append.py",
+          "tokens_estimated": 968,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 3523,
+        "reads_count": 2,
+        "writes_count": 5,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-11-07-2320",
+      "started": "2026-11-07T15:20:52.321Z",
+      "ended": "2026-11-07T15:34:46.108Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_pcg_fix_apply.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_remote_client.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_hf_swap_apply.py",
+          "tokens_estimated": 1386,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_pcg_big_gen2.py",
+          "tokens_estimated": 304,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_pcg_big_read2.py",
+          "tokens_estimated": 730,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_pcg_big_gen2.py",
+          "tokens_estimated": 135,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_buglog_append.py",
+          "tokens_estimated": 968,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_sampler_probe.py",
+          "tokens_estimated": 449,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_density_apply.py",
+          "tokens_estimated": 329,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 4301,
+        "reads_count": 2,
+        "writes_count": 7,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-11-07-2320",
+      "started": "2026-11-07T15:20:52.321Z",
+      "ended": "2026-11-07T15:40:32.632Z",
+      "reads": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_pcg_fix_apply.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_remote_client.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_hf_swap_apply.py",
+          "tokens_estimated": 1386,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_pcg_big_gen2.py",
+          "tokens_estimated": 304,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_pcg_big_read2.py",
+          "tokens_estimated": 730,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_pcg_big_gen2.py",
+          "tokens_estimated": 135,
+          "action": "edit"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_buglog_append.py",
+          "tokens_estimated": 968,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_sampler_probe.py",
+          "tokens_estimated": 449,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_density_apply.py",
+          "tokens_estimated": 329,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_world_pcg_probe.py",
+          "tokens_estimated": 482,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_world_pcg_probe2.py",
+          "tokens_estimated": 646,
+          "action": "create"
+        },
+        {
+          "file": "E:/UE_Projects/Wildforge/Intermediate/wf_world_pcg_probe3.py",
+          "tokens_estimated": 524,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 5953,
+        "reads_count": 2,
+        "writes_count": 10,
         "repeated_reads_blocked": 0,
         "anatomy_lookups": 0
       }

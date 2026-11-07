@@ -3458,6 +3458,484 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-31T16:45:00.000Z"
+    },
+    {
+      "id": "bug-187",
+      "timestamp": "2026-11-01T02:38:31.029Z",
+      "error_message": "Incorrect value in code",
+      "file": "Intermediate/wf_probe_water_timer.py",
+      "root_cause": "Had \"PlayerStart_UAID_BCECA00E83B78F1003_1110201895\"",
+      "fix": "Changed to \"PlayerStart_UAID_F02F74551BF5599B01_1153002503\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-01T02:38:31.029Z"
+    },
+    {
+      "id": "bug-188",
+      "timestamp": "2026-11-01T10:45:00+08:00",
+      "error_message": "LogBlueprintUserMessages: Warning: SetTimer passed a function (SwitchToSwimMode) that expects parameters. / 蓝图 HandleOverlapWater 里的定时器不起作用",
+      "file": "Content/Core/BP_WildforgeCharacter.uasset",
+      "root_cause": "HandleOverlapWater 确实被胶囊 BeginOverlap 调用了（日志调用栈可证），失效的是里面的 Set Timer by Function Name。K2_SetTimer 检查 Func->ParmsSize > 0；UFunction::InitializeDerivedMembers 把带 CPF_ReturnParm 的属性也算进 ParmsSize，所以即使 SwitchToSwimMode 没有输入参数、只有返回值，也照样被判为 expects parameters 并拒绝设置定时器（2026.11.01-03:10:06 日志仍在报）。",
+      "fix": "把 SwitchToSwimMode 改成无参数且无返回值（需要保留返回值就给别的调用方留原函数，另建无返回 wrapper）；或改用 Set Timer by Event + 无参无返回 Custom Event（不是把函数接 delegate）。WaterOverlapTimer 保持成员变量。改完 Compile+Save，PIE 日志不应再出现该警告。",
+      "tags": [
+        "blueprint",
+        "timer",
+        "SetTimer",
+        "water",
+        "scene-capture",
+        "minimap"
+      ],
+      "related_bugs": [
+        "bug-184"
+      ],
+      "occurrences": 2,
+      "last_seen": "2026-11-01T11:30:00+08:00"
+    },
+    {
+      "id": "bug-189",
+      "timestamp": "2026-11-01T10:45:00+08:00",
+      "error_message": "放了 /Engine/BasicShapes/Plane 做小地图水体遮罩，但进入水中后小地图仍显示黄土地；非水域又出现水蓝色",
+      "file": "Content/__ExternalActors__/World/Maps/MainMap/6/DL/9DOU0C3VYHJTPQ4TV2SSGD.uasset",
+      "root_cause": "两个独立原因：(1) 平面 actor 的 Is Spatially Loaded = True（同图 WaterBodyOcean / WaterZone / PlayerStart 都是 False），它在 WP 单元里，玩家游出其加载范围（UE 5.7 默认 LoadingRange=25600 uu=256 m）后平面被流送卸载，SceneCapture 只剩黄土地；(2) 平面 RelativeScale3D = (220000,220000,1)，100 uu 基础平面被放大到 220 km，而海洋 OceanExtents 与 WaterZone ZoneExtent 实测都只有 220000 uu = 2.2 km（应是 2200 倍），于是海区外的低洼干地也被这张‘Z<-18000 即水’的高度遮罩涂成蓝色。",
+      "fix": "选中平面：Details → World Partition 取消勾选 Is Spatially Loaded（保存后转为非空间加载的 external actor）；Scale 改为 (2200,2200,1)；Location 保持 (100800,100800,-18000)（实测水面就是 -18000）。可选：材质 WaterPlaneMaterial 改 Unlit + Emissive；岸线 z-fighting 时 Z 降到 -18002~-18010。",
+      "tags": [
+        "minimap",
+        "scene-capture",
+        "world-partition",
+        "spatial-loading",
+        "water",
+        "plane",
+        "scale"
+      ],
+      "related_bugs": [
+        "bug-184"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-01T10:45:00+08:00"
+    },
+    {
+      "id": "bug-190",
+      "timestamp": "2026-11-01T11:30:00+08:00",
+      "error_message": "小地图中本来是黄土地的地方显示水蓝色；且进入水中仍显示黄土地（平面已改为非空间加载、2.2 km、Z=-18000）",
+      "file": "Content/Core/BP_WildforgeCharacter.uasset",
+      "root_cause": "正交 SceneCapture 相对 Z=1000，bAutoCalculateOrthoPlanes 默认开启，近裁剪面校正后实际可见上限 = 角色 Z + 相对 Z + 828 uu（仅角色上方约 1828 uu / 18 m）。陆地上高于该高度的地形被裁掉，下面的水体平面透出 → 蓝色；角色在海床（水面 -18000、海深 3000，角色 Z≈-21000）时水面平面比角色高 3000，高于近裁剪上限 → 平面不渲染，只剩海床黄土地。与平面大小/空间加载无关。",
+      "fix": "BP_WildforgeCharacter 的 SceneCaptureComponent2D Relative Location Z 从 1000 抬到 5000（上限≈角色上方 5828 uu，覆盖 30 m 水深并留陆地余量）；仍有蓝色地表就继续抬到 10000/20000（不要超过约 200000，否则地面超出远裁剪面）。正交投影下水平取景不变。",
+      "tags": [
+        "minimap",
+        "scene-capture",
+        "ortho",
+        "clip-plane",
+        "water",
+        "plane"
+      ],
+      "related_bugs": [
+        "bug-184",
+        "bug-189"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-01T11:30:00+08:00"
+    },
+    {
+      "id": "bug-191",
+      "timestamp": "2026-11-01T11:50:00+08:00",
+      "error_message": "SwitchToSwimMode 中通过浮力组件取到的水深一直是 0",
+      "file": "Content/Core/BP_WildforgeCharacter.uasset（引擎 Water 插件）",
+      "root_cause": "UBuoyancyComponent::GetWaterHeight（BuoyancyComponent.cpp:609-646，模拟路径 BuoyancyComponentSimulation.h:191-225）构造查询 flags 时只有 ComputeLocation/ComputeNormal/ComputeImmersionDepth/ComputeVelocity，没有 EWaterBodyQueryFlags::ComputeDepth；OutWaterDepth 在 :613 先置 0，只有 flags 含 ComputeDepth 时才在 :646 赋值，所以 Pontoon.WaterDepth 恒为 0，BP 的 Get Last Water Surface Info 原样输出 0。不是项目配置问题。",
+      "fix": "改从 WaterBodyComponent 取：Buoyancy → Get Current Water Body Components → Get(0)（或 overlap 的 Other Actor Cast To WaterBody → Get Water Body Component，存成员变量），再调 Get Water Surface Info At Location，Include Depth 勾上（默认不勾，不勾也是 0），Location 传角色位置，检查 Return Value；Water Depth 即水体深度（海中心实测 3000）。要角色浸没深度用 WaterSurfacePosition.Z - 角色 Z。",
+      "tags": [
+        "water",
+        "buoyancy",
+        "water-depth",
+        "blueprint",
+        "waterbody"
+      ],
+      "related_bugs": [
+        "bug-184",
+        "bug-190"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-01T11:50:00+08:00"
+    },
+    {
+      "id": "bug-192",
+      "timestamp": "2026-11-01T13:15:00+08:00",
+      "error_message": "BP_WildforgeCharacter 的 GetCharacterHeight 返回 10152.5（一万多），不是角色身高",
+      "file": "Content/Core/BP_WildforgeCharacter.uasset",
+      "root_cause": "GetCharacterHeight 用 Get Actor Bounds 的 Box Extent.Z × 2（实测 2 × 5076.25 = 10152.5）。该节点的 Only Colliding Components 未勾选，会并入所有 PrimitiveComponent，包括悬浮在 Relative Z=10000 的小地图图标 PaperSprite（2048×2048 纹理、PixelsPerUnrealUnit=1、Scale 0.5，水平放置，顶部约 Z=10002.5），于是角色包围盒从约 -150 拉到 10002.5，BoxExtent.Z≈5076。即使勾上 Only Colliding Components 也会得到 300（InteractSphereCollision 半径 150 > 胶囊半高 88），仍不是角色高度。",
+      "fix": "不要用 Get Actor Bounds 取角色尺寸。改用 Get Capsule Component → Get Scaled Capsule Half Height × 2（本项目 CollisionCylinder 半高 88，身高 176）；脚底世界 Z = ActorLocation.Z - HalfHeight，水面到脚底深度 = WaterSurface.Z - ActorLocation.Z + HalfHeight。小地图纸片图标不应参与任何尺寸计算。",
+      "tags": [
+        "blueprint",
+        "character",
+        "actor-bounds",
+        "capsule",
+        "minimap",
+        "paper-sprite",
+        "swim"
+      ],
+      "related_bugs": [
+        "bug-190"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-01T13:15:00+08:00"
+    },
+    {
+      "id": "bug-193",
+      "timestamp": "2026-11-01T13:45:00+08:00",
+      "error_message": "角色 Set Movement Mode 为 Swimming 后在水里仍持续下沉，沉到海底后变回走路",
+      "file": "Content/World/Maps/MainMap.umap（需新增 PhysicsVolume）；Content/Core/BP_WildforgeCharacter.uasset",
+      "root_cause": "UCharacterMovementComponent 的 MOVE_Swimming 只以 PhysicsVolume 的 bWaterVolume 为准：ImmersionDepth() 在 GetPhysicsVolume()->bWaterVolume 为 false 时直接返回 0，NetBuoyancy = Buoyancy * Depth = 0，重力 100% 生效（CharacterMovementComponent.cpp:3730-3760、4536-4545）；PhysSwimming 结尾还有 if (!GetPhysicsVolume()->bWaterVolume && IsSwimming()) SetMovementMode(MOVE_Falling)，每帧把 Swimming 打回 Falling（:4611-4614）；落到海床后进入 Walking。Water 插件的 WaterBody/WaterZone 不创建带 bWaterVolume 的 PhysicsVolume（插件源码无 bWaterVolume 引用）。MainMap 实测只有 PostProcessVolume，没有任何 PhysicsVolume。",
+      "fix": "在海水区域放一个 Physics Volume，Details 勾 Water Volume=true，设置 Fluid Friction/Terminal Velocity/Priority=1，并关闭 Is Spatially Loaded 避免被 World Partition 卸载；保留进入水体时 SetMovementMode(Swimming)。关键：PhysicsVolume 的顶面就是游泳水面，必须与 WaterBody 水面 Z=-18000 对齐（默认 200 uu 立方体缩放的写法：Location (100800,100800,-24000)、Scale (1100,1100,60) → Z 从 -30000 到 -18000）。顶面不能高于水面：第一次给到 -16500 时，-16500~-18000 之间的干地也被判成水，导致非水区域游泳。底面低于海底即可，不够深就加大 Z Scale、顶面保持 -18000。移动组件 Buoyancy 默认 1.0，完全淹没时抵消重力。",
+      "tags": [
+        "water",
+        "swimming",
+        "movement-mode",
+        "physics-volume",
+        "character-movement",
+        "water-plugin"
+      ],
+      "related_bugs": [
+        "bug-188",
+        "bug-191"
+      ],
+      "occurrences": 2,
+      "last_seen": "2026-11-01T14:05:00+08:00"
+    },
+    {
+      "id": "bug-194",
+      "timestamp": "2026-11-07T22:13:00+08:00",
+      "error_message": "Python EditorAssetLibrary.duplicate_asset 在编辑器 PIE 运行期间返回 None，目标资产未创建；引擎日志报 LogUtils: Error: The Editor is currently in a play mode.",
+      "file": "Content/Characters/NewMoon/Animations/Anims/Idle/（Python 远程脚本操作，非 C++ 源码）",
+      "root_cause": "编辑器处于 Play In Editor 状态时，EditorAssetLibrary 的资产创建/删除/保存操作被引擎拒绝，只返回 None，错误只写进日志；姿态采样与读取不受影响，所以同一脚本里 get_anim_pose_at_frame 正常、duplicate_asset 失败。",
+      "fix": "生成前先用 unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).is_in_play_in_editor() 检查；若在 PIE 中，先 editor_request_end_play() 并等 PIE 完全退出，再执行 duplicate_asset / set_bone_track_keys / save_asset。",
+      "tags": [
+        "python",
+        "editor-scripting",
+        "pie",
+        "asset-duplication",
+        "anim-sequence"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T22:13:00+08:00"
+    },
+    {
+      "id": "bug-195",
+      "timestamp": "2026-11-07T22:22:00+08:00",
+      "error_message": "远程执行生成模板返回 SUCCESS: False，RESULT: Could not load Python file '...# -*- coding: utf-8 -*- ...' (resolved from '...# -*- coding: utf-8 -*- ...')，目标资产未生成。",
+      "file": ".claude/skills/wildforge-animation/scripts/generate_animation_template.py",
+      "root_cause": "FPythonScriptPlugin::ExecPythonCommandEx 在 ExecuteFile 模式下用 UE::String::FindFirst(Command, TEXT(\".py\")) 判断命令是否为文件路径（PythonScriptPlugin.cpp:786-871）。模板的文档字符串里写了驱动文件名 remote_run.py，引擎找到第一个 .py 后把其之前的整段脚本内容当成文件名去 LoadFileToString，于是报 Could not load Python file；脚本本身语法与逻辑没有问题。",
+      "fix": "远程执行的脚本文本（含注释、文档字符串、字符串常量）一律不得出现 .py 字样；把 remote_run.py 这类文件名改写成不带扩展名的描述（remote driver / 驱动脚本）。模板注释已改，并在 SKILL.md 中列为强制注意项。",
+      "tags": [
+        "python",
+        "remote-execution",
+        "execute-file",
+        "pyscriptplugin",
+        "filename-detection",
+        "anim-sequence"
+      ],
+      "related_bugs": [
+        "bug-194"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T22:22:00+08:00"
+    },
+    {
+      "id": "bug-196",
+      "timestamp": "2026-11-07T14:26:10.593Z",
+      "error_message": "Wrong reference: EPCGSelfPruningType should be PCGSelfPruningType",
+      "file": "Intermediate/wf_pcg_create_graph.py",
+      "root_cause": "Used \"EPCGSelfPruningType\" instead of \"PCGSelfPruningType\"",
+      "fix": "Changed EPCGSelfPruningType → PCGSelfPruningType",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T14:26:10.593Z"
+    },
+    {
+      "id": "bug-197",
+      "timestamp": "2026-11-07T14:35:42.027Z",
+      "error_message": "Significant refactor of ",
+      "file": "Saved/WFAnimTools/probe_fingers.py",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 7→4 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T14:35:42.027Z"
+    },
+    {
+      "id": "bug-198",
+      "timestamp": "2026-11-07T14:37:00.940Z",
+      "error_message": "Significant refactor of ",
+      "file": "Saved/WFAnimTools/create_punch_combo.py",
+      "root_cause": "10 lines replaced/restructured",
+      "fix": "Rewrote 15→18 lines (10 removed) | Also: def sample_world_rot(samples, frame):; # Pelvis is not in WRITE_BONES, so it needs its ow",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-07T14:37:06.279Z"
+    },
+    {
+      "id": "bug-199",
+      "timestamp": "2026-11-07T14:40:00.000Z",
+      "error_message": "AttributeError: module 'unreal' has no attribute 'EPCGSelfPruningType'",
+      "file": "Intermediate/wf_pcg_create_graph.py",
+      "root_cause": "UE Python 绑定对 UENUM 使用去掉 E 前缀的名字（EPCGSelfPruningType -> PCGSelfPruningType），脚本沿用了 C++ 类型名。",
+      "fix": "改用 unreal.PCGSelfPruningType.LARGE_TO_SMALL；失败运行留下半成品图，脚本改为创建前先 delete_asset 同名资产并从零重建。",
+      "tags": [
+        "python",
+        "pcg",
+        "uenum",
+        "attributeerror"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T14:40:00.000Z"
+    },
+    {
+      "id": "bug-200",
+      "timestamp": "2026-11-07T14:40:00.000Z",
+      "error_message": "ForceDeleteObject failed to delete TEMP_PCG_Debug, this package is now potentially corrupt / PCGGraph 正在使用中",
+      "file": "Intermediate/wf_pcg_isolate_b.py",
+      "root_cause": "在销毁临时 PCGVolume 的同一条远程命令里立即 delete_asset 它引用的图；刚销毁 actor 的 PCGGraphInstance.Graph 仍持有引用。",
+      "fix": "把临时图删除拆到后续一条远程命令（wf_pcg_cleanup），等引用释放后再删，删除返回 True。",
+      "tags": [
+        "python",
+        "pcg",
+        "delete_asset",
+        "gc"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T14:40:00.000Z"
+    },
+    {
+      "id": "bug-201",
+      "timestamp": "2026-11-07T14:40:00.000Z",
+      "error_message": "PCG_Vegetation 在临时 PCGVolume 上 generated=True 但 ISM_COUNT 0 / TOTAL_INSTANCES 0",
+      "file": "Content/World/PCG/PCG_Vegetation.uasset",
+      "root_cause": "MainMap 是 World Partition：主 ALandscape 的 bounds 为零，世界原点处没有已加载的 LandscapeStreamingProxy/heightfield 缓存；UPCGLandscapeData::ProjectPoint 只用 XY 查询，采样点全被丢弃。图本身正常（CreatePoints->Spawner 隔离测试可出实例）。",
+      "fix": "把测试体积移到已加载地形代理上方 (12600,12600,0)，同一张图生成出 39 个实例；临时 actor 与临时图已清理。",
+      "tags": [
+        "pcg",
+        "world-partition",
+        "landscape",
+        "projectpoint",
+        "mainmap"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T14:40:00.000Z"
+    },
+    {
+      "id": "bug-202",
+      "timestamp": "2026-11-07T22:45:00Z",
+      "error_message": "生成的出拳动画里拇指比拳峰更靠前（拇指尖 y=-54.547，食指尖 y=-51.962），握拳姿态像手指张开的巴掌",
+      "file": "Saved/WFAnimTools/create_punch_combo.py",
+      "root_cause": "生成器只对四指施加了弯曲，没有处理拇指：拇指仍保持待机姿态从拳头上方伸出，成为整个拳头最靠前的点",
+      "fix": "把拇指三节加入抓握骨骼集合，按关节施加 bone-local X 正角 35/30/20 度（探针实测该轴正角使指尖向掌心移动）；重新生成后三段动画的领先骨骼都是拳峰 middle_01，拇指位于拳峰后方约 0.5 单位",
+      "tags": [
+        "animation",
+        "fist",
+        "thumb",
+        "procedural",
+        "newmoon"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T22:45:00Z"
+    },
+    {
+      "id": "bug-203",
+      "timestamp": "2026-11-07T22:45:00Z",
+      "error_message": "出拳动画的上半身扭转幅度只有设计值的一部分，胸口 yaw 明显小于 twist 参数",
+      "file": "Saved/WFAnimTools/create_punch_combo.py",
+      "root_cause": "把每节脊柱的世界增量当成绝对角度：spine_01 取 0.4×twist、spine_02 取 0.6×twist，胸口只转了 0.6×twist；锁骨又用 base_world×q_delta 重新覆盖，完全抵消了脊柱带来的旋转",
+      "fix": "改为沿链累积（spine_01 0.4×、spine_02 1.0×、neck 0.75×、head 0.5×，前倾同理），锁骨世界旋转改为 new_spine02_world × base_clav_local 再附加世界 Z 前伸；验证胸口达到设计扭转、头/颈约为胸口一半",
+      "tags": [
+        "animation",
+        "spine",
+        "clavicle",
+        "procedural",
+        "newmoon"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T22:45:00Z"
+    },
+    {
+      "id": "bug-204",
+      "timestamp": "2026-11-07T14:50:05.689Z",
+      "error_message": "Significant refactor of ",
+      "file": "Saved/WFAnimTools/create_punch_combo.py",
+      "root_cause": "12 lines replaced/restructured",
+      "fix": "Rewrote 24→27 lines (12 removed) | Also: \"R\": unreal.Vector(0.68, 0.65, 0.33),; \"L\": unreal.Vector(-0.68, 0.65, 0.33),",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-07T14:51:15.823Z"
+    },
+    {
+      "id": "bug-205",
+      "timestamp": "2026-11-07T14:51:55.438Z",
+      "error_message": "Significant refactor of ",
+      "file": ".claude/skills/wildforge-animation/SKILL.md",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 8→11 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T14:51:55.438Z"
+    },
+    {
+      "id": "bug-206",
+      "timestamp": "2026-11-07T14:52:18.988Z",
+      "error_message": "Incorrect value in code",
+      "file": "Saved/WFAnimTools/append_buglog2.py",
+      "root_cause": "Had \"bug-204\"",
+      "fix": "Changed to \"bug-206\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T14:52:18.988Z"
+    },
+    {
+      "id": "bug-207",
+      "timestamp": "2026-11-07T23:10:00Z",
+      "error_message": "三段连击动画的手臂全部朝角色背后伸出（用户反馈「你这动作手臂咋都是往身体后面，方向反了」）",
+      "file": "Saved/WFAnimTools/create_punch_combo.py",
+      "root_cause": "骨架朝向判断错误：早期只凭锁骨/脊柱位置推出「面朝 -Y、左侧 +X」，这两个结论本身自相矛盾；实际脚趾球（ball/toegem 相对 foot）与项链骨骼都向 +Y 延伸，角色面朝 +Y。生成器把所有出拳/蓄力/护手目标方向都写成 -Y，等于向背后出拳。",
+      "fix": "以 ball-foot 向量和项链骨骼确认面朝 +Y；方向常量 Y 分量全部取反，twist/lean 与锁骨前伸符号取反；蓄力前臂方向改为 (0.35,0.78,0.50) 让拳离胸 9-12 单位。重生成后峰值手部 Y=+43~46（身体前方），拳峰 middle_01 领先，臂直 0.9913。",
+      "tags": [
+        "animation",
+        "orientation",
+        "newmoon",
+        "procedural",
+        "user-reported"
+      ],
+      "related_bugs": [
+        "bug-202",
+        "bug-203"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T23:10:00Z"
+    },
+    {
+      "id": "bug-208",
+      "timestamp": "2026-11-07T14:52:34.724Z",
+      "error_message": "Wrong reference: 204 should be 207",
+      "file": ".claude/skills/wildforge-animation/SKILL.md",
+      "root_cause": "Used \"204\" instead of \"207\"",
+      "fix": "Changed 204 → 207",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T14:52:34.724Z"
+    },
+    {
+      "id": "bug-209",
+      "timestamp": "2026-11-07T15:12:29.718Z",
+      "error_message": "Significant refactor of ",
+      "file": "Intermediate/wf_pcg_fix_apply.py",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 19→31 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T15:12:29.718Z"
+    },
+    {
+      "id": "bug-210",
+      "timestamp": "2026-11-07T23:26:00.000Z",
+      "error_message": "水下仍生成植被：HeightFilter 阈值 $Position.z >= -17800 未剔除水下点（fern_01 40、fern_02 38、banana_01 17、banana_02 13、large_tree 6 个实例位于海平面 -17910 以下）",
+      "file": "Content/World/PCG/PCG_Vegetation.uasset",
+      "root_cause": "HeightFilter 用了 Filter Data By Attribute（UPCGFilterByAttributeSettings）。该节点对整个 FPCGTaggedData 只做一次判断：FilterByValue 返回单个 bool（AnyOf 下任意一点满足阈值即整份数据进入 InsideFilter），不是逐点过滤。因此只要点集中存在陆地点，水下点就随整份数据一起放行。",
+      "fix": "四个植被分支（Trees/Ferns/Broadleaf/Grass）改用 Point Filter（UPCGAttributeFilteringSettings）逐点过滤：Operator=GreaterOrEqual、TargetAttribute=$Position.z、常量阈值 -17800（DOUBLE），InsideFilter→TransformPoints；岩石分支保持不过滤。先 remove_edge 再 remove_node 旧节点，重建节点并保存。验证：400m 盒重新生成后四类植被 below_water 全为 0，岩石 below_water 19/15/8。",
+      "tags": [
+        "pcg",
+        "unreal",
+        "vegetation",
+        "filter",
+        "per-point",
+        "water-level"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T23:26:00.000Z"
+    },
+    {
+      "id": "bug-211",
+      "timestamp": "2026-11-07T23:26:00.000Z",
+      "error_message": "PCG 生成的树和岩石倒置、沉入地面下方：Transform 节点 rotation_min=(0,0,0)/rotation_max=(0,360,0) 实际得到 pitch=360（整圈随机俯仰）",
+      "file": "Content/World/PCG/PCG_Vegetation.uasset",
+      "root_cause": "Python 中 unreal.Rotator(a,b,c) 的位置参数顺序是 (roll,pitch,yaw)，而不是 (pitch,yaw,roll)。Rotator(0,360,0) 被解释为 roll=0、pitch=360、yaw=0，于是每个实例都随机俯仰翻倒。",
+      "fix": "改用关键字参数 Rotator(pitch=0.0, yaw=0.0, roll=0.0) 与 Rotator(pitch=0.0, yaw=360.0, roll=0.0)；树改为 absolute_rotation=True 仅随机 yaw，岩石保留法线对齐（absolute_rotation=False）并沿法线抬高 30-70cm，蕨/阔叶/草保留贴地法线朝向。验证：大树 pitch/roll 全为 0，tree_bad_rot=0。",
+      "tags": [
+        "pcg",
+        "unreal",
+        "python",
+        "rotator",
+        "rotation",
+        "sinking"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T23:26:00.000Z"
+    },
+    {
+      "id": "bug-212",
+      "timestamp": "2026-11-07T23:26:00.000Z",
+      "error_message": "Exception: PCGVolume: Failed to find property 'is_component_partitioned' for attribute 'is_component_partitioned' on 'PCGVolume'",
+      "file": "Intermediate/wf_pcg_big_gen2.py",
+      "root_cause": "is_component_partitioned 是 UPCGComponent 的属性，不在 PCGVolume Actor 上；诊断脚本误在 Actor 上 set_editor_property。",
+      "fix": "改为先取 pcg = vol.get_editor_property('pcg_component')，再在 pcg 上设 is_component_partitioned，并用 pcg.set_graph(graph) 指定图。",
+      "tags": [
+        "pcg",
+        "unreal",
+        "python",
+        "api-misuse",
+        "diagnostic"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T23:26:00.000Z"
     }
   ]
 }

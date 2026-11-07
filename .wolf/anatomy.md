@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-25T15:04:45.007Z
-> Files: 148 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-07T14:52:34.704Z
+> Files: 180 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -15,6 +15,15 @@
 - `README.md` — Project documentation (~11 tok)
 - `Wildforge.code-workspace` (~4460 tok)
 - `Wildforge.uproject` (~124 tok)
+
+## .claude/skills/wildforge-animation/
+
+- `SKILL.md` — Wildforge 骨骼动画创作（引擎内程序化） (~1957 tok)
+
+## .claude/skills/wildforge-animation/scripts/
+
+- `generate_animation_template.py` — Template: duplicate an AnimSequence and layer procedural rotations. (~2773 tok)
+- `remote_run.py` — Run a Python file inside the running Unreal Editor via remote execution. (~669 tok)
 
 ## C:/Users/xf317/AppData/Local/Temp/
 
@@ -53,6 +62,19 @@
 - `wf-syntax-check.ps1` (~252 tok)
 - `wf-syntax-check2.ps1` (~191 tok)
 
+## C:/Users/xf317/AppData/Local/Temp/wf-anim/
+
+- `end_pie.py` — -*- coding: utf-8 -*- (~189 tok)
+- `generate_idle_details.py` — Generate idle detail animations for New Moon from the base Idle. (~2898 tok)
+- `probe_api.py` (~784 tok)
+- `probe_basis.py` — Probe: world axes, head yaw direction, base idle motion. (~1535 tok)
+- `probe_dup.py` — -*- coding: utf-8 -*- (~284 tok)
+- `probe_idle.py` — log, probe (~621 tok)
+- `probe_pose.py` — Probe: can we evaluate an AnimPose in Python and write bone keys? (~807 tok)
+- `probe_track.py` (~483 tok)
+- `probe_write.py` — Probe write: sample pose, duplicate asset, write one bone track, read back. (~859 tok)
+- `remote_run.py` (~256 tok)
+
 ## C:/Users/xf317/AppData/Local/Temp/wfparse/
 
 - `find_array2.py` — rd_fstring, parse (~500 tok)
@@ -65,26 +87,36 @@
 - `DefaultGame.ini` (~333 tok)
 - `DefaultInput.ini` (~3677 tok)
 
+## Content/Environment/Nature/
+
+- `Materials/` — 13 个材质/材质函数：master_foliage、master_leaves、master_rock_world_material、master_rocks_small、master_spline_material、leaves/、rocks/、tree_bark/、wind_function/ (~40 tok)
+- `Meshes/` — 8 个静态网格：large_tree_w_roots_a；leaves_banana_01/02、leaves_fern_01/02；rock_boulder_a、rock_group_small_a1/b1 (~40 tok)
+- `Textures/` — 22 张纹理（bsm/nrm/rgm/ao/plx）：树皮、香蕉叶、蕨类、苔藓、岩石、云 (~25 tok)
+
 ## Content/World/Maps/
 
-- `LandscapeMaterial.uasset` — 原始地形材质：单张宏观色 + 法线，无粗糙度/AO (~12 tok)
 - `LandscapeMaterial_v2.uasset` — 3.2 最小版：宏观色 + 细节法线/粗糙度；BaseColor 细节层未接 (~24 tok)
 - `LandscapeMaterial_v3.uasset` — 3.3 完整版：草/土/岩/雪四层 + 高度/坡度/噪声遮罩 + 法线/粗糙度/AO；宏观色主导、低 Specular，85 节点（含 LandscapeGrassOutput→LG_Grass） (~90 tok)
-- `MI_Landscape_v3.uasset` — v3 的材质实例，调参数用；赋给 Landscape 的推荐入口 (~4 tok)
+- `LandscapeMaterial.uasset` — 原始地形材质：单张宏观色 + 法线，无粗糙度/AO (~12 tok)
 - `LG_Grass.uasset` — LandscapeGrassType：grass_small_01/02 两种草，密度 1/10m²，剔除 30–60m (~12 tok)
+- `MI_Landscape_v3.uasset` — v3 的材质实例，调参数用；赋给 Landscape 的推荐入口 (~4 tok)
+
+## Content/World/PCG/
+
+- `PCG_Vegetation.uasset` — PCG 植被图：GetLandscapeData → 6 分支（树/蕨类/阔叶/草/巨石/小石），每支 SurfaceSampler→NormalToDensity→DensityFilter→(Point Filter 水线，仅植被)→TransformPoints→(SelfPruning)→StaticMeshSpawner；坡度密度下限 0.87/0.80/0.80/0.75/0.72/0.70，水线 $Position.z≥-17800，草分支默认禁用 (~260 tok)
 
 ## Content/World/Terrain/Textures/
 
 - `moss_bsm.uasset` — 256² 苔藓/草地细节 Albedo，sRGB (~1 tok)
 - `moss_nrm.uasset` — 256² 苔藓/草地细节 Normal，TC_NORMALMAP，Flip Green (~1 tok)
 - `moss_rgm.uasset` — 256² 苔藓/草地细节 RGM，sRGB (~1 tok)
-- `rubble_ground_bsm.uasset` — 2048² 碎石/泥土 Albedo，sRGB (~1 tok)
-- `rubble_ground_nrm.uasset` — 2048² 碎石/泥土 Normal，Flip Green (~1 tok)
-- `rubble_ground_rgm.uasset` — 2048² 碎石/泥土 RGM，sRGB (~1 tok)
+- `rock_ground_mud-1_AO.uasset` — 2048² 岩石/地面 AO，sRGB (~1 tok)
 - `rock_ground_mud-1_bsm.uasset` — 2048² 苔藓岩石/地面 Albedo，sRGB (~1 tok)
 - `rock_ground_mud-1_nrm.uasset` — 2048² 苔藓岩石/地面 Normal，Flip Green (~1 tok)
 - `rock_ground_mud-1_rgm.uasset` — 2048² 苔藓岩石/地面 RGM，sRGB (~1 tok)
-- `rock_ground_mud-1_AO.uasset` — 2048² 岩石/地面 AO，sRGB (~1 tok)
+- `rubble_ground_bsm.uasset` — 2048² 碎石/泥土 Albedo，sRGB (~1 tok)
+- `rubble_ground_nrm.uasset` — 2048² 碎石/泥土 Normal，Flip Green (~1 tok)
+- `rubble_ground_rgm.uasset` — 2048² 碎石/泥土 RGM，sRGB (~1 tok)
 
 ## Plugins/Plugins/UmgDesignSystem/
 
